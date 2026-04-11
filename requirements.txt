@@ -1,0 +1,9 @@
+PyPDF2
+Pillow
+pdf2docx
+docx2pdf
+reportlab
+pytesseract
+pystray
+pywin32
+PyMuPDF
