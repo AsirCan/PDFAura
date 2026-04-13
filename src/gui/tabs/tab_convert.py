@@ -1,206 +1,156 @@
 import os
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from src.core.convert import pdf_to_images, images_to_pdf, pdf_to_word, word_to_pdf, ppt_to_pdf, excel_to_pdf, pdf_to_txt
-from src.utils.file_helper import format_size_mb
-from src.gui.helpers import set_busy, operation_done, quick_error
+from tkinter import ttk, filedialog
+
+from src.core.convert import excel_to_pdf, images_to_pdf, pdf_to_images, pdf_to_txt, pdf_to_word, ppt_to_pdf, word_to_pdf
 from src.core.lang_manager import _
+from src.gui.helpers import InlineFeedback, bind_preview, build_tool_header, notify_preview, operation_done, quick_error, set_busy
+from src.gui.styles import CONVERT_ACCENT, FIELD_COLOR, TEXT_COLOR
+from src.utils.file_helper import format_size_mb
+
 
 class ConvertTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
-        
+
         self.convert_mode_var = tk.StringVar(value=_("convert_pdf2img"))
         self.convert_status_var = tk.StringVar(value=_("str_ready"))
-        
-        # PDF -> Image
+
         self.p2i_input_var = tk.StringVar()
         self.p2i_folder_var = tk.StringVar()
         self.p2i_dpi_var = tk.StringVar(value="300")
         self.p2i_format_var = tk.StringVar(value="PNG")
-        
-        # Image -> PDF
+
         self.i2p_file_list = []
         self.i2p_output_var = tk.StringVar()
         self.i2p_size_var = tk.StringVar(value=_("convert_original"))
-        
-        # PDF -> Word
+
         self.p2w_input_var = tk.StringVar()
         self.p2w_output_var = tk.StringVar()
-        
-        # Word -> PDF
+
         self.w2p_input_var = tk.StringVar()
         self.w2p_output_var = tk.StringVar()
-        
-        # PPT -> PDF
+
         self.ppt2p_input_var = tk.StringVar()
         self.ppt2p_output_var = tk.StringVar()
 
-        # Excel -> PDF
         self.excel2p_input_var = tk.StringVar()
         self.excel2p_output_var = tk.StringVar()
 
-        # PDF -> TXT
         self.p2txt_input_var = tk.StringVar()
         self.p2txt_output_var = tk.StringVar()
-        
+
+        bind_preview(self.app_root, self.p2i_input_var, self.p2w_input_var, self.p2txt_input_var)
         self.build_ui()
 
     def build_ui(self):
-        c = ttk.Frame(self.parent, padding=20, style="Card.TFrame")
-        c.pack(fill="both", expand=True, pady=(12, 0))
+        shell = ttk.Frame(self.parent, style="App.TFrame")
+        shell.pack(fill="both", expand=True)
 
-        ttk.Label(c, text=_("convert_type"), style="Section.TLabel").grid(row=0, column=0, sticky="w")
-        self.convert_mode_combo = ttk.Combobox(c, textvariable=self.convert_mode_var,
-                                                values=[_("convert_pdf2img"), _("convert_img2pdf"), _("convert_pdf2word"), _("convert_word2pdf"), _("convert_ppt2pdf"), _("convert_excel2pdf"), _("convert_pdf2txt")],
-                                                state="readonly", width=24, style="Dark.TCombobox")
-        self.convert_mode_combo.grid(row=1, column=0, sticky="w", pady=(10, 0))
-        self.convert_mode_combo.bind("<<ComboboxSelected>>", lambda e: self.switch_convert_mode())
+        build_tool_header(shell, _("txt_convert"), _("convert_btn"), _("convert_type"), badge_text=_("convert_type"))
 
-        # Dynamic content area
-        self.convert_dynamic = ttk.Frame(c, style="Card.TFrame")
-        self.convert_dynamic.grid(row=2, column=0, sticky="nsew", pady=(16, 0))
+        body = ttk.Frame(shell, style="App.TFrame")
+        body.pack(fill="both", expand=True)
 
-        # ── PDF -> Image frame ──
-        f1 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
+        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left.pack(side="left", fill="both", expand=True)
+
+        ttk.Label(left, text=_("convert_type"), style="Field.TLabel").pack(anchor="w")
+        self.convert_mode_combo = ttk.Combobox(
+            left,
+            textvariable=self.convert_mode_var,
+            values=[
+                _("convert_pdf2img"),
+                _("convert_img2pdf"),
+                _("convert_pdf2word"),
+                _("convert_word2pdf"),
+                _("convert_ppt2pdf"),
+                _("convert_excel2pdf"),
+                _("convert_pdf2txt"),
+            ],
+            state="readonly",
+            width=24,
+            style="Dark.TCombobox",
+        )
+        self.convert_mode_combo.pack(anchor="w", pady=(8, 0))
+        self.convert_mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_convert_mode())
+
+        self.convert_dynamic = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        self.convert_dynamic.pack(fill="both", expand=True, pady=(18, 0))
+
+        f1 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
         ttk.Label(f1, text=_("str_input_pdf"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        r1 = ttk.Frame(f1, style="Card.TFrame")
+        r1 = ttk.Frame(f1, style="Panel.TFrame")
         r1.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self.p2i_input_entry = ttk.Entry(r1, textvariable=self.p2i_input_var, width=50, style="Dark.TEntry")
+        self.p2i_input_entry = ttk.Entry(r1, textvariable=self.p2i_input_var, style="Dark.TEntry")
         self.p2i_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(r1, text=_("str_browse"), command=self.choose_p2i_input, style="Secondary.TButton").pack(side="right")
 
         ttk.Label(f1, text=_("str_output_folder"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
-        r2 = ttk.Frame(f1, style="Card.TFrame")
+        r2 = ttk.Frame(f1, style="Panel.TFrame")
         r2.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.p2i_folder_entry = ttk.Entry(r2, textvariable=self.p2i_folder_var, width=50, style="Dark.TEntry")
+        self.p2i_folder_entry = ttk.Entry(r2, textvariable=self.p2i_folder_var, style="Dark.TEntry")
         self.p2i_folder_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(r2, text=_("str_browse"), command=self.choose_p2i_folder, style="Secondary.TButton").pack(side="right")
 
-        sf = ttk.Frame(f1, style="Card.TFrame")
+        sf = ttk.Frame(f1, style="Panel.TFrame")
         sf.grid(row=4, column=0, sticky="w", pady=(14, 0))
-        ttk.Label(sf, text="DPI:", style="Field.TLabel").pack(side="left", padx=(0, 8))
-        ttk.Combobox(sf, textvariable=self.p2i_dpi_var, values=["72", "150", "300", "600"],
-                     state="readonly", width=6, style="Dark.TCombobox").pack(side="left", padx=(0, 20))
-        ttk.Label(sf, text="Format:", style="Field.TLabel").pack(side="left", padx=(0, 8))
-        ttk.Combobox(sf, textvariable=self.p2i_format_var, values=["PNG", "JPEG"],
-                     state="readonly", width=8, style="Dark.TCombobox").pack(side="left")
+        ttk.Label(sf, text="DPI", style="Field.TLabel").pack(side="left")
+        ttk.Combobox(sf, textvariable=self.p2i_dpi_var, values=["72", "150", "300", "600"], state="readonly", width=6, style="Dark.TCombobox").pack(side="left", padx=(10, 18))
+        ttk.Label(sf, text="Format", style="Field.TLabel").pack(side="left")
+        ttk.Combobox(sf, textvariable=self.p2i_format_var, values=["PNG", "JPEG"], state="readonly", width=8, style="Dark.TCombobox").pack(side="left", padx=(10, 0))
         f1.columnconfigure(0, weight=1)
 
-        # ── Image -> PDF frame ──
-        f2 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
+        f2 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
         ttk.Label(f2, text=_("convert_image_files"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        
-        from src.gui.styles import FIELD_COLOR, TEXT_COLOR, CONVERT_ACCENT
-        self.i2p_listbox = tk.Listbox(f2, bg=FIELD_COLOR, fg=TEXT_COLOR, selectbackground=CONVERT_ACCENT,
-                                       selectforeground=TEXT_COLOR, font=("Segoe UI", 9), height=5,
-                                       borderwidth=1, relief="solid", highlightthickness=0, activestyle="none")
-        self.i2p_listbox.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(8, 0))
-        ib = ttk.Frame(f2, style="Card.TFrame")
-        ib.grid(row=1, column=1, sticky="n", pady=(8, 0))
-        ttk.Button(ib, text=_("str_add"), command=self.i2p_add_files, style="Small.TButton").pack(fill="x", pady=(0, 4))
-        ttk.Button(ib, text=_("str_remove"), command=self.i2p_remove_selected, style="Small.TButton").pack(fill="x")
+        self.i2p_listbox = tk.Listbox(
+            f2,
+            bg=FIELD_COLOR,
+            fg=TEXT_COLOR,
+            selectbackground=CONVERT_ACCENT,
+            selectforeground=TEXT_COLOR,
+            font=("Segoe UI", 9),
+            height=5,
+            borderwidth=1,
+            relief="solid",
+            highlightthickness=0,
+            activestyle="none",
+        )
+        self.i2p_listbox.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+        ib = ttk.Frame(f2, style="Panel.TFrame")
+        ib.grid(row=1, column=1, sticky="n", padx=(10, 0), pady=(8, 0))
+        ttk.Button(ib, text=_("str_add"), command=self.i2p_add_files, style="Secondary.TButton").pack(fill="x")
+        ttk.Button(ib, text=_("str_remove"), command=self.i2p_remove_selected, style="Ghost.TButton").pack(fill="x", pady=(8, 0))
 
-        ttk.Label(f2, text=_("str_output_pdf"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(12, 0))
-        r3 = ttk.Frame(f2, style="Card.TFrame")
+        ttk.Label(f2, text=_("str_output_pdf"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
+        r3 = ttk.Frame(f2, style="Panel.TFrame")
         r3.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.i2p_output_entry = ttk.Entry(r3, textvariable=self.i2p_output_var, width=50, style="Dark.TEntry")
+        self.i2p_output_entry = ttk.Entry(r3, textvariable=self.i2p_output_var, style="Dark.TEntry")
         self.i2p_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(r3, text=_("str_save"), command=self.choose_i2p_output, style="Secondary.TButton").pack(side="right")
 
-        sz = ttk.Frame(f2, style="Card.TFrame")
+        sz = ttk.Frame(f2, style="Panel.TFrame")
         sz.grid(row=4, column=0, sticky="w", pady=(12, 0))
-        ttk.Label(sz, text=_("convert_page_size"), style="Field.TLabel").pack(side="left", padx=(0, 8))
-        ttk.Combobox(sz, textvariable=self.i2p_size_var, values=[_("convert_original"), "A4", "Letter"],
-                     state="readonly", width=10, style="Dark.TCombobox").pack(side="left")
+        ttk.Label(sz, text=_("convert_page_size"), style="Field.TLabel").pack(side="left")
+        ttk.Combobox(sz, textvariable=self.i2p_size_var, values=[_("convert_original"), "A4", "Letter"], state="readonly", width=10, style="Dark.TCombobox").pack(side="left", padx=(10, 0))
         f2.columnconfigure(0, weight=1)
 
-        # ── PDF -> Word frame ──
-        f3 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
-        ttk.Label(f3, text=_("str_input_pdf"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        r4 = ttk.Frame(f3, style="Card.TFrame")
-        r4.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self.p2w_input_entry = ttk.Entry(r4, textvariable=self.p2w_input_var, width=50, style="Dark.TEntry")
-        self.p2w_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r4, text=_("str_browse"), command=self.choose_p2w_input, style="Secondary.TButton").pack(side="right")
+        f3 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
+        self._file_output_pair(f3, _("str_input_pdf"), self.p2w_input_var, self.choose_p2w_input, _("convert_output_word"), self.p2w_output_var, self.choose_p2w_output, _("str_save"))
 
-        ttk.Label(f3, text=_("convert_output_word"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
-        r5 = ttk.Frame(f3, style="Card.TFrame")
-        r5.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.p2w_output_entry = ttk.Entry(r5, textvariable=self.p2w_output_var, width=50, style="Dark.TEntry")
-        self.p2w_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r5, text=_("str_save"), command=self.choose_p2w_output, style="Secondary.TButton").pack(side="right")
-        f3.columnconfigure(0, weight=1)
+        f4 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
+        self._file_output_pair(f4, _("convert_input_word"), self.w2p_input_var, self.choose_w2p_input, _("str_output_pdf"), self.w2p_output_var, self.choose_w2p_output, _("str_save"))
 
-        # ── Word -> PDF frame ──
-        f4 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
-        ttk.Label(f4, text=_("convert_input_word"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        r6 = ttk.Frame(f4, style="Card.TFrame")
-        r6.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self.w2p_input_entry = ttk.Entry(r6, textvariable=self.w2p_input_var, width=50, style="Dark.TEntry")
-        self.w2p_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r6, text=_("str_browse"), command=self.choose_w2p_input, style="Secondary.TButton").pack(side="right")
+        f5 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
+        self._file_output_pair(f5, _("convert_input_ppt"), self.ppt2p_input_var, self.choose_ppt2p_input, _("str_output_pdf"), self.ppt2p_output_var, self.choose_ppt2p_output, _("str_save"))
 
-        ttk.Label(f4, text=_("str_output_pdf"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
-        r7 = ttk.Frame(f4, style="Card.TFrame")
-        r7.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.w2p_output_entry = ttk.Entry(r7, textvariable=self.w2p_output_var, width=50, style="Dark.TEntry")
-        self.w2p_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r7, text=_("str_save"), command=self.choose_w2p_output, style="Secondary.TButton").pack(side="right")
-        f4.columnconfigure(0, weight=1)
+        f6 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
+        self._file_output_pair(f6, _("convert_input_excel"), self.excel2p_input_var, self.choose_excel2p_input, _("str_output_pdf"), self.excel2p_output_var, self.choose_excel2p_output, _("str_save"))
 
-        # ── PPT -> PDF frame ──
-        f5 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
-        ttk.Label(f5, text=_("convert_input_ppt"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        r8 = ttk.Frame(f5, style="Card.TFrame")
-        r8.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self.ppt2p_input_entry = ttk.Entry(r8, textvariable=self.ppt2p_input_var, width=50, style="Dark.TEntry")
-        self.ppt2p_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r8, text=_("str_browse"), command=self.choose_ppt2p_input, style="Secondary.TButton").pack(side="right")
-
-        ttk.Label(f5, text=_("str_output_pdf"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
-        r9 = ttk.Frame(f5, style="Card.TFrame")
-        r9.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.ppt2p_output_entry = ttk.Entry(r9, textvariable=self.ppt2p_output_var, width=50, style="Dark.TEntry")
-        self.ppt2p_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r9, text=_("str_save"), command=self.choose_ppt2p_output, style="Secondary.TButton").pack(side="right")
-        f5.columnconfigure(0, weight=1)
-
-        # ── Excel -> PDF frame ──
-        f6 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
-        ttk.Label(f6, text=_("convert_input_excel"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        r10 = ttk.Frame(f6, style="Card.TFrame")
-        r10.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self.excel2p_input_entry = ttk.Entry(r10, textvariable=self.excel2p_input_var, width=50, style="Dark.TEntry")
-        self.excel2p_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r10, text=_("str_browse"), command=self.choose_excel2p_input, style="Secondary.TButton").pack(side="right")
-
-        ttk.Label(f6, text=_("str_output_pdf"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
-        r11 = ttk.Frame(f6, style="Card.TFrame")
-        r11.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.excel2p_output_entry = ttk.Entry(r11, textvariable=self.excel2p_output_var, width=50, style="Dark.TEntry")
-        self.excel2p_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r11, text=_("str_save"), command=self.choose_excel2p_output, style="Secondary.TButton").pack(side="right")
-        f6.columnconfigure(0, weight=1)
-
-        # ── PDF -> TXT frame ──
-        f7 = ttk.Frame(self.convert_dynamic, style="Card.TFrame")
-        ttk.Label(f7, text=_("str_input_pdf"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        r12 = ttk.Frame(f7, style="Card.TFrame")
-        r12.grid(row=1, column=0, sticky="ew", pady=(8, 0))
-        self.p2txt_input_entry = ttk.Entry(r12, textvariable=self.p2txt_input_var, width=50, style="Dark.TEntry")
-        self.p2txt_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r12, text=_("str_browse"), command=self.choose_p2txt_input, style="Secondary.TButton").pack(side="right")
-
-        ttk.Label(f7, text=_("convert_output_txt"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
-        r13 = ttk.Frame(f7, style="Card.TFrame")
-        r13.grid(row=3, column=0, sticky="ew", pady=(8, 0))
-        self.p2txt_output_entry = ttk.Entry(r13, textvariable=self.p2txt_output_var, width=50, style="Dark.TEntry")
-        self.p2txt_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(r13, text=_("str_save"), command=self.choose_p2txt_output, style="Secondary.TButton").pack(side="right")
-        f7.columnconfigure(0, weight=1)
+        f7 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
+        self._file_output_pair(f7, _("str_input_pdf"), self.p2txt_input_var, self.choose_p2txt_input, _("convert_output_txt"), self.p2txt_output_var, self.choose_p2txt_output, _("str_save"))
 
         self.convert_frames = {
             _("convert_pdf2img"): f1,
@@ -213,15 +163,32 @@ class ConvertTab:
         }
         self.switch_convert_mode()
 
-        # Action button + progress
-        self.convert_button = ttk.Button(c, text=_("convert_btn"), command=self.start_convert, style="Convert.TButton")
-        self.convert_button.grid(row=3, column=0, sticky="w", pady=(22, 12))
-        self.convert_progress_bar = ttk.Progressbar(c, mode="indeterminate", length=520, style="Convert.Horizontal.TProgressbar")
-        self.convert_progress_bar.grid(row=4, column=0, sticky="ew", pady=(2, 12))
-        self.convert_status_label = ttk.Label(c, textvariable=self.convert_status_var, style="ConvertStatus.TLabel")
-        self.convert_status_label.grid(row=5, column=0, sticky="w")
-        c.columnconfigure(0, weight=1)
-        c.rowconfigure(2, weight=1)
+        footer = ttk.Frame(left, style="Surface.TFrame")
+        footer.pack(fill="x", pady=(22, 0))
+        self.convert_button = ttk.Button(footer, text=_("convert_btn"), command=self.start_convert, style="Convert.TButton")
+        self.convert_button.pack(side="left")
+        self.convert_progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Convert.Horizontal.TProgressbar", length=220)
+        self.convert_progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+
+        right = ttk.Frame(body, style="App.TFrame")
+        right.pack(side="left", fill="y", padx=(18, 0))
+        self.feedback = InlineFeedback(right)
+        self.feedback.pack(fill="x")
+        self.feedback.set_info(_("convert_type"), _("convert_running").format(mode=self.convert_mode_var.get()))
+
+    def _file_output_pair(self, frame, input_label, input_var, choose_input, output_label, output_var, choose_output, output_button_text):
+        ttk.Label(frame, text=input_label, style="Field.TLabel").grid(row=0, column=0, sticky="w")
+        row_in = ttk.Frame(frame, style="Panel.TFrame")
+        row_in.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        ttk.Entry(row_in, textvariable=input_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ttk.Button(row_in, text=_("str_browse"), command=choose_input, style="Secondary.TButton").pack(side="right")
+
+        ttk.Label(frame, text=output_label, style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))
+        row_out = ttk.Frame(frame, style="Panel.TFrame")
+        row_out.grid(row=3, column=0, sticky="ew", pady=(8, 0))
+        ttk.Entry(row_out, textvariable=output_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ttk.Button(row_out, text=output_button_text, command=choose_output, style="Ghost.TButton").pack(side="right")
+        frame.columnconfigure(0, weight=1)
 
     def switch_convert_mode(self):
         for frame in self.convert_frames.values():
@@ -230,253 +197,252 @@ class ConvertTab:
         if mode in self.convert_frames:
             self.convert_frames[mode].grid(row=0, column=0, sticky="nsew")
         self.convert_dynamic.columnconfigure(0, weight=1)
+        if mode in (_("convert_word2pdf"), _("convert_ppt2pdf"), _("convert_excel2pdf"), _("convert_img2pdf")):
+            notify_preview(self.app_root, None)
+        if hasattr(self, "feedback"):
+            self.feedback.set_info(_("convert_type"), _("convert_running").format(mode=mode))
 
-    # ... File dialogs ...
     def choose_p2i_input(self):
-        f = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.p2i_input_var.set(f)
-            base = os.path.splitext(f)[0]
+        selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.p2i_input_var.set(selected)
+            base = os.path.splitext(selected)[0]
             self.p2i_folder_var.set(f"{base}_resimler")
 
     def choose_p2i_folder(self):
-        f = filedialog.askdirectory(title=_("convert_dialog_folder"))
-        if f:
-            self.p2i_folder_var.set(f)
+        selected = filedialog.askdirectory(title=_("convert_dialog_folder"))
+        if selected:
+            self.p2i_folder_var.set(selected)
 
     def i2p_add_files(self):
-        files = filedialog.askopenfilenames(title=_("convert_dialog_img"),
-                                             filetypes=[(_("convert_images_label"), "*.png *.jpg *.jpeg *.bmp *.tiff *.gif")])
-        for f in files:
-            self.i2p_file_list.append(f)
-            self.i2p_listbox.insert(tk.END, os.path.basename(f))
+        files = filedialog.askopenfilenames(title=_("convert_dialog_img"), filetypes=[(_("convert_images_label"), "*.png *.jpg *.jpeg *.bmp *.tiff *.gif")])
+        for file_path in files:
+            self.i2p_file_list.append(file_path)
+            self.i2p_listbox.insert(tk.END, os.path.basename(file_path))
         if self.i2p_file_list and not self.i2p_output_var.get().strip():
             base = os.path.splitext(self.i2p_file_list[0])[0]
-            self.i2p_output_var.set(f"{base}_birlesik.pdf")
+            self.i2p_output_var.set(f"{base}_birleşik.pdf")
 
     def i2p_remove_selected(self):
-        sel = self.i2p_listbox.curselection()
-        for i in reversed(sel):
-            self.i2p_listbox.delete(i)
-            del self.i2p_file_list[i]
+        selected = self.i2p_listbox.curselection()
+        for index in reversed(selected):
+            self.i2p_listbox.delete(index)
+            del self.i2p_file_list[index]
 
     def choose_i2p_output(self):
-        f = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.i2p_output_var.set(f)
+        selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.i2p_output_var.set(selected)
 
     def choose_p2w_input(self):
-        f = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.p2w_input_var.set(f)
-            base = os.path.splitext(f)[0]
-            self.p2w_output_var.set(f"{base}.docx")
+        selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.p2w_input_var.set(selected)
+            self.p2w_output_var.set(f"{os.path.splitext(selected)[0]}.docx")
 
     def choose_p2w_output(self):
-        f = filedialog.asksaveasfilename(title=_("convert_dialog_word_save"), defaultextension=".docx", filetypes=[("Word", "*.docx")])
-        if f:
-            self.p2w_output_var.set(f)
+        selected = filedialog.asksaveasfilename(title=_("convert_dialog_word_save"), defaultextension=".docx", filetypes=[("Word", "*.docx")])
+        if selected:
+            self.p2w_output_var.set(selected)
 
     def choose_w2p_input(self):
-        f = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("Word", "*.docx")])
-        if f:
-            self.w2p_input_var.set(f)
-            base = os.path.splitext(f)[0]
-            self.w2p_output_var.set(f"{base}.pdf")
+        selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("Word", "*.docx")])
+        if selected:
+            self.w2p_input_var.set(selected)
+            self.w2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
 
     def choose_w2p_output(self):
-        f = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.w2p_output_var.set(f)
+        selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.w2p_output_var.set(selected)
 
     def choose_ppt2p_input(self):
-        f = filedialog.askopenfilename(title=_("str_file_selection"), filetypes=[("PowerPoint", "*.ppt *.pptx")])
-        if f:
-            self.ppt2p_input_var.set(f)
-            base = os.path.splitext(f)[0]
-            self.ppt2p_output_var.set(f"{base}.pdf")
+        selected = filedialog.askopenfilename(title=_("str_file_selection"), filetypes=[("PowerPoint", "*.ppt *.pptx")])
+        if selected:
+            self.ppt2p_input_var.set(selected)
+            self.ppt2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
 
     def choose_ppt2p_output(self):
-        f = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.ppt2p_output_var.set(f)
+        selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.ppt2p_output_var.set(selected)
 
     def choose_excel2p_input(self):
-        f = filedialog.askopenfilename(title=_("str_file_selection"), filetypes=[("Excel", "*.xls *.xlsx")])
-        if f:
-            self.excel2p_input_var.set(f)
-            base = os.path.splitext(f)[0]
-            self.excel2p_output_var.set(f"{base}.pdf")
+        selected = filedialog.askopenfilename(title=_("str_file_selection"), filetypes=[("Excel", "*.xls *.xlsx")])
+        if selected:
+            self.excel2p_input_var.set(selected)
+            self.excel2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
 
     def choose_excel2p_output(self):
-        f = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.excel2p_output_var.set(f)
+        selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.excel2p_output_var.set(selected)
 
     def choose_p2txt_input(self):
-        f = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
-        if f:
-            self.p2txt_input_var.set(f)
-            base = os.path.splitext(f)[0]
-            self.p2txt_output_var.set(f"{base}.txt")
+        selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
+        if selected:
+            self.p2txt_input_var.set(selected)
+            self.p2txt_output_var.set(f"{os.path.splitext(selected)[0]}.txt")
 
     def choose_p2txt_output(self):
-        f = filedialog.asksaveasfilename(title=_("adv_dialog_txt_save"), defaultextension=".txt", filetypes=[("Text", "*.txt")])
-        if f:
-            self.p2txt_output_var.set(f)
+        selected = filedialog.asksaveasfilename(title=_("adv_dialog_txt_save"), defaultextension=".txt", filetypes=[("Text", "*.txt")])
+        if selected:
+            self.p2txt_output_var.set(selected)
 
-    # Dispatch conversion
+    def handle_external_drop(self, file_path):
+        mode = self.convert_mode_var.get()
+        if mode == _("convert_pdf2img") and file_path.lower().endswith(".pdf"):
+            self.p2i_input_var.set(file_path)
+            self.p2i_folder_var.set(f"{os.path.splitext(file_path)[0]}_resimler")
+        elif mode == _("convert_img2pdf") and file_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif")):
+            self.i2p_file_list.append(file_path)
+            self.i2p_listbox.insert(tk.END, os.path.basename(file_path))
+            if not self.i2p_output_var.get().strip():
+                self.i2p_output_var.set(f"{os.path.splitext(file_path)[0]}_birleşik.pdf")
+        elif mode == _("convert_pdf2word") and file_path.lower().endswith(".pdf"):
+            self.p2w_input_var.set(file_path)
+            self.p2w_output_var.set(f"{os.path.splitext(file_path)[0]}.docx")
+        elif mode == _("convert_word2pdf") and file_path.lower().endswith(".docx"):
+            self.w2p_input_var.set(file_path)
+            self.w2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
+        elif mode == _("convert_ppt2pdf") and file_path.lower().endswith((".ppt", ".pptx")):
+            self.ppt2p_input_var.set(file_path)
+            self.ppt2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
+        elif mode == _("convert_excel2pdf") and file_path.lower().endswith((".xls", ".xlsx")):
+            self.excel2p_input_var.set(file_path)
+            self.excel2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
+        elif mode == _("convert_pdf2txt") and file_path.lower().endswith(".pdf"):
+            self.p2txt_input_var.set(file_path)
+            self.p2txt_output_var.set(f"{os.path.splitext(file_path)[0]}.txt")
+
     def start_convert(self):
         mode = self.convert_mode_var.get()
-        set_busy(self.convert_button, self.convert_progress_bar, True)
-        self.convert_status_var.set(_("convert_running").format(mode=mode))
+        busy_text = _("convert_running").format(mode=mode)
+        set_busy(self.convert_button, self.convert_progress_bar, True, self.feedback, busy_text)
+        self.convert_status_var.set(busy_text)
 
         if mode == _("convert_pdf2img"):
             inp = self.p2i_input_var.get().strip()
             folder = self.p2i_folder_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_file"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_select_valid_file"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             if not folder:
-                quick_error(_("err_set_output_folder"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output_folder"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
-            dpi = int(self.p2i_dpi_var.get())
-            fmt = self.p2i_format_var.get().lower()
-            threading.Thread(target=self._run_p2i, args=(inp, folder, dpi, fmt), daemon=True).start()
-
+            threading.Thread(target=self._run_p2i, args=(inp, folder, int(self.p2i_dpi_var.get()), self.p2i_format_var.get().lower()), daemon=True).start()
         elif mode == _("convert_img2pdf"):
             if not self.i2p_file_list:
-                quick_error(_("err_add_min_1_image"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_add_min_1_image"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             output = self.i2p_output_var.get().strip()
             if not output:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
-            size = self.i2p_size_var.get()
-            threading.Thread(target=self._run_i2p, args=(list(self.i2p_file_list), output, size), daemon=True).start()
-
+            threading.Thread(target=self._run_i2p, args=(list(self.i2p_file_list), output, self.i2p_size_var.get()), daemon=True).start()
         elif mode == _("convert_pdf2word"):
             inp = self.p2w_input_var.get().strip()
             out = self.p2w_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_file"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_select_valid_file"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_p2w, args=(inp, out), daemon=True).start()
-
         elif mode == _("convert_word2pdf"):
             inp = self.w2p_input_var.get().strip()
             out = self.w2p_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_word"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_select_valid_word"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_w2p, args=(inp, out), daemon=True).start()
-
         elif mode == _("convert_ppt2pdf"):
             inp = self.ppt2p_input_var.get().strip()
             out = self.ppt2p_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_ppt"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_select_valid_ppt"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_ppt2p, args=(inp, out), daemon=True).start()
-
         elif mode == _("convert_excel2pdf"):
             inp = self.excel2p_input_var.get().strip()
             out = self.excel2p_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_excel"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_select_valid_excel"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_excel2p, args=(inp, out), daemon=True).start()
-
         elif mode == _("convert_pdf2txt"):
             inp = self.p2txt_input_var.get().strip()
             out = self.p2txt_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_pdf"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_select_valid_pdf"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var)
+                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_p2txt, args=(inp, out), daemon=True).start()
+
+    def _finish(self, title, message, output_path):
+        self.app_root.after(0, operation_done, self.convert_button, self.convert_progress_bar, self.convert_status_var, title, message, None, self.feedback, output_path)
+
+    def _fail(self, title, exc):
+        self.app_root.after(0, operation_done, self.convert_button, self.convert_progress_bar, self.convert_status_var, title, None, str(exc), self.feedback, None)
 
     def _run_p2i(self, inp, folder, dpi, fmt):
         try:
             count = pdf_to_images(inp, folder, dpi, fmt)
-            msg = _("convert_result_p2i").format(count=count, dpi=dpi, folder=folder)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            self._finish(_("convert_done"), _("convert_result_p2i").format(count=count, dpi=dpi, folder=folder), folder)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
 
     def _run_i2p(self, image_paths, output, size):
         try:
             images_to_pdf(image_paths, output, size)
-            sz = format_size_mb(output)
-            msg = _("convert_result_i2p").format(count=len(image_paths), size=sz, output=output)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            message = _("convert_result_i2p").format(count=len(image_paths), size=format_size_mb(output), output=output)
+            self._finish(_("convert_done"), message, output)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
 
     def _run_p2w(self, inp, out):
         try:
             pdf_to_word(inp, out)
-            msg = _("convert_result_p2w").format(output=out)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            self._finish(_("convert_done"), _("convert_result_p2w").format(output=out), out)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
 
     def _run_w2p(self, inp, out):
         try:
             word_to_pdf(inp, out)
-            msg = _("convert_result_w2p").format(output=out)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            self._finish(_("convert_done"), _("convert_result_w2p").format(output=out), out)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
 
     def _run_ppt2p(self, inp, out):
         try:
             ppt_to_pdf(inp, out)
-            msg = _("convert_result_ppt2pdf").format(output=out)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            self._finish(_("convert_done"), _("convert_result_ppt2pdf").format(output=out), out)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
 
     def _run_excel2p(self, inp, out):
         try:
             excel_to_pdf(inp, out)
-            msg = _("convert_result_excel2pdf").format(output=out)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            self._finish(_("convert_done"), _("convert_result_excel2pdf").format(output=out), out)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
 
     def _run_p2txt(self, inp, out):
         try:
             pdf_to_txt(inp, out)
-            msg = _("convert_result_pdf2txt").format(output=out)
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_done"), msg, None)
+            self._finish(_("convert_done"), _("convert_result_pdf2txt").format(output=out), out)
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.app_root, self.convert_button, self.convert_progress_bar,
-                            self.convert_status_var, _("convert_fail"), None, str(exc))
+            self._fail(_("convert_fail"), exc)
