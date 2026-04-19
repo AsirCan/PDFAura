@@ -13,3 +13,4 @@ soundfile
 numpy
 gTTS
 pygame
+opencv-python
