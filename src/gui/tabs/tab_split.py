@@ -60,6 +60,13 @@ class SplitTab:
         self.split_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.split_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_split_output_pdf, style="Ghost.TButton")
         self.split_output_button.pack(side="right")
+        ttk.Label(
+            left,
+            text=_("output_action_hint").format(action=_("split_btn")),
+            style="Hint.TLabel",
+            wraplength=640,
+            justify="left",
+        ).pack(anchor="w", pady=(8, 0))
 
         range_card = ttk.Frame(left, style="Panel.TFrame", padding=16)
         range_card.pack(fill="x", pady=(22, 0))
@@ -86,7 +93,7 @@ class SplitTab:
         right.pack(side="left", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
-        self.feedback.set_info(_("split_page_range"), _("split_hint"))
+        self.feedback.set_info(_("split_page_range"), _("output_action_hint").format(action=_("split_btn")))
 
         self.split_start_var.trace_add("write", lambda *_args: self.update_split_output_name())
         self.split_end_var.trace_add("write", lambda *_args: self.update_split_output_name())
