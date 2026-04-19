@@ -21,6 +21,7 @@
 - [x] Resim -> PDF dönüştürme (çoklu resim, A4/Letter/Orijinal)
 - [x] PDF -> Word dönüştürme (`pdf2docx`)
 - [x] Word -> PDF dönüştürme (`docx2pdf`)
+- [x] Akıllı Belge Tarayıcı (CamScanner tarzı kırpma ve filtreler)
 - [x] Unit test altyapısı
 - [x] Ortak stil ve durum yönetimi katmanı
 
@@ -108,6 +109,13 @@
 - [x] Tesseract OCR entegrasyonu
 - [x] Türkçe dil desteği
 - [ ] Aranabilir PDF oluşturma
+
+### Akıllı Belge Tarayıcı (Document Scanner)
+- [x] Görüntüden otomatik belge kenarı belirleme (Canny/Contours)
+- [x] Yamuk fotoğrafları 4 köşeden interaktif manipüle etme (Warp Perspective)
+- [x] Dinamik büyüteç (Magnifier) ile noktasal tam ekran kırpma
+- [x] Gelişmiş Filtreler: Temiz Belge (Adaptive Thres), Siyah-Beyaz, Keskinleştirme
+- [x] Çoklu fotoğraf işleyerek tek PDF yapma
 
 ### PDF Meta Veri Düzenleme
 - [x] Başlık, yazar, konu, anahtar kelime düzenleme

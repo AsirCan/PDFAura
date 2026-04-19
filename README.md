@@ -12,6 +12,9 @@ Mevcut sürümde kullanabileceğiniz temel araçlar:
 *   **Format Dönüştürme Merkezi:**
     *   PDF'lerinizi görsellere (PNG/JPG) veya PDF'ten çıkarılabilir formattaki saf metin dosyalarına (TXT) dönüştürün.
     *   Fotoğraflarınızı, Word (.docx), Excel (.xlsx) ve PowerPoint (.pptx) belgelerinizi saniyeler içinde otomatik olarak PDF'e çevirin.
+*   **Akıllı Belge Tarayıcı (Kamera/Fotoğraf Okuyucu):**
+    *   Cep telefonu ile çektiğiniz kağıt/belge fotoğraflarını, akıllı yapay sinir algoritmalarıyla otomatik algılar ve perspektifini 4 köşeden (CamScanner tarzı) düzelterek A4 boyutuna getirir.
+    *   Gölge ve kötü ışık düşen fotoğraflarınızı "Temiz Belge" modundaki **Adaptive Text Thresholding** ile arkaplanı bembeyaz, yazıları simsiyah ve okunaklı yapacak şekilde restore eder. Çoklu fotoğraf yükleme desteğiyle anında dergi/kitap PDF'leri çıkartabilirsiniz.
 *   **Güvenlik:** Hassas belgelerinize 128-Bit parola koruması atayın, şifre bildiğiniz dosyaların şifre gereksinimini kaldırın veya tüm sayfalara özel filigran (watermark) ekleyin.
 *   **Gelişmiş:** Optik Karakter Tanıma (OCR) sayesinde resim tabanlı PDF'lerden yazıları çekin veya resmi belgelerinize kendi ıslak/görsel imzanızı damgalayın.
 *   **Toplu İşlemler:** Klasör dolusu belgeyi tek komutla aynı formata çevirin, sıkıştırın veya akıllı parametrelerle otomatik olarak yeniden isimlendirin.
