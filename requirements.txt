@@ -7,3 +7,9 @@ pytesseract
 pystray
 pywin32
 PyMuPDF
+faster-whisper
+sounddevice
+soundfile
+numpy
+gTTS
+pygame

@@ -25,6 +25,9 @@ SECURITY_ACCENT = "#c2410c"
 SUCCESS_ACCENT = "#15803d"
 WARNING_ACCENT = "#b45309"
 ERROR_ACCENT = "#b42318"
+VOICE_ACCENT = "#8b5cf6"
+VOICE_HOVER = "#7c3aed"
+VOICE_ACTIVE = "#ef4444"
 
 
 def _configure_button(style, name, background, hover, foreground="#ffffff", padding=(14, 10), font=None):
@@ -140,6 +143,8 @@ def setup_styles():
     _configure_button(style, "Convert.TButton", CONVERT_ACCENT, "#9d4d10")
     _configure_button(style, "Security.TButton", SECURITY_ACCENT, "#9f3a0e")
     _configure_button(style, "Danger.TButton", ERROR_ACCENT, "#912018")
+    _configure_button(style, "Voice.TButton", VOICE_ACCENT, VOICE_HOVER, padding=(12, 10))
+    _configure_button(style, "VoiceActive.TButton", VOICE_ACTIVE, "#cd1f1f", padding=(12, 10))
 
     _configure_button(style, "Nav.TButton", SIDEBAR_BG, SIDEBAR_HOVER, foreground="#d9e6f2", padding=(16, 11), font=("Segoe UI Semibold", 10))
     _configure_button(style, "NavSelected.TButton", SIDEBAR_ACTIVE, "#28425f", foreground="#ffffff", padding=(16, 11), font=("Segoe UI Semibold", 10))

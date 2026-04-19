@@ -60,3 +60,21 @@ venv.bak/
 *.tiff
 !assets/*.png
 !assets/*.ico
+
+# Audio and Video / Temporary Media (Generated outputs)
+*.mp3
+*.wav
+*.mp4
+*.mkv
+
+# AI Models & Cache
+*.onnx
+*.pt
+*.bin
+*.tflite
+*.h5
+
+# Local config & databases
+*.db
+*.sqlite
+*.sqlite3

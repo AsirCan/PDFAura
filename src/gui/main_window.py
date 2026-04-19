@@ -20,6 +20,10 @@ from src.gui.tabs.tab_merge import MergeTab
 from src.gui.tabs.tab_security import SecurityTab
 from src.gui.tabs.tab_settings import SettingsDialog
 from src.gui.tabs.tab_split import SplitTab
+from src.ai.speech_recognizer import recognizer
+from src.ai.intent_parser import parse_intent
+from src.ai.action_runner import execute_intent
+from src.ai.text_speaker import speak
 
 try:
     from tkinterdnd2 import DND_FILES
@@ -87,10 +91,18 @@ class MainWindow:
         self.root.pdf_aura_set_preview = self.set_preview_file
 
         try:
-            base_dir = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            if getattr(sys, "frozen", False):
+                base_dir = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+                if not os.path.exists(os.path.join(base_dir, "assets", "app_icon.ico")):
+                     base_dir = os.path.join(os.path.dirname(sys.executable), "_internal")
+            else:
+                base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+                
             self.icon_path = os.path.join(base_dir, "assets", "app_icon.ico")
             if os.path.exists(self.icon_path):
                 self.root.iconbitmap(self.icon_path)
+            else:
+                self.icon_path = None
         except Exception:
             self.icon_path = None
 
@@ -106,6 +118,17 @@ class MainWindow:
         self.setup_ux_features()
         self.show_page("compress")
         self.fit_window_to_content()
+        
+        # Arka planda AI modelini indir veya yükle
+        def _on_model_start():
+            if hasattr(self, 'btn_mic'):
+                self.root.after(0, lambda: self.btn_mic.configure(state="disabled", text="🎙️ AI Modeli İniyor / Yükleniyor..."))
+            
+        def _on_model_complete():
+            if hasattr(self, 'btn_mic'):
+                self.root.after(0, lambda: self.btn_mic.configure(state="normal", text="🎙️ Asistan"))
+
+        recognizer.preload_model_async(on_start=_on_model_start, on_complete=_on_model_complete)
 
     def build_ui(self):
         shell = ttk.Frame(self.root, padding=20, style="App.TFrame")
@@ -156,6 +179,26 @@ class MainWindow:
         header_actions = ttk.Frame(header, style="App.TFrame")
         header_actions.pack(side="right")
         ttk.Button(header_actions, text=_("txt_settings"), command=self.open_settings, style="Ghost.TButton").pack(side="right")
+        
+        self.btn_mic = ttk.Button(header_actions, text="🎙️ Asistan", style="Voice.TButton")
+        self.btn_mic.pack(side="right", padx=(0, 10))
+        self.btn_mic.bind("<ButtonPress-1>", self.on_mic_press)
+        self.btn_mic.bind("<ButtonRelease-1>", self.on_mic_release)
+
+        self.txt_chat = ttk.Entry(header_actions, width=25)
+        self.txt_chat.pack(side="right", padx=(0, 10))
+        self.txt_chat.insert(0, "Aura'ya yazın...")
+        
+        def on_focus_in(e):
+            if self.txt_chat.get() == "Aura'ya yazın...":
+                self.txt_chat.delete(0, 'end')
+        def on_focus_out(e):
+            if not self.txt_chat.get():
+                self.txt_chat.insert(0, "Aura'ya yazın...")
+                
+        self.txt_chat.bind('<FocusIn>', on_focus_in)
+        self.txt_chat.bind('<FocusOut>', on_focus_out)
+        self.txt_chat.bind("<Return>", self.on_text_chat_submit)
 
         body = ttk.Frame(main, style="App.TFrame")
         body.pack(fill="both", expand=True, pady=(18, 0))
@@ -191,6 +234,19 @@ class MainWindow:
             self.root.dnd_bind("<<Drop>>", self.handle_drop)
         except AttributeError:
             pass
+            
+        self.tray_icon = None
+        if cfg.get("close_to_tray", True) and getattr(self, "icon_path", None) and os.path.exists(self.icon_path):
+            self._start_tray_icon()
+
+    def _start_tray_icon(self):
+        image = Image.open(self.icon_path)
+        menu = pystray.Menu(
+            pystray.MenuItem(_("tray_open"), self.show_window),
+            pystray.MenuItem(_("tray_quit"), self.quit_window),
+        )
+        self.tray_icon = pystray.Icon("pdfaura", image, "PDF Aura", menu)
+        threading.Thread(target=self.tray_icon.run, daemon=True).start()
 
     def show_page(self, key):
         if self.current_page:
@@ -228,27 +284,84 @@ class MainWindow:
     def on_closing(self):
         if cfg.get("close_to_tray", True) and self.icon_path:
             self.root.withdraw()
-            image = Image.open(self.icon_path)
-            menu = pystray.Menu(
-                pystray.MenuItem(_("tray_open"), self.show_window),
-                pystray.MenuItem(_("tray_quit"), self.quit_window),
-            )
-            self.tray_icon = pystray.Icon("pdfaura", image, "PDF Aura", menu)
-            threading.Thread(target=self.tray_icon.run, daemon=True).start()
         else:
             self.quit_window(None, None)
 
     def show_window(self, icon, _item):
-        icon.stop()
         self.root.after(0, self.root.deiconify)
 
     def quit_window(self, icon, _item):
-        if icon:
-            icon.stop()
-        self.root.quit()
+        if getattr(self, "tray_icon", None):
+            self.tray_icon.stop()
+        self.root.after(0, self.root.quit)
 
     def fit_window_to_content(self):
         self.root.update_idletasks()
         self.root.geometry("1480x920")
         self.root.minsize(1200, 760)
         self.root.resizable(True, True)
+
+    def on_text_chat_submit(self, event=None):
+        text = self.txt_chat.get().strip()
+        if not text or text == "Aura'ya yazın...":
+            return
+            
+        self.txt_chat.delete(0, "end")
+        self.btn_mic.configure(style="Voice.TButton", text="🎙️ İşleniyor...")
+        self.root.update_idletasks()
+        
+        def _run():
+            from src.ai.intent_parser import parse_intent
+            from src.ai.action_runner import execute_intent
+            intent = parse_intent(text)
+            execute_intent(intent)
+            self.root.after(0, lambda: self.btn_mic.configure(
+                style="Voice.TButton",
+                text="🎙️ Asistan"
+            ))
+        
+        import threading
+        threading.Thread(target=_run, daemon=True).start()
+
+    def on_mic_press(self, event):
+        # Model yüklenmeden veya buton disabled iken basılmasını engelle
+        if not recognizer.model_ready:
+            return
+        if str(self.btn_mic.cget("state")) == "disabled":
+            return
+        self.btn_mic.configure(style="VoiceActive.TButton", text="🎙️ Dinleniyor...")
+        recognizer.start_recording()
+        
+    def on_mic_release(self, event):
+        if not recognizer.is_recording:
+            return
+        self.btn_mic.configure(style="Voice.TButton", text="🎙️ İşleniyor...")
+        self.root.update_idletasks()
+        
+        def _handle_speech(text):
+            def _update_ui():
+                if text:
+                    self.btn_mic.configure(text=f"🎙️ \"{text[:40]}...\"" if len(text) > 40 else f"🎙️ \"{text}\"")
+                    self.root.update_idletasks()
+                    
+                    intent = parse_intent(text)
+                    # execute_intent arkaplanda çalışsın ki UI donmasın
+                    import threading
+                    def _run():
+                        execute_intent(intent)
+                        self.root.after(0, lambda: self.btn_mic.configure(
+                            style="Voice.TButton",
+                            text="🎙️ Asistan"
+                        ))
+                    threading.Thread(target=_run, daemon=True).start()
+                else:
+                    speak("Sizi duyamadım, lütfen tekrar deneyin.")
+                    self.btn_mic.configure(
+                        style="Voice.TButton",
+                        text="🎙️ Asistan"
+                    )
+            
+            # UI güncellemelerini ana thread'de yap
+            self.root.after(0, _update_ui)
+            
+        recognizer.stop_recording_and_recognize(_handle_speech)

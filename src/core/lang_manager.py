@@ -16,7 +16,7 @@ _STRINGS = {
         # ── Genel / Ortak ──
         "str_ready":            "Hazır",
         "str_browse":           "Gözat",
-        "str_save_as":          "Farklı Kaydet",
+        "str_save_as":          "Konum Seç",
         "str_apply":            "Uygula",
         "str_start":            "Başlat / Uygula",
         "str_select_file":      "Dosya Seç",
@@ -36,6 +36,7 @@ _STRINGS = {
         "str_delete":           "Sil",
         "str_cancel":           "İptal",
         "str_close":            "Kapat",
+        "output_action_hint":   "Kaydetme konumunu seçtikten sonra alttaki \"{action}\" düğmesine basın.",
 
         # ── Dosya Seçimi Diyalogları ──
         "str_file_selection":       "Dosya Seçimi",
@@ -339,7 +340,7 @@ _STRINGS = {
         # ── General / Common ──
         "str_ready":            "Ready",
         "str_browse":           "Browse",
-        "str_save_as":          "Save As",
+        "str_save_as":          "Choose Location",
         "str_apply":            "Apply",
         "str_start":            "Start / Apply",
         "str_select_file":      "Select File",
@@ -359,6 +360,7 @@ _STRINGS = {
         "str_delete":           "Delete",
         "str_cancel":           "Cancel",
         "str_close":            "Close",
+        "output_action_hint":   "After choosing the output location, click \"{action}\" below.",
 
         # ── File Selection Dialogs ──
         "str_file_selection":       "File Selection",
