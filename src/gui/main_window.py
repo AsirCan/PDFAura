@@ -19,6 +19,7 @@ from src.gui.tabs.tab_edit import EditTab
 from src.gui.tabs.tab_merge import MergeTab
 from src.gui.tabs.tab_security import SecurityTab
 from src.gui.tabs.tab_settings import SettingsDialog
+from src.gui.tabs.tab_scanner import ScannerTab
 from src.gui.tabs.tab_split import SplitTab
 from src.ai.speech_recognizer import recognizer
 from src.ai.intent_parser import parse_intent
@@ -220,6 +221,7 @@ class MainWindow:
                 ("split", _("txt_split"), SplitTab),
                 ("merge", _("txt_merge"), MergeTab),
                 ("edit", _("txt_edit"), EditTab),
+                ("scanner", _("scanner_title"), ScannerTab),
             ],
         )
         self.workspaces["convert"] = ToolWorkspace(self.content, ConvertTab, self.root)
