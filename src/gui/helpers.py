@@ -67,6 +67,81 @@ def build_file_picker_row(parent, label_text, variable, button_text, command):
     return entry, button
 
 
+class ProgressFooter(ttk.Frame):
+    """
+    İlerleme yüzdesi gösterimi ve iptal butonu içeren footer bileşeni.
+    Tüm tab'larda kullanılır.
+    """
+
+    def __init__(self, parent, action_text, action_command, button_style="Accent.TButton",
+                 progress_style="Accent.Horizontal.TProgressbar"):
+        super().__init__(parent, style="Surface.TFrame")
+
+        self._cancel_callback = None
+
+        # Sol taraf: Ana buton
+        self.action_button = ttk.Button(self, text=action_text, command=action_command, style=button_style)
+        self.action_button.pack(side="left")
+
+        # İptal butonu (başlangıçta gizli)
+        self.cancel_button = ttk.Button(self, text="✕ " + _("perf_cancel"), command=self._on_cancel, style="Danger.TButton")
+
+        # İlerleme çubuğu
+        self.progress_bar = ttk.Progressbar(self, mode="determinate", style=progress_style, length=220)
+        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+
+        # Yüzde etiketi
+        self.pct_label = ttk.Label(self, text="", style="Field.TLabel")
+        self.pct_label.pack(side="left", padx=(10, 0))
+
+    def start_busy(self, cancel_callback=None):
+        """İşlem başladığında çağrılır. Determinate mod + iptal butonu gösterir."""
+        self._cancel_callback = cancel_callback
+        self.action_button.config(state="disabled")
+        self.progress_bar["value"] = 0
+        self.progress_bar["maximum"] = 100
+        self.pct_label.config(text="0%")
+
+        if cancel_callback:
+            self.cancel_button.pack(side="left", padx=(8, 0))
+            self.cancel_button.config(state="normal")
+
+    def update_progress(self, current, total, message=""):
+        """İlerleme güncelleme. Thread-safe değil, app_root.after ile çağrılmalı."""
+        if total <= 0:
+            total = 1
+        pct = int((current / total) * 100)
+        self.progress_bar["value"] = pct
+        self.progress_bar["maximum"] = 100
+        display = f"{pct}%"
+        if message:
+            # Mesaj çok uzunsa kısalt
+            short_msg = message if len(message) < 40 else message[:37] + "..."
+            display = f"{pct}% — {short_msg}"
+        self.pct_label.config(text=display)
+
+    def stop_busy(self):
+        """İşlem tamamlandığında çağrılır."""
+        self.action_button.config(state="normal")
+        self.cancel_button.pack_forget()
+        self.cancel_button.config(state="normal")
+        self._cancel_callback = None
+        self.pct_label.config(text="")
+        self.progress_bar["value"] = 0
+
+    def finish_success(self):
+        """Başarı durumunda çağrılır."""
+        self.stop_busy()
+        self.progress_bar["value"] = 100
+        self.pct_label.config(text="✓ 100%")
+
+    def _on_cancel(self):
+        """İptal butonu tıklandığında."""
+        self.cancel_button.config(state="disabled", text="✕ " + _("perf_cancelling"))
+        if self._cancel_callback:
+            self._cancel_callback()
+
+
 class InlineFeedback(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent, style="Panel.TFrame", padding=16)
@@ -141,6 +216,12 @@ class InlineFeedback(ttk.Frame):
         self._set_badge(_("feedback_info_badge"), "#fff8e8", "#b45309")
         self.title_var.set(title)
         self.message_var.set(message)
+        self.clear_actions()
+
+    def set_cancelled(self, message=""):
+        self._set_badge(_("perf_cancelled_badge"), "#fef3c7", "#92400e")
+        self.title_var.set(_("perf_cancelled"))
+        self.message_var.set(message or _("perf_cancelled_msg"))
         self.clear_actions()
 
     def open_result(self):

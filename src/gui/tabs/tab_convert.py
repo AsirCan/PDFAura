@@ -5,7 +5,8 @@ from tkinter import ttk, filedialog
 
 from src.core.convert import excel_to_pdf, images_to_pdf, pdf_to_images, pdf_to_txt, pdf_to_word, ppt_to_pdf, word_to_pdf
 from src.core.lang_manager import _
-from src.gui.helpers import InlineFeedback, bind_preview, build_tool_header, notify_preview, operation_done, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, notify_preview, quick_error
 from src.gui.styles import CONVERT_ACCENT, FIELD_COLOR, TEXT_COLOR
 from src.utils.file_helper import format_size_mb
 
@@ -14,6 +15,7 @@ class ConvertTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
+        self._task_ctx = None
 
         self.convert_mode_var = tk.StringVar(value=_("convert_pdf2img"))
         self.convert_status_var = tk.StringVar(value=_("str_ready"))
@@ -163,12 +165,8 @@ class ConvertTab:
         }
         self.switch_convert_mode()
 
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(22, 0))
-        self.convert_button = ttk.Button(footer, text=_("convert_btn"), command=self.start_convert, style="Convert.TButton")
-        self.convert_button.pack(side="left")
-        self.convert_progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Convert.Horizontal.TProgressbar", length=220)
-        self.convert_progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, _("convert_btn"), self.start_convert, button_style="Convert.TButton", progress_style="Convert.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
         right.pack(side="left", fill="y", padx=(18, 0))
@@ -315,134 +313,187 @@ class ConvertTab:
             self.p2txt_input_var.set(file_path)
             self.p2txt_output_var.set(f"{os.path.splitext(file_path)[0]}.txt")
 
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
+
     def start_convert(self):
         mode = self.convert_mode_var.get()
         busy_text = _("convert_running").format(mode=mode)
-        set_busy(self.convert_button, self.convert_progress_bar, True, self.feedback, busy_text)
+
+        def _on_progress(current, total, message=""):
+            self.app_root.after(0, self.footer.update_progress, current, total, message)
+
+        self._task_ctx = TaskContext(progress_callback=_on_progress)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(busy_text)
         self.convert_status_var.set(busy_text)
 
         if mode == _("convert_pdf2img"):
             inp = self.p2i_input_var.get().strip()
             folder = self.p2i_folder_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_file"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             if not folder:
-                quick_error(_("err_set_output_folder"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output_folder"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_p2i, args=(inp, folder, int(self.p2i_dpi_var.get()), self.p2i_format_var.get().lower()), daemon=True).start()
         elif mode == _("convert_img2pdf"):
             if not self.i2p_file_list:
-                quick_error(_("err_add_min_1_image"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_add_min_1_image"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             output = self.i2p_output_var.get().strip()
             if not output:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_i2p, args=(list(self.i2p_file_list), output, self.i2p_size_var.get()), daemon=True).start()
         elif mode == _("convert_pdf2word"):
             inp = self.p2w_input_var.get().strip()
             out = self.p2w_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_file"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_p2w, args=(inp, out), daemon=True).start()
         elif mode == _("convert_word2pdf"):
             inp = self.w2p_input_var.get().strip()
             out = self.w2p_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_word"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_select_valid_word"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_w2p, args=(inp, out), daemon=True).start()
         elif mode == _("convert_ppt2pdf"):
             inp = self.ppt2p_input_var.get().strip()
             out = self.ppt2p_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_ppt"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_select_valid_ppt"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_ppt2p, args=(inp, out), daemon=True).start()
         elif mode == _("convert_excel2pdf"):
             inp = self.excel2p_input_var.get().strip()
             out = self.excel2p_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_excel"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_select_valid_excel"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_excel2p, args=(inp, out), daemon=True).start()
         elif mode == _("convert_pdf2txt"):
             inp = self.p2txt_input_var.get().strip()
             out = self.p2txt_output_var.get().strip()
             if not inp or not os.path.isfile(inp):
-                quick_error(_("err_select_valid_pdf"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_select_valid_pdf"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             if not out:
-                quick_error(_("err_set_output"), self.convert_button, self.convert_progress_bar, self.convert_status_var, self.feedback)
+                self.footer.stop_busy()
+                quick_error(_("err_set_output"), self.footer.action_button, None, self.convert_status_var, self.feedback)
                 return
             threading.Thread(target=self._run_p2txt, args=(inp, out), daemon=True).start()
 
     def _finish(self, title, message, output_path):
-        self.app_root.after(0, operation_done, self.convert_button, self.convert_progress_bar, self.convert_status_var, title, message, None, self.feedback, output_path)
+        def _do():
+            self.footer.finish_success()
+            self.convert_status_var.set(title)
+            self.feedback.set_success(title, message, output_path)
+        self.app_root.after(0, _do)
 
     def _fail(self, title, exc):
-        self.app_root.after(0, operation_done, self.convert_button, self.convert_progress_bar, self.convert_status_var, title, None, str(exc), self.feedback, None)
+        def _do():
+            self.footer.stop_busy()
+            self.convert_status_var.set(title)
+            self.feedback.set_error(title, str(exc))
+        self.app_root.after(0, _do)
+
+    def _cancelled(self):
+        def _do():
+            self.footer.stop_busy()
+            self.convert_status_var.set(_("perf_cancelled"))
+            self.feedback.set_cancelled()
+        self.app_root.after(0, _do)
 
     def _run_p2i(self, inp, folder, dpi, fmt):
         try:
-            count = pdf_to_images(inp, folder, dpi, fmt)
+            count = pdf_to_images(inp, folder, dpi, fmt, ctx=self._task_ctx)
             self._finish(_("convert_done"), _("convert_result_p2i").format(count=count, dpi=dpi, folder=folder), folder)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)
 
     def _run_i2p(self, image_paths, output, size):
         try:
-            images_to_pdf(image_paths, output, size)
+            images_to_pdf(image_paths, output, size, ctx=self._task_ctx)
             message = _("convert_result_i2p").format(count=len(image_paths), size=format_size_mb(output), output=output)
             self._finish(_("convert_done"), message, output)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)
 
     def _run_p2w(self, inp, out):
         try:
-            pdf_to_word(inp, out)
+            pdf_to_word(inp, out, ctx=self._task_ctx)
             self._finish(_("convert_done"), _("convert_result_p2w").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)
 
     def _run_w2p(self, inp, out):
         try:
-            word_to_pdf(inp, out)
+            word_to_pdf(inp, out, ctx=self._task_ctx)
             self._finish(_("convert_done"), _("convert_result_w2p").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)
 
     def _run_ppt2p(self, inp, out):
         try:
-            ppt_to_pdf(inp, out)
+            ppt_to_pdf(inp, out, ctx=self._task_ctx)
             self._finish(_("convert_done"), _("convert_result_ppt2pdf").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)
 
     def _run_excel2p(self, inp, out):
         try:
-            excel_to_pdf(inp, out)
+            excel_to_pdf(inp, out, ctx=self._task_ctx)
             self._finish(_("convert_done"), _("convert_result_excel2pdf").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)
 
     def _run_p2txt(self, inp, out):
         try:
-            pdf_to_txt(inp, out)
+            pdf_to_txt(inp, out, ctx=self._task_ctx)
             self._finish(_("convert_done"), _("convert_result_pdf2txt").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
             self._fail(_("convert_fail"), exc)

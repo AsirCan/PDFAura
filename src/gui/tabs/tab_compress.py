@@ -5,7 +5,8 @@ from tkinter import ttk, filedialog
 
 from src.core.compress import VALID_QUALITIES, compress_pdf
 from src.core.lang_manager import _
-from src.gui.helpers import InlineFeedback, bind_preview, build_tool_header, operation_done, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
 from src.utils.file_helper import format_size_mb, suggest_output_path
 
 
@@ -13,6 +14,7 @@ class CompressTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
+        self._task_ctx = None
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
@@ -65,12 +67,8 @@ class CompressTab:
         self.quality_combo.pack(anchor="w", pady=(8, 0))
         ttk.Label(settings, text=_("compress_quality_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(10, 0))
 
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(22, 0))
-        self.compress_button = ttk.Button(footer, text=_("compress_btn"), command=self.start_compression, style="Accent.TButton")
-        self.compress_button.pack(side="left")
-        self.progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Accent.Horizontal.TProgressbar", length=220)
-        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, _("compress_btn"), self.start_compression, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
         right.pack(side="left", fill="y", padx=(18, 0))
@@ -105,29 +103,38 @@ class CompressTab:
             if not self.output_var.get().strip():
                 self.output_var.set(suggest_output_path(file_path))
 
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
+
     def start_compression(self):
         input_pdf = self.input_var.get().strip()
         output_pdf = self.output_var.get().strip()
         quality = self.quality_var.get().strip().lower()
 
         if quality not in VALID_QUALITIES:
-            quick_error(f"{_('err_select_quality')}{', '.join(VALID_QUALITIES)}", self.compress_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(f"{_('err_select_quality')}{', '.join(VALID_QUALITIES)}", self.footer.action_button, None, self.status_var, self.feedback)
             return
         if not input_pdf or not os.path.isfile(input_pdf):
-            quick_error(_("err_select_valid_pdf"), self.compress_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(_("err_select_valid_pdf"), self.footer.action_button, None, self.status_var, self.feedback)
             return
         if not output_pdf:
-            quick_error(_("err_set_output"), self.compress_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(_("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
-        set_busy(self.compress_button, self.progress_bar, True, self.feedback, _("compress_running"))
+        def _on_progress(current, total, message=""):
+            self.app_root.after(0, self.footer.update_progress, current, total, message)
+
+        self._task_ctx = TaskContext(progress_callback=_on_progress)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(_("compress_running"))
         self.status_var.set(_("compress_running"))
         threading.Thread(target=self._run_compress, args=(input_pdf, output_pdf, quality), daemon=True).start()
 
     def _run_compress(self, input_pdf, output_pdf, quality):
         try:
             original_size = format_size_mb(input_pdf)
-            compress_pdf(input_pdf, output_pdf, quality)
+            compress_pdf(input_pdf, output_pdf, quality, ctx=self._task_ctx)
             if not os.path.isfile(output_pdf):
                 raise RuntimeError(_("err_output_not_created"))
             compressed_size = format_size_mb(output_pdf)
@@ -137,28 +144,23 @@ class CompressTab:
                 f"{_('compress_result_quality')}{quality}\n"
                 f"{_('compress_result_saved')}{output_pdf}"
             )
-            self.app_root.after(
-                0,
-                operation_done,
-                self.compress_button,
-                self.progress_bar,
-                self.status_var,
-                _("compress_done"),
-                message,
-                None,
-                self.feedback,
-                output_pdf,
-            )
+            self.app_root.after(0, self._on_done, message, output_pdf)
+        except CancelledError:
+            self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(
-                0,
-                operation_done,
-                self.compress_button,
-                self.progress_bar,
-                self.status_var,
-                _("compress_fail"),
-                None,
-                str(exc),
-                self.feedback,
-                None,
-            )
+            self.app_root.after(0, self._on_error, str(exc))
+
+    def _on_done(self, message, output_pdf):
+        self.footer.finish_success()
+        self.status_var.set(_("compress_done"))
+        self.feedback.set_success(_("compress_done"), message, output_pdf)
+
+    def _on_cancelled(self):
+        self.footer.stop_busy()
+        self.status_var.set(_("perf_cancelled"))
+        self.feedback.set_cancelled()
+
+    def _on_error(self, error_msg):
+        self.footer.stop_busy()
+        self.status_var.set(_("compress_fail"))
+        self.feedback.set_error(_("compress_fail"), error_msg)

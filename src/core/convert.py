@@ -1,8 +1,9 @@
 import os
 import subprocess
+import time
 from src.utils.ghostscript_helper import find_ghostscript
 
-def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png"):
+def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None):
     """Convert PDF pages to images using Ghostscript. Returns number of created files."""
     gs_path = find_ghostscript()
     if not gs_path:
@@ -18,13 +19,48 @@ def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png"):
     ]
     if device == "jpeg":
         command.insert(-1, "-dJPEGQ=95")
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        raise RuntimeError(f"Ghostscript hatasi: {result.stderr.strip() or 'Bilinmeyen hata'}")
+    
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 100, "PDF resme dönüştürülüyor...")
+    
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    if ctx:
+        # Çıktı klasöründeki dosya sayısını izleyerek ilerleme takibi
+        while process.poll() is None:
+            if ctx.is_cancelled:
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                from src.core.task_manager import CancelledError
+                raise CancelledError("İşlem kullanıcı tarafından iptal edildi.")
+            
+            try:
+                files = [f for f in os.listdir(output_folder) if f.startswith("sayfa_") and f.endswith(f".{ext}")]
+                count = len(files)
+                if count > 0:
+                    ctx.report_progress(count, max(count + 1, 10), f"{count} sayfa dönüştürüldü...")
+            except OSError:
+                pass
+            time.sleep(0.3)
+    else:
+        process.wait()
+    
+    if process.returncode != 0:
+        _, stderr = process.communicate()
+        raise RuntimeError(f"Ghostscript hatasi: {stderr.decode().strip() if stderr else 'Bilinmeyen hata'}")
+    
     files = [f for f in os.listdir(output_folder) if f.startswith("sayfa_") and f.endswith(f".{ext}")]
+    
+    if ctx:
+        ctx.report_progress(len(files), len(files), f"{len(files)} sayfa dönüştürüldü.")
+    
     return len(files)
 
-def images_to_pdf(image_paths, output_pdf, page_size="Orijinal"):
+def images_to_pdf(image_paths, output_pdf, page_size="Orijinal", ctx=None):
     """Convert images to PDF using Pillow."""
     try:
         from PIL import Image
@@ -34,7 +70,13 @@ def images_to_pdf(image_paths, output_pdf, page_size="Orijinal"):
         raise ValueError("En az bir resim secilmeli.")
     PAGE_SIZES = {"A4": (595, 842), "Letter": (612, 792)}
     pdf_images = []
-    for img_path in image_paths:
+    total = len(image_paths)
+    
+    for idx, img_path in enumerate(image_paths):
+        if ctx:
+            ctx.check_cancelled()
+            ctx.report_progress(idx + 1, total, f"Resim {idx + 1}/{total} işleniyor...")
+        
         img = Image.open(img_path)
         if img.mode == "RGBA":
             bg = Image.new("RGB", img.size, (255, 255, 255))
@@ -49,19 +91,31 @@ def images_to_pdf(image_paths, output_pdf, page_size="Orijinal"):
             new_w, new_h = int(img_w * ratio), int(img_h * ratio)
             img = img.resize((new_w, new_h), Image.LANCZOS)
         pdf_images.append(img)
+    
     pdf_images[0].save(output_pdf, "PDF", save_all=True, append_images=pdf_images[1:], resolution=100.0)
+    
+    if ctx:
+        ctx.report_progress(total, total, "PDF oluşturuldu.")
 
-def pdf_to_word(input_pdf, output_docx):
+def pdf_to_word(input_pdf, output_docx, ctx=None):
     """Convert PDF to Word using pdf2docx."""
     try:
         from pdf2docx import Converter
     except ImportError:
         raise ImportError("pdf2docx kutuphanesi bulunamadi.\nLutfen kurun: pip install pdf2docx")
+    
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 100, "PDF Word'e dönüştürülüyor...")
+    
     cv = Converter(input_pdf)
     cv.convert(output_docx, start=0, end=None)
     cv.close()
+    
+    if ctx:
+        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
-def word_to_pdf(input_docx, output_pdf):
+def word_to_pdf(input_docx, output_pdf, ctx=None):
     """Convert Word to PDF using docx2pdf (requires Microsoft Word)."""
     try:
         from docx2pdf import convert
@@ -71,9 +125,16 @@ def word_to_pdf(input_docx, output_pdf):
             "Lutfen kurun: pip install docx2pdf\n"
             "Not: Bu ozellik Microsoft Word gerektirir."
         )
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 100, "Word PDF'e dönüştürülüyor...")
+    
     convert(input_docx, output_pdf)
+    
+    if ctx:
+        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
-def ppt_to_pdf(input_ppt, output_pdf):
+def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
     """Convert PowerPoint to PDF using pywin32 (requires Microsoft PowerPoint)."""
     try:
         import win32com.client
@@ -84,6 +145,11 @@ def ppt_to_pdf(input_ppt, output_pdf):
             "Not: Bu ozellik Microsoft PowerPoint gerektirir."
         )
     import os
+    
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 100, "PowerPoint PDF'e dönüştürülüyor...")
+    
     powerpoint = win32com.client.Dispatch("Powerpoint.Application")
     # Abs paths are specifically required for pywin32 Office interop
     input_ppt_abs = os.path.abspath(input_ppt)
@@ -94,8 +160,11 @@ def ppt_to_pdf(input_ppt, output_pdf):
         deck.Close()
     finally:
         powerpoint.Quit()
+    
+    if ctx:
+        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
-def excel_to_pdf(input_excel, output_pdf):
+def excel_to_pdf(input_excel, output_pdf, ctx=None):
     """Convert Excel to PDF using pywin32 (requires Microsoft Excel)."""
     try:
         import win32com.client
@@ -106,6 +175,11 @@ def excel_to_pdf(input_excel, output_pdf):
             "Not: Bu ozellik Microsoft Excel gerektirir."
         )
     import os
+    
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 100, "Excel PDF'e dönüştürülüyor...")
+    
     excel = win32com.client.Dispatch("Excel.Application")
     excel.Visible = False
     excel.Interactive = False
@@ -120,8 +194,11 @@ def excel_to_pdf(input_excel, output_pdf):
         if wb:
             wb.Close(False)
         excel.Quit()
+    
+    if ctx:
+        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
-def pdf_to_txt(input_pdf, output_txt):
+def pdf_to_txt(input_pdf, output_txt, ctx=None):
     """Convert PDF to Text natively using PyPDF2."""
     try:
         from PyPDF2 import PdfReader
@@ -130,10 +207,18 @@ def pdf_to_txt(input_pdf, output_txt):
     
     reader = PdfReader(input_pdf)
     text = []
-    for page in reader.pages:
+    total = len(reader.pages)
+    
+    for i, page in enumerate(reader.pages, 1):
+        if ctx:
+            ctx.check_cancelled()
+            ctx.report_progress(i, total, f"Sayfa {i}/{total} okunuyor...")
         page_text = page.extract_text()
         if page_text:
             text.append(page_text)
             
     with open(output_txt, "w", encoding="utf-8") as f:
         f.write("\n\n--- Sayfa Sonu ---\n\n".join(text))
+    
+    if ctx:
+        ctx.report_progress(total, total, "Metin çıkarma tamamlandı.")

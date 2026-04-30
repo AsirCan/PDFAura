@@ -7,7 +7,8 @@ from src.core.lang_manager import _
 from src.core.metainfo import read_metadata, update_metadata
 from src.core.ocr import check_tesseract_availability, perform_ocr_to_text
 from src.core.signature import stamp_visual_signature
-from src.gui.helpers import InlineFeedback, bind_preview, build_tool_header, operation_done, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
 from src.gui.pdf_viewer import PDFViewerWindow
 
 
@@ -15,6 +16,7 @@ class AdvancedTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
+        self._task_ctx = None
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
@@ -112,12 +114,8 @@ class AdvancedTab:
         self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output, style="Ghost.TButton")
         self.output_button.pack(side="right")
 
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(22, 0))
-        self.action_button = ttk.Button(footer, text=_("str_start"), command=self.start_action, style="Accent.TButton")
-        self.action_button.pack(side="left")
-        self.progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Accent.Horizontal.TProgressbar", length=220)
-        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, _("str_start"), self.start_action, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
         right.pack(side="left", fill="y", padx=(18, 0))
@@ -199,13 +197,17 @@ class AdvancedTab:
         if file_path.lower().endswith(".pdf"):
             self.input_var.set(file_path)
 
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
+
     def start_action(self):
         inp = self.input_var.get().strip()
         out = self.output_var.get().strip()
         mode = self.action_var.get()
 
         if not inp or not os.path.isfile(inp):
-            quick_error(_("err_select_valid_file"), self.action_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
         if mode == _("adv_preview"):
@@ -214,10 +216,15 @@ class AdvancedTab:
             return
 
         if not out:
-            quick_error(_("err_set_output_file"), self.action_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(_("err_set_output_file"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
-        set_busy(self.action_button, self.progress_bar, True, self.feedback, _("str_processing"))
+        def _on_progress(current, total, message=""):
+            self.app_root.after(0, self.footer.update_progress, current, total, message)
+
+        self._task_ctx = TaskContext(progress_callback=_on_progress)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(_("str_processing"))
         self.status_var.set(_("str_processing"))
 
         if mode == _("adv_ocr"):
@@ -227,12 +234,37 @@ class AdvancedTab:
         elif mode == _("adv_signature"):
             threading.Thread(target=self._run_sig, args=(inp, out), daemon=True).start()
 
+    def _finish(self, title, message, output_path):
+        def _do():
+            self.footer.finish_success()
+            self.status_var.set(title)
+            self.feedback.set_success(title, message, output_path)
+        self.app_root.after(0, _do)
+
+    def _fail(self, title, exc):
+        def _do():
+            self.footer.stop_busy()
+            self.status_var.set(title)
+            self.feedback.set_error(title, str(exc))
+        self.app_root.after(0, _do)
+
+    def _cancelled(self):
+        def _do():
+            self.footer.stop_busy()
+            self.status_var.set(_("perf_cancelled"))
+            self.feedback.set_cancelled()
+        self.app_root.after(0, _do)
+
     def _run_ocr(self, inp, out):
         try:
+            # Note: OCR implementation in core doesn't support ctx yet, 
+            # but we run it via thread so app doesn't block
             perform_ocr_to_text(inp, out)
-            self.app_root.after(0, operation_done, self.action_button, self.progress_bar, self.status_var, _("str_success"), _("adv_result_ocr").format(output=out), None, self.feedback, out)
+            self._finish(_("str_success"), _("adv_result_ocr").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.action_button, self.progress_bar, self.status_var, _("str_error"), None, str(exc), self.feedback, None)
+            self._fail(_("str_error"), exc)
 
     def _run_meta(self, inp, out):
         try:
@@ -245,9 +277,11 @@ class AdvancedTab:
                 creator=self.creator_var.get() if not self.meta_clean_var.get() else None,
                 clean=self.meta_clean_var.get(),
             )
-            self.app_root.after(0, operation_done, self.action_button, self.progress_bar, self.status_var, _("str_success"), _("adv_result_meta").format(output=out), None, self.feedback, out)
+            self._finish(_("str_success"), _("adv_result_meta").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.action_button, self.progress_bar, self.status_var, _("str_error"), None, str(exc), self.feedback, None)
+            self._fail(_("str_error"), exc)
 
     def _run_sig(self, inp, out):
         try:
@@ -260,6 +294,8 @@ class AdvancedTab:
                 int(self.sig_y_var.get()),
                 float(self.sig_scale_var.get()),
             )
-            self.app_root.after(0, operation_done, self.action_button, self.progress_bar, self.status_var, _("str_success"), _("adv_result_sig").format(output=out), None, self.feedback, out)
+            self._finish(_("str_success"), _("adv_result_sig").format(output=out), out)
+        except CancelledError:
+            self._cancelled()
         except Exception as exc:
-            self.app_root.after(0, operation_done, self.action_button, self.progress_bar, self.status_var, _("str_error"), None, str(exc), self.feedback, None)
+            self._fail(_("str_error"), exc)

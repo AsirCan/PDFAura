@@ -5,13 +5,15 @@ from tkinter import ttk, filedialog
 
 from src.core.batch import batch_compress_dir, batch_convert_dir, batch_rename_dir
 from src.core.lang_manager import _
-from src.gui.helpers import InlineFeedback, build_tool_header, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, build_tool_header, quick_error
 
 
 class BatchTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
+        self._task_ctx = None
 
         self.input_dir_var = tk.StringVar()
         self.output_dir_var = tk.StringVar()
@@ -81,12 +83,8 @@ class BatchTab:
         ttk.Entry(output_row, textvariable=self.output_dir_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(output_row, text=_("str_select_dir"), command=self.choose_output_dir, style="Ghost.TButton").pack(side="right")
 
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(22, 0))
-        self.action_button = ttk.Button(footer, text=_("batch_start_btn"), command=self.start_action, style="Accent.TButton")
-        self.action_button.pack(side="left")
-        self.progress_bar = ttk.Progressbar(footer, mode="determinate", style="Accent.Horizontal.TProgressbar", length=220)
-        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, _("batch_start_btn"), self.start_action, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(22, 0))
 
         log_card = ttk.Frame(left, style="Panel.TFrame", padding=14)
         log_card.pack(fill="both", expand=True, pady=(18, 0))
@@ -125,10 +123,9 @@ class BatchTab:
         self.log_text.see("end")
         self.log_text.config(state="disabled")
 
-    def _update_progress(self, current, total, log_message):
+    def _update_progress(self, current, total, log_message=""):
         def ui_update():
-            self.progress_bar["value"] = current
-            self.progress_bar["maximum"] = max(total, 1)
+            self.footer.update_progress(current, total, "")
             pct = int((current / max(total, 1)) * 100)
             self.status_var.set(_("batch_progress").format(pct=pct, cur=current, total=total))
             if log_message:
@@ -142,23 +139,29 @@ class BatchTab:
             elif not self.output_dir_var.get().strip():
                 self.output_dir_var.set(file_path)
 
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
+
     def start_action(self):
         inp = self.input_dir_var.get().strip()
         out = self.output_dir_var.get().strip()
 
         if not inp or not os.path.isdir(inp):
-            quick_error(_("err_select_valid_input_dir"), self.action_button, None, self.status_var, self.feedback)
+            quick_error(_("err_select_valid_input_dir"), self.footer.action_button, None, self.status_var, self.feedback)
             return
         if not out or not os.path.isdir(out):
-            quick_error(_("err_select_valid_output_dir"), self.action_button, None, self.status_var, self.feedback)
+            quick_error(_("err_select_valid_output_dir"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
-        set_busy(self.action_button, None, True, self.feedback, _("str_processing"))
+        self._task_ctx = TaskContext(progress_callback=self._update_progress)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(_("str_processing"))
+
         self.log_text.config(state="normal")
         self.log_text.delete("1.0", "end")
         self.log_text.config(state="disabled")
         self._append_log(_("batch_log_started").format(path=inp))
-        self.progress_bar["value"] = 0
 
         mode = self.action_var.get()
         threading.Thread(target=self._run_job, args=(mode, inp, out), daemon=True).start()
@@ -166,22 +169,29 @@ class BatchTab:
     def _run_job(self, mode, inp, out):
         try:
             if mode == _("batch_compress"):
-                succ, errs = batch_compress_dir(inp, out, self.compress_qual_var.get(), self._update_progress)
+                succ, errs = batch_compress_dir(inp, out, self.compress_qual_var.get(), None, ctx=self._task_ctx)
             elif mode == _("batch_convert"):
-                succ, errs = batch_convert_dir(inp, out, self.convert_mode_var.get(), self._update_progress)
+                succ, errs = batch_convert_dir(inp, out, self.convert_mode_var.get(), None, ctx=self._task_ctx)
             else:
-                succ, errs = batch_rename_dir(inp, out, self.rename_rule_var.get(), self._update_progress)
+                succ, errs = batch_rename_dir(inp, out, self.rename_rule_var.get(), None, ctx=self._task_ctx)
             self.app_root.after(0, self._finalize_job, succ, errs, out)
+        except CancelledError:
+            self.app_root.after(0, self._cancelled)
         except Exception as exc:
             def fail():
-                set_busy(self.action_button, None, False)
+                self.footer.stop_busy()
                 self.status_var.set(_("err_critical"))
                 self.feedback.set_error(_("err_critical"), str(exc))
             self.app_root.after(0, fail)
 
+    def _cancelled(self):
+        self.footer.stop_busy()
+        self.status_var.set(_("perf_cancelled"))
+        self.feedback.set_cancelled()
+        self._append_log("\n--- " + _("perf_cancelled") + " ---")
+
     def _finalize_job(self, succ, errs, out):
-        set_busy(self.action_button, None, False)
-        self.progress_bar["value"] = self.progress_bar["maximum"]
+        self.footer.finish_success()
         self.status_var.set(_("batch_done"))
         self._append_log(_("batch_log_ended"))
         self._append_log(_("batch_success_count").format(succ=succ, errs=len(errs)))
