@@ -17,6 +17,29 @@ except ImportError:
     )
 
 from PIL import Image
+def imread_unicode(path):
+    """Read an image from a path that may contain Unicode characters."""
+    try:
+        import numpy as np
+        import cv2
+        return cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
+    except Exception:
+        return None
+
+def imwrite_unicode(path, img):
+    """Write an image to a path that may contain Unicode characters."""
+    try:
+        import numpy as np
+        import cv2
+        ext = os.path.splitext(path)[1]
+        is_success, buffer = cv2.imencode(ext, img)
+        if is_success:
+            buffer.tofile(path)
+            return True
+    except Exception:
+        pass
+    return False
+
 
 
 # ── A4 output dimensions at 300 DPI ──────────────────────────────────────────
@@ -43,7 +66,7 @@ def detect_document_corners(image_path: str):
         [top-left, top-right, bottom-right, bottom-left]
     If detection fails, returns the 4 image corners as fallback.
     """
-    img = cv2.imread(image_path)
+    img = imread_unicode(image_path)
     if img is None:
         raise FileNotFoundError(f"Görüntü okunamadı: {image_path}")
 
@@ -219,7 +242,7 @@ def scan_document(image_path: str, corners, scan_mode: str,
 
     Returns the processed image as a BGR numpy array.
     """
-    img = cv2.imread(image_path)
+    img = imread_unicode(image_path)
     if img is None:
         raise FileNotFoundError(f"Görüntü okunamadı: {image_path}")
 
@@ -236,7 +259,7 @@ def save_scanned_image(img_bgr, output_path: str):
     """
     Save a processed BGR image to a file (PNG/JPEG/etc based on extension).
     """
-    cv2.imwrite(output_path, img_bgr)
+    imwrite_unicode(output_path, img_bgr)
 
 
 def scanned_image_to_pdf(img_bgr, output_pdf: str):
@@ -258,7 +281,7 @@ def scanned_image_to_pdf(img_bgr, output_pdf: str):
     pil_img.save(output_pdf, "PDF", resolution=max(dpi_x, dpi_y))
 
 
-def scanned_images_to_pdf(images_bgr: list, output_pdf: str):
+def scanned_images_to_pdf(images_bgr: list, output_pdf: str, ctx=None):
     """
     Convert multiple processed BGR images to a multi-page PDF.
     Each image becomes one page.
@@ -267,12 +290,21 @@ def scanned_images_to_pdf(images_bgr: list, output_pdf: str):
         raise ValueError("En az bir görüntü gerekli.")
 
     pil_pages = []
-    for img_bgr in images_bgr:
+    total = len(images_bgr)
+    for i, img_bgr in enumerate(images_bgr):
+        if ctx:
+            ctx.check_cancelled()
+            ctx.progress(i, total, f"{i+1}/{total} resim PDF için hazırlanıyor...")
+
         rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb)
         if pil_img.mode != "RGB":
             pil_img = pil_img.convert("RGB")
         pil_pages.append(pil_img)
+
+    if ctx:
+        ctx.check_cancelled()
+        ctx.progress(total, total, "PDF kaydediliyor...")
 
     w, h = pil_pages[0].size
     dpi_x = w / (210 / 25.4)

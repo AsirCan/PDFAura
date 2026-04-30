@@ -358,6 +358,13 @@ _STRINGS = {
         "scanner_fullscreen_crop":  "🔍 Tam Ekran Kırp",
         "scanner_fullscreen_close": "Tam Ekrandan Çık",
         "err_select_valid_image":   "Geçerli bir resim dosyası seçin.",
+
+        # ── Performans Optimizasyonu ──
+        "perf_cancel":              "İptal",
+        "perf_cancelling":          "İptal ediliyor...",
+        "perf_cancelled":           "İptal Edildi",
+        "perf_cancelled_msg":       "İşlem kullanıcı tarafından iptal edildi.",
+        "perf_cancelled_badge":     "İPTAL",
     },
 
     "en": {
@@ -717,6 +724,13 @@ _STRINGS = {
         "scanner_fullscreen_crop":  "🔍 Fullscreen Crop",
         "scanner_fullscreen_close": "Exit Fullscreen",
         "err_select_valid_image":   "Select a valid image file.",
+
+        # ── Performance Optimization ──
+        "perf_cancel":              "Cancel",
+        "perf_cancelling":          "Cancelling...",
+        "perf_cancelled":           "Cancelled",
+        "perf_cancelled_msg":       "Operation cancelled by user.",
+        "perf_cancelled_badge":     "CANCELLED",
     }
 }
 

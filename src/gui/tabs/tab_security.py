@@ -5,13 +5,15 @@ from tkinter import ttk, filedialog
 
 from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, decrypt_pdf, encrypt_pdf
-from src.gui.helpers import InlineFeedback, bind_preview, build_tool_header, operation_done, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
 
 
 class SecurityTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
+        self._task_ctx = None
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
@@ -83,12 +85,8 @@ class SecurityTab:
         self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output_pdf, style="Ghost.TButton")
         self.output_button.pack(side="right")
 
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(22, 0))
-        self.action_button = ttk.Button(footer, text=_("str_apply"), command=self.start_action, style="Security.TButton")
-        self.action_button.pack(side="left")
-        self.progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Security.Horizontal.TProgressbar", length=220)
-        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, _("str_apply"), self.start_action, button_style="Security.TButton", progress_style="Security.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
         right.pack(side="left", fill="y", padx=(18, 0))
@@ -126,62 +124,66 @@ class SecurityTab:
         if file_path.lower().endswith(".pdf"):
             self._set_input(file_path)
 
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
+
     def start_action(self):
         input_pdf = self.input_var.get().strip()
         output_pdf = self.output_var.get().strip()
         mode = self.mode_var.get()
 
         if not input_pdf or not os.path.isfile(input_pdf):
-            quick_error(_("err_select_valid_file"), self.action_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.status_var, self.feedback)
             return
         if not output_pdf:
-            quick_error(_("err_set_output"), self.action_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(_("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
+        def _on_progress(current, total, message=""):
+            self.app_root.after(0, self.footer.update_progress, current, total, message)
+
+        self._task_ctx = TaskContext(progress_callback=_on_progress)
         busy_text = _("security_running").format(mode=mode)
-        set_busy(self.action_button, self.progress_bar, True, self.feedback, busy_text)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(busy_text)
         self.status_var.set(busy_text)
         threading.Thread(target=self._run_action, args=(input_pdf, output_pdf, mode), daemon=True).start()
 
     def _run_action(self, input_pdf, output_pdf, mode):
         try:
             if mode == _("security_encrypt"):
-                encrypt_pdf(input_pdf, output_pdf, self.password_var.get())
+                encrypt_pdf(input_pdf, output_pdf, self.password_var.get(), ctx=self._task_ctx)
                 message = _("security_result_encrypt").format(output=output_pdf)
             elif mode == _("security_decrypt"):
-                decrypt_pdf(input_pdf, output_pdf, self.password_var.get())
+                decrypt_pdf(input_pdf, output_pdf, self.password_var.get(), ctx=self._task_ctx)
                 message = _("security_result_decrypt").format(output=output_pdf)
             elif mode == _("security_watermark"):
                 text = self.watermark_text_var.get().strip()
                 if not text:
                     raise ValueError(_("err_watermark_empty"))
-                add_watermark_to_pdf(input_pdf, output_pdf, text)
+                add_watermark_to_pdf(input_pdf, output_pdf, text, ctx=self._task_ctx)
                 message = _("security_result_watermark").format(output=output_pdf)
             else:
                 raise ValueError(f"{_('err_unknown_op')}{mode}")
 
-            self.app_root.after(
-                0,
-                operation_done,
-                self.action_button,
-                self.progress_bar,
-                self.status_var,
-                _("str_success"),
-                message,
-                None,
-                self.feedback,
-                output_pdf,
-            )
+            self.app_root.after(0, self._on_done, message, output_pdf)
+        except CancelledError:
+            self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(
-                0,
-                operation_done,
-                self.action_button,
-                self.progress_bar,
-                self.status_var,
-                _("str_failed"),
-                None,
-                str(exc),
-                self.feedback,
-                None,
-            )
+            self.app_root.after(0, self._on_error, str(exc))
+
+    def _on_done(self, message, output_pdf):
+        self.footer.finish_success()
+        self.status_var.set(_("str_success"))
+        self.feedback.set_success(_("str_success"), message, output_pdf)
+
+    def _on_cancelled(self):
+        self.footer.stop_busy()
+        self.status_var.set(_("perf_cancelled"))
+        self.feedback.set_cancelled()
+
+    def _on_error(self, error_msg):
+        self.footer.stop_busy()
+        self.status_var.set(_("str_failed"))
+        self.feedback.set_error(_("str_failed"), error_msg)

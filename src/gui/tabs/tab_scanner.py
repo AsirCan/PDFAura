@@ -28,11 +28,12 @@ from src.core.document_scanner import (
     detect_document_corners,
     perspective_warp,
     apply_scan_mode,
-    rotate_image,
+    rotate_image, imread_unicode, imwrite_unicode,
     scanned_images_to_pdf,
 )
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
-from src.gui.helpers import InlineFeedback, build_tool_header, operation_done, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, build_tool_header, quick_error
 from src.gui.styles import (
     SURFACE_COLOR, SURFACE_ALT, FIELD_COLOR, TEXT_COLOR, MUTED_TEXT,
     BORDER_COLOR, PRIMARY_ACCENT, CONVERT_ACCENT,
@@ -83,6 +84,7 @@ class ScannerTab:
         self.canvas_scale = 1.0
         self.canvas_offset = (0, 0)
         self.dragging_corner = None
+        self._task_ctx = None
 
         # ── tkinter vars ──
         self.output_var = tk.StringVar()
@@ -170,13 +172,8 @@ class ScannerTab:
         self.output_entry.pack(side="left", padx=(8, 4), fill="x", expand=True)
         ttk.Button(options_row, text=tr("str_save"), command=self.choose_output, style="Ghost.TButton").pack(side="left")
 
-        # ── Footer ──
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(14, 0))
-        self.action_button = ttk.Button(footer, text=tr("scanner_btn"), command=self.start_scan, style="Convert.TButton")
-        self.action_button.pack(side="left")
-        self.progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Convert.Horizontal.TProgressbar", length=220)
-        self.progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, tr("scanner_btn"), self.start_scan, button_style="Convert.TButton", progress_style="Convert.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(14, 0))
 
         # ── Right panel: preview + feedback ──
         right = ttk.Frame(body, style="App.TFrame")
@@ -222,7 +219,7 @@ class ScannerTab:
         if not files:
             return
         for f in files:
-            img = cv2.imread(f)
+            img = imread_unicode(f)
             if img is None:
                 continue
             try:
@@ -283,7 +280,7 @@ class ScannerTab:
     def handle_external_drop(self, file_path):
         ext = os.path.splitext(file_path)[1].lower()
         if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"):
-            img = cv2.imread(file_path)
+            img = imread_unicode(file_path)
             if img is None:
                 return
             try:
@@ -308,20 +305,32 @@ class ScannerTab:
         if pg is None:
             return
         pg.rotation = (pg.rotation + 90) % 360
-        self._apply_rotation(pg)
+        self._apply_rotation(pg, 90)
 
     def rotate_ccw(self):
         pg = self.current_page
         if pg is None:
             return
         pg.rotation = (pg.rotation - 90) % 360
-        self._apply_rotation(pg)
+        self._apply_rotation(pg, -90)
 
-    def _apply_rotation(self, pg: _PageData):
+    def _apply_rotation(self, pg: _PageData, angle_step=90):
+        # We need the dimensions BEFORE rotation to transform corners correctly
+        old_h, old_w = pg.display_image.shape[:2]
         pg.display_image = rotate_image(pg.cv_image, pg.rotation)
-        h, w = pg.display_image.shape[:2]
-        m = 20
-        pg.corners = [(m, m), (w - m, m), (w - m, h - m), (m, h - m)]
+        new_h, new_w = pg.display_image.shape[:2]
+
+        # Rotate corners
+        new_corners = []
+        for (x, y) in pg.corners:
+            if angle_step == 90:
+                new_corners.append((new_w - y, x))
+            elif angle_step == -90:
+                new_corners.append((y, new_h - x))
+            else:
+                new_corners.append((x, y))
+        pg.corners = new_corners
+        
         self._redraw_canvas()
         self.update_preview()
 
@@ -333,7 +342,7 @@ class ScannerTab:
             if pg.rotation != 0:
                 import tempfile
                 tmp = os.path.join(tempfile.gettempdir(), "_pdfaura_scan_tmp.png")
-                cv2.imwrite(tmp, pg.display_image)
+                imwrite_unicode(tmp, pg.display_image)
                 pg.corners = detect_document_corners(tmp)
                 try:
                     os.unlink(tmp)
@@ -383,13 +392,13 @@ class ScannerTab:
         oy = (ch - new_h) // 2
         self.canvas_offset = (ox, oy)
 
-        if getattr(self, "_last_cw", None) != cw or getattr(self, "_last_ch", None) != ch or getattr(self, "_last_pg", None) != pg:
+        if getattr(self, "_last_cw", None) != cw or getattr(self, "_last_ch", None) != ch or getattr(self, "_last_pg", None) != pg or getattr(self, "_last_rot", None) != pg.rotation:
             rgb = cv2.cvtColor(pg.display_image, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb).resize((new_w, new_h), Image.LANCZOS)
             self.tk_photo = ImageTk.PhotoImage(pil_img)
             self._last_cw = cw
             self._last_ch = ch
-            self._last_pg = pg
+            self._last_pg = pg; self._last_rot = pg.rotation
 
         self.canvas.create_image(ox, oy, image=self.tk_photo, anchor="nw", tags="bg")
 
@@ -502,20 +511,34 @@ class ScannerTab:
 
         output = self.output_var.get().strip()
         if not output:
-            quick_error(tr("err_set_output"), self.action_button, self.progress_bar, self.status_var, self.feedback)
+            quick_error(tr("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
-        set_busy(self.action_button, self.progress_bar, True, self.feedback, tr("scanner_running"))
+        def _on_progress(current, total, message=""):
+            self.app_root.after(0, self.footer.update_progress, current, total, message)
+
+        self._task_ctx = TaskContext(progress_callback=_on_progress)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(tr("scanner_running"))
         self.status_var.set(tr("scanner_running"))
 
         threading.Thread(target=self._run_scan, args=(output,), daemon=True).start()
+
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
 
     def _run_scan(self, output_pdf):
         try:
             mode = self._get_selected_mode()
             processed = []
+            
+            total = len(self.pages)
 
-            for pg in self.pages:
+            for i, pg in enumerate(self.pages):
+                if self._task_ctx:
+                    self._task_ctx.check_cancelled()
+                    self._task_ctx.progress(i, total, f"{i+1}/{total} resim işleniyor...")
                 warped = perspective_warp(pg.display_image, pg.corners, A4_WIDTH_PX, A4_HEIGHT_PX)
                 result = apply_scan_mode(warped, mode)
                 processed.append(result)
@@ -524,7 +547,7 @@ class ScannerTab:
             if out_dir:
                 os.makedirs(out_dir, exist_ok=True)
 
-            scanned_images_to_pdf(processed, output_pdf)
+            scanned_images_to_pdf(processed, output_pdf, ctx=self._task_ctx)
 
             count = len(processed)
             if count == 1:
@@ -532,17 +555,24 @@ class ScannerTab:
             else:
                 msg = tr("scanner_result_multi").format(count=count, output=output_pdf)
 
-            self.app_root.after(
-                0, operation_done,
-                self.action_button, self.progress_bar, self.status_var,
-                tr("scanner_done"), msg, None, self.feedback, output_pdf,
-            )
+            def _done():
+                self.footer.finish_success()
+                self.status_var.set(tr("scanner_done"))
+                self.feedback.set_success(tr("scanner_done"), msg, output_pdf)
+            self.app_root.after(0, _done)
+
+        except CancelledError:
+            def _cancel():
+                self.footer.stop_busy()
+                self.status_var.set(tr("perf_cancelled"))
+                self.feedback.set_cancelled()
+            self.app_root.after(0, _cancel)
         except Exception as exc:
-            self.app_root.after(
-                0, operation_done,
-                self.action_button, self.progress_bar, self.status_var,
-                tr("scanner_fail"), None, str(exc), self.feedback, None,
-            )
+            def _err():
+                self.footer.stop_busy()
+                self.status_var.set(tr("scanner_fail"))
+                self.feedback.set_error(tr("scanner_fail"), str(exc))
+            self.app_root.after(0, _err)
 
     # ─────────────────────────────────────────────────────────────────────
     #  Fullscreen Crop
@@ -608,13 +638,13 @@ class ScannerTab:
         oy = (ch - new_h) // 2
         self.fs_canvas_offset = (ox, oy)
 
-        if getattr(self, "_last_fs_cw", None) != cw or getattr(self, "_last_fs_ch", None) != ch or getattr(self, "_last_fs_pg", None) != pg:
+        if getattr(self, "_last_fs_cw", None) != cw or getattr(self, "_last_fs_ch", None) != ch or getattr(self, "_last_fs_pg", None) != pg or getattr(self, "_last_fs_rot", None) != pg.rotation:
             rgb = cv2.cvtColor(pg.display_image, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb).resize((new_w, new_h), Image.LANCZOS)
             self.fs_tk_photo = ImageTk.PhotoImage(pil_img)
             self._last_fs_cw = cw
             self._last_fs_ch = ch
-            self._last_fs_pg = pg
+            self._last_fs_pg = pg; self._last_fs_rot = pg.rotation
 
         self.fs_canvas.create_image(ox, oy, image=self.fs_tk_photo, anchor="nw", tags="bg")
 

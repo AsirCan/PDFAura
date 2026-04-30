@@ -188,10 +188,10 @@
 - [ ] Sessiz (silent) güncelleme modu
 
 ### Performans Optimizasyonu
-- [ ] Büyük dosyalar için bellek optimizasyonu
-- [ ] Çoklu çekirdek kullanımı
-- [ ] İlerleme yüzdesi gösterimi
-- [ ] İşlem iptal etme butonu
+- [x] Büyük dosyalar için bellek optimizasyonu
+- [x] Çoklu çekirdek kullanımı
+- [x] İlerleme yüzdesi gösterimi
+- [x] İşlem iptal etme butonu
 
 ### Test ve Kalite Kontrolü
 - [x] Unit test'ler

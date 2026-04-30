@@ -6,7 +6,8 @@ from tkinter import ttk, filedialog
 from src.core.common import get_pdf_page_count
 from src.core.lang_manager import _
 from src.core.merge import merge_pdfs
-from src.gui.helpers import InlineFeedback, notify_preview, operation_done, quick_error, set_busy
+from src.core.task_manager import TaskContext, CancelledError
+from src.gui.helpers import InlineFeedback, ProgressFooter, notify_preview, quick_error
 from src.gui.styles import FIELD_COLOR, MERGE_ACCENT, TEXT_COLOR
 from src.utils.file_helper import format_size_mb
 
@@ -15,6 +16,7 @@ class MergeTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
+        self._task_ctx = None
 
         self.merge_file_list = []
         self.merge_output_var = tk.StringVar()
@@ -76,12 +78,8 @@ class MergeTab:
         self.merge_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_merge_output, style="Ghost.TButton")
         self.merge_output_button.pack(side="right")
 
-        footer = ttk.Frame(left, style="Surface.TFrame")
-        footer.pack(fill="x", pady=(22, 0))
-        self.merge_button = ttk.Button(footer, text=_("merge_btn"), command=self.start_merge, style="Merge.TButton")
-        self.merge_button.pack(side="left")
-        self.merge_progress_bar = ttk.Progressbar(footer, mode="indeterminate", style="Merge.Horizontal.TProgressbar", length=220)
-        self.merge_progress_bar.pack(side="left", fill="x", expand=True, padx=(16, 0))
+        self.footer = ProgressFooter(left, _("merge_btn"), self.start_merge, button_style="Merge.TButton", progress_style="Merge.Horizontal.TProgressbar")
+        self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
         right.pack(side="left", fill="y", padx=(18, 0))
@@ -150,50 +148,54 @@ class MergeTab:
     def handle_external_drop(self, file_path):
         self._append_file(file_path)
 
+    def _cancel_task(self):
+        if self._task_ctx:
+            self._task_ctx.cancel()
+
     def start_merge(self):
         if len(self.merge_file_list) < 2:
-            quick_error(_("err_min_2_pdf"), self.merge_button, self.merge_progress_bar, self.merge_status_var, self.feedback)
+            quick_error(_("err_min_2_pdf"), self.footer.action_button, None, self.merge_status_var, self.feedback)
             return
         output_pdf = self.merge_output_var.get().strip()
         if not output_pdf:
-            quick_error(_("err_set_output"), self.merge_button, self.merge_progress_bar, self.merge_status_var, self.feedback)
+            quick_error(_("err_set_output"), self.footer.action_button, None, self.merge_status_var, self.feedback)
             return
 
+        def _on_progress(current, total, message=""):
+            self.app_root.after(0, self.footer.update_progress, current, total, message)
+
+        self._task_ctx = TaskContext(progress_callback=_on_progress)
         busy_text = _("merge_running").format(count=len(self.merge_file_list))
-        set_busy(self.merge_button, self.merge_progress_bar, True, self.feedback, busy_text)
+        self.footer.start_busy(cancel_callback=self._cancel_task)
+        self.feedback.set_busy(busy_text)
         self.merge_status_var.set(busy_text)
         threading.Thread(target=self._run_merge, args=(list(self.merge_file_list), output_pdf), daemon=True).start()
 
     def _run_merge(self, pdf_list, output_pdf):
         try:
-            merge_pdfs(pdf_list, output_pdf)
+            merge_pdfs(pdf_list, output_pdf, ctx=self._task_ctx)
             if not os.path.isfile(output_pdf):
                 raise RuntimeError(_("err_output_not_created"))
             size = format_size_mb(output_pdf)
             total_pages = get_pdf_page_count(output_pdf)
             message = _("merge_result").format(count=len(pdf_list), pages=total_pages, size=size, output=output_pdf)
-            self.app_root.after(
-                0,
-                operation_done,
-                self.merge_button,
-                self.merge_progress_bar,
-                self.merge_status_var,
-                _("merge_done"),
-                message,
-                None,
-                self.feedback,
-                output_pdf,
-            )
+            self.app_root.after(0, self._on_done, message, output_pdf)
+        except CancelledError:
+            self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(
-                0,
-                operation_done,
-                self.merge_button,
-                self.merge_progress_bar,
-                self.merge_status_var,
-                _("merge_fail"),
-                None,
-                str(exc),
-                self.feedback,
-                None,
-            )
+            self.app_root.after(0, self._on_error, str(exc))
+
+    def _on_done(self, message, output_pdf):
+        self.footer.finish_success()
+        self.merge_status_var.set(_("merge_done"))
+        self.feedback.set_success(_("merge_done"), message, output_pdf)
+
+    def _on_cancelled(self):
+        self.footer.stop_busy()
+        self.merge_status_var.set(_("perf_cancelled"))
+        self.feedback.set_cancelled()
+
+    def _on_error(self, error_msg):
+        self.footer.stop_busy()
+        self.merge_status_var.set(_("merge_fail"))
+        self.feedback.set_error(_("merge_fail"), error_msg)
