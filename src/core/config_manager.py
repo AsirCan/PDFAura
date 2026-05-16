@@ -14,7 +14,9 @@ class ConfigManager:
             "sound_enabled": True,
             "default_output_dir": "",
             "recent_files": [],
-            "close_to_tray": True
+            "close_to_tray": True,
+            "ai_model_root": "",
+            "ai_model_paths": {},
         }
         
         self.config = self.default_config.copy()

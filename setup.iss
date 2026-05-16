@@ -1,9 +1,9 @@
 [Setup]
 ; App Information
 AppName=PDF Aura
-AppVersion=1.0
+AppVersion=2.1
 AppPublisher=PDF Aura Team
-VersionInfoVersion=1.0.0.0
+VersionInfoVersion=2.1.0.0
 
 ; Architecture
 ArchitecturesInstallIn64BitMode=x64

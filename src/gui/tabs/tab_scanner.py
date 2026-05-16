@@ -10,6 +10,7 @@ Scanner Tab – CamScanner-like document scanning UI  (multi-page)
 
 import os
 import threading
+import tempfile
 import tkinter as tk
 from tkinter import ttk, filedialog
 
@@ -85,6 +86,9 @@ class ScannerTab:
         self.canvas_offset = (0, 0)
         self.dragging_corner = None
         self._task_ctx = None
+        self._detecting_corners = False
+        self._detect_job_id = 0
+        self._detect_controls = []
 
         # ── tkinter vars ──
         self.output_var = tk.StringVar()
@@ -121,8 +125,10 @@ class ScannerTab:
         toolbar1 = ttk.Frame(left, style="Surface.TFrame")
         toolbar1.pack(fill="x", pady=(0, 6))
 
-        ttk.Button(toolbar1, text=tr("scanner_add_photo"), command=self.add_photos, style="Secondary.TButton").pack(side="left", padx=(0, 6))
-        ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current, style="Ghost.TButton").pack(side="left", padx=(0, 14))
+        self.add_photo_button = ttk.Button(toolbar1, text=tr("scanner_add_photo"), command=self.add_photos, style="Secondary.TButton")
+        self.add_photo_button.pack(side="left", padx=(0, 6))
+        self.remove_photo_button = ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current, style="Ghost.TButton")
+        self.remove_photo_button.pack(side="left", padx=(0, 14))
 
         # Page navigator
         ttk.Button(toolbar1, text="◀", command=self.prev_page, style="Small.TButton", width=3).pack(side="left", padx=(0, 4))
@@ -139,6 +145,10 @@ class ScannerTab:
         
         # Fullscreen crop
         ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop, style="Secondary.TButton").pack(side="left")
+        self._detect_controls = [
+            child for child in toolbar1.winfo_children()
+            if isinstance(child, ttk.Button)
+        ]
 
         # ── Canvas ──
         canvas_frame = ttk.Frame(left, style="Surface.TFrame")
@@ -211,29 +221,46 @@ class ScannerTab:
         self._redraw_canvas()
         self.update_preview()
 
-    def add_photos(self):
-        files = filedialog.askopenfilenames(
-            title=tr("scanner_select_photo"),
-            filetypes=[(tr("convert_images_label"), "*.png *.jpg *.jpeg *.bmp *.tiff *.webp")],
-        )
-        if not files:
-            return
+    def _default_corners_for_shape(self, h, w):
+        margin = max(0, min(20, min(h, w) // 12))
+        right = max(0, w - 1 - margin)
+        bottom = max(0, h - 1 - margin)
+        return [(margin, margin), (right, margin), (right, bottom), (margin, bottom)]
+
+    def _default_corners_for_image(self, img):
+        h, w = img.shape[:2]
+        return self._default_corners_for_shape(h, w)
+
+    def _add_image_pages(self, files, select_last=False):
+        if self._detecting_corners:
+            self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
+            return 0
+
+        jobs = []
+        first_new_page = None
         for f in files:
             img = imread_unicode(f)
             if img is None:
                 continue
-            try:
-                corners = detect_document_corners(f)
-            except Exception:
-                h, w = img.shape[:2]
-                m = 20
-                corners = [(m, m), (w - m, m), (w - m, h - m), (m, h - m)]
-            self.pages.append(_PageData(f, img, corners))
+            page = _PageData(f, img, self._default_corners_for_image(img))
+            self.pages.append(page)
+            if first_new_page is None:
+                first_new_page = page
+            jobs.append({
+                "page": page,
+                "path": f,
+                "image": None,
+                "shape": img.shape[:2],
+            })
+
+        if not jobs:
+            return 0
 
         if self.current_index < 0:
-            self.current_index = 0
+            self.current_index = self.pages.index(first_new_page)
+        elif select_last:
+            self.current_index = len(self.pages) - 1
 
-        # auto-suggest output
         if not self.output_var.get().strip() and self.pages:
             base = os.path.splitext(self.pages[0].path)[0]
             self.output_var.set(f"{base}_tarandi.pdf")
@@ -243,6 +270,122 @@ class ScannerTab:
             tr("scanner_crop_area"),
             tr("scanner_page_count").format(count=len(self.pages))
         )
+        self._start_corner_detection(jobs)
+        return len(jobs)
+
+    def _set_corner_detection_busy(self, busy, message=None):
+        state = "disabled" if busy else "normal"
+        for control in self._detect_controls:
+            try:
+                control.config(state=state)
+            except tk.TclError:
+                pass
+
+        if busy:
+            msg = message or tr("scanner_detecting")
+            self.footer.action_button.config(state="disabled")
+            self.footer.progress_bar.config(mode="indeterminate")
+            self.footer.progress_bar["value"] = 0
+            self.footer.progress_bar.start(12)
+            self.footer.pct_label.config(text=msg)
+            self.feedback.set_busy(msg)
+            self.status_var.set(msg)
+        else:
+            self.footer.progress_bar.stop()
+            self.footer.progress_bar.config(mode="determinate")
+            self.footer.progress_bar["value"] = 0
+            self.footer.pct_label.config(text="")
+            self.footer.action_button.config(state="normal")
+
+    def _start_corner_detection(self, jobs):
+        if not jobs:
+            return
+        if self._detecting_corners:
+            self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
+            return
+
+        self._detect_job_id += 1
+        job_id = self._detect_job_id
+        self._detecting_corners = True
+        self._set_corner_detection_busy(
+            True,
+            tr("scanner_detecting_progress").format(current=0, total=len(jobs))
+        )
+        threading.Thread(target=self._run_corner_detection, args=(job_id, jobs), daemon=True).start()
+
+    def _run_corner_detection(self, job_id, jobs):
+        errors = 0
+        total = len(jobs)
+        for completed, job in enumerate(jobs, start=1):
+            corners = None
+            tmp_path = None
+            try:
+                if job["image"] is not None:
+                    fd, tmp_path = tempfile.mkstemp(prefix="pdfaura_scan_", suffix=".png")
+                    os.close(fd)
+                    imwrite_unicode(tmp_path, job["image"])
+                    corners = detect_document_corners(tmp_path)
+                else:
+                    corners = detect_document_corners(job["path"])
+            except Exception:
+                errors += 1
+                h, w = job["shape"]
+                corners = self._default_corners_for_shape(h, w)
+            finally:
+                if tmp_path:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+
+            self.app_root.after(
+                0,
+                self._apply_corner_detection_result,
+                job_id,
+                job["page"],
+                corners,
+                completed,
+                total,
+            )
+
+        self.app_root.after(0, self._finish_corner_detection, job_id, total, errors)
+
+    def _apply_corner_detection_result(self, job_id, page, corners, completed, total):
+        if job_id != self._detect_job_id:
+            return
+        if page not in self.pages:
+            return
+
+        page.corners = list(corners)
+        if page is self.current_page:
+            self._redraw_canvas()
+            self.update_preview()
+
+        self.footer.pct_label.config(
+            text=tr("scanner_detecting_progress").format(current=completed, total=total)
+        )
+
+    def _finish_corner_detection(self, job_id, total, errors):
+        if job_id != self._detect_job_id:
+            return
+
+        self._detecting_corners = False
+        self._set_corner_detection_busy(False)
+        detected = max(0, total - errors)
+        self.feedback.set_info(
+            tr("scanner_crop_area"),
+            tr("scanner_detect_done").format(count=detected)
+        )
+        self.status_var.set(tr("str_ready"))
+
+    def add_photos(self):
+        files = filedialog.askopenfilenames(
+            title=tr("scanner_select_photo"),
+            filetypes=[(tr("convert_images_label"), "*.png *.jpg *.jpeg *.bmp *.tiff *.webp")],
+        )
+        if not files:
+            return
+        self._add_image_pages(files)
 
     def remove_current(self):
         if not self.pages or self.current_index < 0:
@@ -280,21 +423,7 @@ class ScannerTab:
     def handle_external_drop(self, file_path):
         ext = os.path.splitext(file_path)[1].lower()
         if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"):
-            img = imread_unicode(file_path)
-            if img is None:
-                return
-            try:
-                corners = detect_document_corners(file_path)
-            except Exception:
-                h, w = img.shape[:2]
-                m = 20
-                corners = [(m, m), (w - m, m), (w - m, h - m), (m, h - m)]
-            self.pages.append(_PageData(file_path, img, corners))
-            self.current_index = len(self.pages) - 1
-            if not self.output_var.get().strip():
-                base = os.path.splitext(file_path)[0]
-                self.output_var.set(f"{base}_tarandi.pdf")
-            self._show_current_page()
+            self._add_image_pages([file_path], select_last=True)
 
     # ─────────────────────────────────────────────────────────────────────
     #  Rotation
@@ -338,32 +467,27 @@ class ScannerTab:
         pg = self.current_page
         if pg is None:
             return
-        try:
-            if pg.rotation != 0:
-                import tempfile
-                tmp = os.path.join(tempfile.gettempdir(), "_pdfaura_scan_tmp.png")
-                imwrite_unicode(tmp, pg.display_image)
-                pg.corners = detect_document_corners(tmp)
-                try:
-                    os.unlink(tmp)
-                except OSError:
-                    pass
-            else:
-                pg.corners = detect_document_corners(pg.path)
-        except Exception:
-            h, w = pg.display_image.shape[:2]
-            m = 20
-            pg.corners = [(m, m), (w - m, m), (w - m, h - m), (m, h - m)]
-        self._redraw_canvas()
-        self.update_preview()
+        if self._detecting_corners:
+            self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
+            return
+
+        image = pg.display_image.copy() if pg.rotation != 0 else None
+        path = None if image is not None else pg.path
+        self._start_corner_detection([{
+            "page": pg,
+            "path": path,
+            "image": image,
+            "shape": pg.display_image.shape[:2],
+        }])
 
     def reset_corners(self):
         pg = self.current_page
         if pg is None:
             return
-        h, w = pg.display_image.shape[:2]
-        m = 20
-        pg.corners = [(m, m), (w - m, m), (w - m, h - m), (m, h - m)]
+        if self._detecting_corners:
+            self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
+            return
+        pg.corners = self._default_corners_for_image(pg.display_image)
         self._redraw_canvas()
         self.update_preview()
 
@@ -431,6 +555,8 @@ class ScannerTab:
         return (cx - ox) / self.canvas_scale, (cy - oy) / self.canvas_scale
 
     def _on_canvas_press(self, event):
+        if self._detecting_corners:
+            return
         pg = self.current_page
         if pg is None:
             return
@@ -505,6 +631,10 @@ class ScannerTab:
     # ─────────────────────────────────────────────────────────────────────
 
     def start_scan(self):
+        if self._detecting_corners:
+            self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
+            return
+
         if not self.pages:
             self.feedback.set_error(tr("str_error"), tr("scanner_no_image"))
             return
@@ -538,7 +668,7 @@ class ScannerTab:
             for i, pg in enumerate(self.pages):
                 if self._task_ctx:
                     self._task_ctx.check_cancelled()
-                    self._task_ctx.progress(i, total, f"{i+1}/{total} resim işleniyor...")
+                    self._task_ctx.report_progress(i, total, f"{i+1}/{total} resim işleniyor...")
                 warped = perspective_warp(pg.display_image, pg.corners, A4_WIDTH_PX, A4_HEIGHT_PX)
                 result = apply_scan_mode(warped, mode)
                 processed.append(result)
@@ -568,10 +698,13 @@ class ScannerTab:
                 self.feedback.set_cancelled()
             self.app_root.after(0, _cancel)
         except Exception as exc:
-            def _err():
+            import traceback
+            traceback.print_exc()
+            err_msg = str(exc)
+            def _err(msg=err_msg):
                 self.footer.stop_busy()
                 self.status_var.set(tr("scanner_fail"))
-                self.feedback.set_error(tr("scanner_fail"), str(exc))
+                self.feedback.set_error(tr("scanner_fail"), msg)
             self.app_root.after(0, _err)
 
     # ─────────────────────────────────────────────────────────────────────
@@ -579,6 +712,9 @@ class ScannerTab:
     # ─────────────────────────────────────────────────────────────────────
 
     def open_fullscreen_crop(self):
+        if self._detecting_corners:
+            self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
+            return
         pg = self.current_page
         if pg is None:
             return
@@ -602,6 +738,10 @@ class ScannerTab:
         self.fs_canvas_offset = (0, 0)
         self.fs_dragging_corner = None
         self.fs_tk_photo = None
+        self._last_fs_cw = None
+        self._last_fs_ch = None
+        self._last_fs_pg = None
+        self._last_fs_rot = None
 
         self.fs_canvas.bind("<ButtonPress-1>", self._fs_on_press)
         self.fs_canvas.bind("<B1-Motion>", self._fs_on_drag)
@@ -641,7 +781,7 @@ class ScannerTab:
         if getattr(self, "_last_fs_cw", None) != cw or getattr(self, "_last_fs_ch", None) != ch or getattr(self, "_last_fs_pg", None) != pg or getattr(self, "_last_fs_rot", None) != pg.rotation:
             rgb = cv2.cvtColor(pg.display_image, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb).resize((new_w, new_h), Image.LANCZOS)
-            self.fs_tk_photo = ImageTk.PhotoImage(pil_img)
+            self.fs_tk_photo = ImageTk.PhotoImage(pil_img, master=self.fs_top)
             self._last_fs_cw = cw
             self._last_fs_ch = ch
             self._last_fs_pg = pg; self._last_fs_rot = pg.rotation
