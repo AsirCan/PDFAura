@@ -42,10 +42,55 @@ Uygulamayı mevcut kaynak kodlarından çalıştırmak isterseniz:
 # Gerekli kütüphaneleri sisteminize kurun
 pip install -r requirements.txt
 
+# AI modellerini indirin (ilk kurulumda gerekli)
+python download_models.py
+
 # Uygulamayı başlatın
 python main.py
 ```
 
-## Dağıtım (Build)
+### 🤖 AI Model İndirme
 
-Uygualama tamamen son kullanıcıya ulaşabilir bir kurulum dosyasına (Setup.exe) dönüştürülebilir yapıdadır. `setup.iss` Inno Setup scripti ve cx_Freeze aracılığı ile direkt paketlenebilir formattadır.
+PDF Aura, belge köşe tespiti için gelişmiş yapay zeka modelleri kullanır. İlk kurulumda modelleri indirmeniz gerekir:
+
+```powershell
+# Tüm modelleri indir (önerilen)
+python download_models.py
+
+# Sadece hafif modeli indir (~5 MB)
+python download_models.py --skip-optional
+```
+
+**Modeller:**
+- **u2netp_document.onnx** (~4.7 MB) - Hafif ve hızlı, CPU'da bile çalışır (Önerilen)
+- **u2net_document.onnx** (~168 MB) - Daha yüksek doğruluk, GPU önerilir (Opsiyonel)
+
+Modeller `models/` klasörüne indirilir. Eğer otomatik indirme çalışmazsa, manuel olarak indirebilirsiniz:
+- Hafif model: https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/main/u2netp.onnx
+- Tam model: https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx
+
+**Not:** Modeller olmadan da uygulama çalışır, ancak belge tarayıcı özelliği klasik bilgisayarlı görü yöntemlerini kullanır.
+
+## 🛠️ Kurulum Dosyası (Setup) Oluşturma
+
+Uygulamayı son kullanıcı için tek bir `.exe` kurulum dosyasına dönüştürmek için aşağıdaki adımları izleyebilirsiniz:
+
+### 1. Executable (.exe) Paketleme
+Öncelikle kaynak kodları `dist` klasörü altında çalışabilir bir yapıya dönüştürmek için PyInstaller kullanın:
+
+```powershell
+pyinstaller --noconfirm PDFAura.spec
+```
+*(Bu işlem bilgisayar hızına bağlı olarak yaklaşık 3-5 dakika sürebilir.)*
+
+### 2. Kurulum Sihirbazı (Setup.exe) Oluşturma
+Oluşturulan dosyaları profesyonel bir Windows yükleyicisine dönüştürmek için **Inno Setup** kullanın:
+
+1.  Bilgisayarınızda [Inno Setup](https://jrsoftware.org/isdl.php) kurulu olduğundan emin olun.
+2.  `setup.iss` dosyasına sağ tıklayıp **"Compile"** seçeneğini seçin.
+3.  Alternatif olarak terminalden şu komutu çalıştırın:
+    ```powershell
+    iscc setup.iss
+    ```
+
+İşlem tamamlandığında `dist` klasörü içerisinde **PDFAura.exe** adında, yaklaşık **150-200 MB** boyutunda bir kurulum dosyası oluşacaktır.
