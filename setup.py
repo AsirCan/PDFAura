@@ -6,10 +6,14 @@ build_exe_options = {
     "packages": [
         "os", "shutil", "subprocess", "sys", "threading", "tkinter", "io",
         "PyPDF2", "PIL", "pdf2docx", "docx2pdf", "reportlab", "pytesseract",
-        "docx", "lxml", "fonttools", "cv2", "numpy", "fitz",
+        "docx", "lxml", "fonttools", "cv2", "numpy", "fitz", "onnxruntime",
+        "pyttsx3",
     ],
     "excludes": [],
-    "include_files": [("assets/app_icon.ico", "assets/app_icon.ico")],
+    "include_files": [
+        ("assets/app_icon.ico", "assets/app_icon.ico"),
+        ("models", "models"),
+    ],
 }
 
 bdist_msi_options = {
@@ -21,7 +25,7 @@ base = "Win32GUI" if sys.platform == "win32" else None
 
 setup(
     name="PDF Aura",
-    version="2.0",
+    version="2.1",
     description="PDF sikistirma, kesme, birlestirme, duzenleme ve donusturme araci",
     options={
         "build_exe": build_exe_options,

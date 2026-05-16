@@ -1,0 +1,20 @@
+# AI model dosyaları - boyutları büyük olduğu için git'e eklenmez
+*.onnx
+*.pth
+*.pt
+*.bin
+*.gguf
+*.safetensors
+*.ckpt
+*.ct2
+*.pdmodel
+*.pdiparams
+*.traineddata
+*.ort
+*.part
+*.tflite
+*.h5
+*.pb
+
+# Sadece README'yi tut
+!README.md

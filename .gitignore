@@ -22,6 +22,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.cache/
 nosetests.xml
 coverage.xml
 *.cover
@@ -71,9 +72,25 @@ venv.bak/
 # AI Models & Cache
 *.onnx
 *.pt
+*.pth
 *.bin
+*.gguf
+*.safetensors
+*.ckpt
+*.ct2
+*.pdmodel
+*.pdiparams
+*.traineddata
+*.ort
+*.part
 *.tflite
 *.h5
+!models/**/README.md
+
+# Runtime crash/diagnostic files
+Crashpad/
+CrashpadMetrics*.pma
+*.dmp
 
 # Local config & databases
 *.db
