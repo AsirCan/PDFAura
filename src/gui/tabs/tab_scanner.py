@@ -8,11 +8,17 @@ Scanner Tab – CamScanner-like document scanning UI  (multi-page)
 • Export all pages to a single multi-page PDF
 """
 
+import logging
+import math
 import os
+import statistics
 import threading
 import tempfile
+import time
+import uuid
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
+from tkinter import font as tkfont
 
 import cv2
 import numpy as np
@@ -32,7 +38,9 @@ from src.core.document_scanner import (
     rotate_image, imread_unicode, imwrite_unicode,
     scanned_images_to_pdf,
 )
+from src.core.config_manager import cfg
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
+from src.core.scanner_session import ScannerSessionStore, SESSION_VERSION
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.helpers import InlineFeedback, ProgressFooter, build_hint_strip, quick_error
 from src.gui.styles import (
@@ -57,17 +65,42 @@ _MODE_MAP = [
     (MODE_SHARP,     "scanner_mode_sharp"),
 ]
 
+SESSION_SAVE_DELAY_MS = 400
+PAGE_LABEL_MAX = 60
+
+
+def _clean_label(text):
+    """One printable line, trimmed; an empty string means the page is unnamed."""
+    text = "".join(ch for ch in str(text) if ch.isprintable() or ch.isspace())
+    return " ".join(text.split())[:PAGE_LABEL_MAX]
+
+
+def _valid_corners(corners):
+    if not isinstance(corners, list) or len(corners) != 4:
+        return False
+    for pt in corners:
+        if not isinstance(pt, (list, tuple)) or len(pt) != 2:
+            return False
+        for v in pt:
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+                return False
+    return True
+
 
 class _PageData:
     """Per-page state for one photo in the scan list."""
-    __slots__ = ("path", "cv_image", "display_image", "rotation", "corners")
+    __slots__ = ("path", "cv_image", "display_image", "rotation", "corners", "uid", "label")
 
-    def __init__(self, path, cv_image, corners):
+    def __init__(self, path, cv_image, corners, uid=None, label=""):
         self.path = path
         self.cv_image = cv_image
         self.display_image = cv_image.copy()
         self.rotation = 0
         self.corners = list(corners)
+        # Names this page's PNG in the session folder. cv_image must never be
+        # changed in place; a page with different pixels needs a new uid.
+        self.uid = uid or uuid.uuid4().hex
+        self.label = label        # user-given page name shown under the thumbnail
 
 
 class ScannerTab:
@@ -95,9 +128,37 @@ class ScannerTab:
         self.status_var = tk.StringVar(value=tr("str_ready"))
         self.scan_mode_var = tk.StringVar(value=tr("scanner_mode_clean_doc"))
         self.page_label_var = tk.StringVar(value=tr("scanner_no_pages"))
-        self._thumb_cache = {}   # id(page) -> ((rotation, corners), PhotoImage)
+        self._thumb_cache = {}   # id(page) -> ((rotation, corners, w, h), PhotoImage)
+        self._debounce_jobs = {}
+
+        # ── page strip interaction ──
+        self._strip_press = None          # (page, x, y) of the last press on a thumbnail
+        self._strip_dragging = False
+        self._strip_drag_xy = (0, 0)      # pointer, strip-canvas widget coords
+        self._drag_ghost = None
+        self._autoscroll_job = None
+        self._rename_page = None
+        self._rename_entry = None
+        self._sash_drag = None            # [x_root at press, width at press, moved]
+        # 0 = auto: the strip takes the room a narrow (portrait) photo leaves free.
+        self._strip_auto = not cfg.get("scanner_strip_width", 0)
+
+        # ── session persistence ──
+        self._session_save_job = None     # after() id of the pending debounced save
+        self._session_restoring = False   # True from "session found" until it is applied
+        self._session_meta = None         # read in __init__, applied on first show
+        self._session_rev = 0             # bumped on every change; guards the post-export clear
+        self._scan_start_rev = None
+        self._session_error_shown = False
+        self._session_store = ScannerSessionStore(
+            cfg.scanner_session_dir,
+            enabled=cfg.get("scanner_session_enabled", True),
+            on_error=lambda msg: self.app_root.after(0, self._on_session_error, msg),
+        )
 
         self.build_ui()
+        self.output_var.trace_add("write", lambda *_args: self._schedule_session_save())
+        self._load_session()
 
     # ─────────────────────────────────────────────────────────────────────
     #  UI construction
@@ -124,6 +185,7 @@ class ScannerTab:
         self.add_photo_button.pack(side="left", padx=(0, 6))
         self.remove_photo_button = ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current, style="Ghost.TButton")
         self.remove_photo_button.pack(side="left", padx=(0, 6))
+        ttk.Button(toolbar1, text=tr("scanner_clear_all"), command=self.clear_all_pages, style="Ghost.TButton").pack(side="left", padx=(0, 6))
         ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop, style="Ghost.TButton").pack(side="right")
 
         # ── Toolbar row 2: per-page corrections ──
@@ -134,28 +196,61 @@ class ScannerTab:
         ttk.Button(toolbar2, text=tr("scanner_auto_detect"), command=self.auto_detect, style="Small.TButton").pack(side="left", padx=(0, 4))
         ttk.Button(toolbar2, text=tr("scanner_reset_corners"), command=self.reset_corners, style="Small.TButton").pack(side="left")
 
-        # ── Page strip (left) + crop canvas (right) ──
+        # ── Page strip (left) | sash | crop canvas (right) ──
         work = ttk.Frame(left, style="Surface.TFrame")
         work.pack(fill="both", expand=True)
+        self.work_frame = work
 
-        strip = ttk.Frame(work, style="Surface.TFrame", width=132)
-        strip.pack(side="left", fill="y", padx=(0, 10))
+        self._caption_font = tkfont.Font(root=self.app_root, family="Segoe UI", size=9)
+        self._caption_font_sel = tkfont.Font(root=self.app_root, family="Segoe UI Semibold", size=9)
+
+        strip_w = self._STRIP_MIN_W if self._strip_auto else max(self._STRIP_MIN_W, int(cfg.get("scanner_strip_width", 0)))
+        strip = ttk.Frame(work, style="Surface.TFrame", width=strip_w)
+        strip.pack(side="left", fill="y")
         strip.pack_propagate(False)
+        self.strip_frame = strip
         ttk.Label(strip, text=tr("scanner_pages"), style="Section.TLabel").pack(anchor="w")
-        ttk.Label(strip, textvariable=self.page_label_var, style="Hint.TLabel", wraplength=128, justify="left").pack(anchor="w", pady=(2, 6))
+        ttk.Label(strip, textvariable=self.page_label_var, style="Hint.TLabel").pack(anchor="w", pady=(2, 0))
+        self.strip_hint_widget = ttk.Label(strip, style="Hint.TLabel", justify="left")
+        self.strip_hint_widget.pack(anchor="w", pady=(0, 6))
         strip_buttons = ttk.Frame(strip, style="Surface.TFrame")
         strip_buttons.pack(side="bottom", fill="x", pady=(8, 0))
-        move_up = ttk.Button(strip_buttons, text=tr("scanner_move_up"), command=lambda: self.move_page(-1), style="Small.TButton")
-        move_up.pack(fill="x")
-        move_down = ttk.Button(strip_buttons, text=tr("scanner_move_down"), command=lambda: self.move_page(1), style="Small.TButton")
-        move_down.pack(fill="x", pady=(4, 0))
+        self.move_up_button = ttk.Button(strip_buttons, text=tr("scanner_move_up"), command=lambda: self.move_page(-1), style="Small.TButton")
+        self.move_down_button = ttk.Button(strip_buttons, text=tr("scanner_move_down"), command=lambda: self.move_page(1), style="Small.TButton")
+        self._strip_wide = None
+        self._relayout_strip_header(strip_w)
 
-        self.strip_canvas = tk.Canvas(strip, bg=SURFACE_ALT, highlightthickness=1, highlightbackground=BORDER_COLOR, width=128)
+        self.strip_canvas = tk.Canvas(strip, bg=SURFACE_ALT, highlightthickness=1, highlightbackground=BORDER_COLOR,
+                                      width=128, yscrollincrement=20)
         self.strip_canvas.pack(fill="both", expand=True)
-        self.strip_canvas.bind("<Button-1>", self._on_strip_click)
-        self.strip_canvas.bind("<MouseWheel>", lambda e: self.strip_canvas.yview_scroll(int(-e.delta / 120), "units"))
-        self.strip_canvas.bind("<Up>", lambda e: self.prev_page())
-        self.strip_canvas.bind("<Down>", lambda e: self.next_page())
+        c = self.strip_canvas
+        c.bind("<ButtonPress-1>", self._on_strip_press)
+        c.bind("<B1-Motion>", self._on_strip_motion)
+        c.bind("<ButtonRelease-1>", self._on_strip_release)
+        c.bind("<Double-Button-1>", self._on_strip_double)
+        c.bind("<Button-3>", self._on_strip_menu)
+        c.bind("<MouseWheel>", lambda e: c.yview_scroll(int(-e.delta / 120) * 3, "units"))
+        c.bind("<Up>", lambda e: self._select_relative(-self._strip_layout()[0]))
+        c.bind("<Down>", lambda e: self._select_relative(self._strip_layout()[0]))
+        c.bind("<Left>", lambda e: self._select_relative(-1))
+        c.bind("<Right>", lambda e: self._select_relative(1))
+        c.bind("<F2>", lambda e: self.rename_current())
+        c.bind("<Escape>", lambda e: self._end_strip_drag())
+        c.bind("<Configure>", lambda e: self._debounce("strip", 60, self._refresh_strip))
+
+        # Drag to resize the strip; double-click returns to auto width.
+        self.strip_sash = tk.Frame(work, width=self._SASH_W, bg=SURFACE_COLOR, cursor="sb_h_double_arrow")
+        self.strip_sash.pack(side="left", fill="y")
+        self._sash_grip = tk.Frame(self.strip_sash, width=4, height=48, bg=BORDER_COLOR, cursor="sb_h_double_arrow")
+        self._sash_grip.place(relx=0.5, rely=0.5, anchor="center")
+        for w in (self.strip_sash, self._sash_grip):
+            w.bind("<ButtonPress-1>", self._on_sash_press)
+            w.bind("<B1-Motion>", self._on_sash_drag)
+            w.bind("<ButtonRelease-1>", self._on_sash_release)
+            w.bind("<Double-Button-1>", self._on_sash_double)
+            w.bind("<Enter>", lambda e: self._sash_grip.configure(bg=PRIMARY_ACCENT))
+            w.bind("<Leave>", lambda e: self._sash_drag or self._sash_grip.configure(bg=BORDER_COLOR))
+        work.bind("<Configure>", lambda e: self._debounce("fit", 60, self._fit_strip))
 
         self._detect_controls = [
             child
@@ -167,7 +262,9 @@ class ScannerTab:
         canvas_frame = ttk.Frame(work, style="Surface.TFrame")
         canvas_frame.pack(side="left", fill="both", expand=True)
 
-        self.canvas = tk.Canvas(canvas_frame, bg=CANVAS_BG, highlightthickness=0, cursor="crosshair")
+        # width=1: never request more room than the strip leaves, or pack would
+        # squeeze the preview panel on the right when the strip is wide.
+        self.canvas = tk.Canvas(canvas_frame, bg=CANVAS_BG, highlightthickness=0, cursor="crosshair", width=1)
         self.canvas.pack(fill="both", expand=True)
 
         self.canvas.bind("<ButtonPress-1>", self._on_canvas_press)
@@ -188,7 +285,7 @@ class ScannerTab:
             state="readonly", width=28, style="Dark.TCombobox",
         )
         self.mode_combo.pack(side="left", padx=(8, 18))
-        self.mode_combo.bind("<<ComboboxSelected>>", lambda evt: self.update_preview())
+        self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
 
         ttk.Label(options_row, text=tr("scanner_output_pdf"), style="Field.TLabel").pack(side="left")
         self.output_entry = ttk.Entry(options_row, textvariable=self.output_var, style="Dark.TEntry", width=26)
@@ -223,16 +320,35 @@ class ScannerTab:
 
     def _update_page_label(self):
         if not self.pages:
-            self.page_label_var.set(tr("scanner_no_pages"))
+            text = tr("scanner_no_pages")
         else:
-            self.page_label_var.set(
-                tr("scanner_page_label").format(num=self.current_index + 1, total=len(self.pages))
-            )
+            text = tr("scanner_page_label").format(num=self.current_index + 1, total=len(self.pages))
+            pg = self.current_page
+            if pg is not None and pg.label:
+                text += f" · {pg.label}"
+        self._page_label_text = text
+        self._fit_page_label(self._strip_width())
+
+    def _fit_page_label(self, strip_width):
+        # One line only: a long page name must not push the thumbnails down.
+        text = getattr(self, "_page_label_text", self.page_label_var.get())
+        self.page_label_var.set(self._ellipsize(text, self._caption_font, strip_width - 4))
 
     def _show_current_page(self):
         self._update_page_label()
+        self._fit_strip()
         self._redraw_canvas()
         self.update_preview()
+
+    def _debounce(self, key, delay_ms, fn):
+        job = self._debounce_jobs.pop(key, None)
+        if job is not None:
+            self.app_root.after_cancel(job)
+
+        def run():
+            self._debounce_jobs.pop(key, None)
+            fn()
+        self._debounce_jobs[key] = self.app_root.after(delay_ms, run)
 
     def _default_corners_for_shape(self, h, w):
         margin = max(0, min(20, min(h, w) // 12))
@@ -281,6 +397,7 @@ class ScannerTab:
             tr("scanner_crop_area"),
             tr("scanner_page_count").format(count=len(self.pages))
         )
+        self._schedule_session_save()
         self._start_corner_detection(jobs)
         return len(jobs)
 
@@ -368,6 +485,7 @@ class ScannerTab:
             return
 
         page.corners = list(corners)
+        self._schedule_session_save()
         if page is self.current_page:
             self._redraw_canvas()
             self.update_preview()
@@ -410,6 +528,22 @@ class ScannerTab:
         else:
             self.current_index = min(self.current_index, len(self.pages) - 1)
         self._show_current_page()
+        self._schedule_session_save()
+
+    def clear_all_pages(self):
+        """Drop every page and the saved session to start a new document."""
+        if not self.pages or self._detecting_corners:
+            return
+        if not messagebox.askyesno(tr("scanner_clear_all"), tr("scanner_clear_all_confirm"), parent=self.app_root):
+            return
+        self.pages.clear()
+        self._thumb_cache.clear()
+        self.current_index = -1
+        self.canvas.delete("all")
+        self.preview_canvas.delete("all")
+        self._show_current_page()
+        self._clear_session()
+        self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_select_hint"))
 
     def prev_page(self):
         if self.pages and self.current_index > 0:
@@ -432,60 +566,461 @@ class ScannerTab:
         self.pages[i], self.pages[j] = self.pages[j], self.pages[i]
         self.current_index = j
         self._show_current_page()
+        self._schedule_session_save()
+
+    def _move_page_to(self, page, insert_at):
+        """Move *page* so it lands before the page currently at *insert_at*
+        (len(self.pages) = to the end)."""
+        if page not in self.pages:
+            return
+        src = self.pages.index(page)
+        dst = insert_at - 1 if insert_at > src else insert_at
+        dst = max(0, min(len(self.pages) - 1, dst))
+        if dst == src:
+            return
+        self.pages.insert(dst, self.pages.pop(src))
+        self.current_index = dst
+        self._show_current_page()
+        self._schedule_session_save()
+
+    def _remove_page(self, page):
+        if page in self.pages:
+            self.current_index = self.pages.index(page)
+            self.remove_current()
+
+    def _select_relative(self, delta):
+        if self.pages:
+            index = max(0, min(len(self.pages) - 1, self.current_index + delta))
+            if index != self.current_index:
+                self.current_index = index
+                self._show_current_page()
+        return "break"
 
     # ─────────────────────────────────────────────────────────────────────
-    #  Page strip (thumbnails)
+    #  Page strip: thumbnail grid, drag to reorder, rename, resizable
     # ─────────────────────────────────────────────────────────────────────
 
-    _THUMB_W = 88
-    _THUMB_H = 124
-    _THUMB_SLOT = 150   # vertical space per thumbnail incl. number + gap
+    _STRIP_MIN_W = 132
+    _CANVAS_MIN_W = 320       # the crop canvas never gets narrower than this
+    _SASH_W = 10
+    _FIT_MARGIN = 8           # room kept on each side of the photo in auto width
+    _THUMB_TARGET_W = 112     # a new column opens once there is room for this
+    _THUMB_MIN_W = 72
+    _THUMB_MAX_W = 180
+    _THUMB_GAP = 12
     _THUMB_TOP = 8
+    _THUMB_CAPTION_H = 22
+    _THUMB_ASPECT = A4_HEIGHT_PX / A4_WIDTH_PX
+    _DRAG_START_PX = 6
+    _AUTOSCROLL_ZONE = 28
 
-    def _page_thumb(self, pg):
-        key = (pg.rotation, tuple(pg.corners))
+    def _strip_layout(self):
+        """(cols, thumb_w, thumb_h, cell_w, cell_h, left) for the strip's current width."""
+        width = max(int(self.strip_canvas.winfo_width()), self._STRIP_MIN_W - 4)
+        gap = self._THUMB_GAP
+        cols = max(1, (width - gap) // (self._THUMB_TARGET_W + gap))
+        cols = max(1, min(cols, len(self.pages)))    # few pages → fewer, bigger thumbnails
+        thumb_w = (width - gap * (cols + 1)) // cols
+        # Steps of 4 px keep the thumbnail cache warm while the strip is resized.
+        thumb_w = max(self._THUMB_MIN_W, min(self._THUMB_MAX_W, thumb_w)) // 4 * 4
+        thumb_h = int(round(thumb_w * self._THUMB_ASPECT))
+        cell_w = thumb_w + gap
+        cell_h = thumb_h + self._THUMB_CAPTION_H + gap
+        left = max(gap // 2, (width - (cols * cell_w - gap)) // 2)
+        return cols, thumb_w, thumb_h, cell_w, cell_h, left
+
+    def _cell_xy(self, index, layout):
+        """Top-left corner of thumbnail *index*, canvas coordinates."""
+        cols, _tw, _th, cell_w, cell_h, left = layout
+        row, col = divmod(index, cols)
+        return left + col * cell_w, self._THUMB_TOP + row * cell_h
+
+    def _strip_index_at(self, x, y, layout):
+        cols, _tw, _th, cell_w, cell_h, left = layout
+        half_gap = self._THUMB_GAP / 2
+        col = int((x - left + half_gap) // cell_w)
+        row = int((y - self._THUMB_TOP + half_gap) // cell_h)
+        if not (0 <= col < cols) or row < 0:
+            return None
+        index = row * cols + col
+        return index if index < len(self.pages) else None
+
+    def _strip_drop_slot(self, x, y, layout):
+        """Gap nearest to (x, y) as (insert_index, row, col)."""
+        cols, _tw, _th, cell_w, cell_h, left = layout
+        n = len(self.pages)
+        half_gap = self._THUMB_GAP / 2
+        if cols == 1:
+            k = max(0, min(n, int(round((y - self._THUMB_TOP + half_gap) / cell_h))))
+            return k, k, 0
+        rows = max(1, -(-n // cols))
+        row = max(0, min(rows - 1, int((y - self._THUMB_TOP + half_gap) // cell_h)))
+        col = max(0, min(cols, int(round((x - left + half_gap) / cell_w))))
+        col = min(col, n - row * cols)
+        return row * cols + col, row, col
+
+    def _page_thumb(self, pg, thumb_w, thumb_h):
+        key = (pg.rotation, tuple(pg.corners), thumb_w, thumb_h)
         cached = self._thumb_cache.get(id(pg))
         if cached and cached[0] == key:
             return cached[1]
-        warped = perspective_warp(pg.display_image, pg.corners, self._THUMB_W * 2, self._THUMB_H * 2)
-        small = cv2.resize(warped, (self._THUMB_W, self._THUMB_H), interpolation=cv2.INTER_AREA)
+        warped = perspective_warp(pg.display_image, pg.corners, thumb_w * 2, thumb_h * 2)
+        small = cv2.resize(warped, (thumb_w, thumb_h), interpolation=cv2.INTER_AREA)
         photo = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB)))
         self._thumb_cache[id(pg)] = (key, photo)
         return photo
 
+    @staticmethod
+    def _ellipsize(text, font, max_px):
+        if font.measure(text) <= max_px:
+            return text
+        lo, hi = 0, len(text)
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if font.measure(text[:mid] + "…") <= max_px:
+                lo = mid
+            else:
+                hi = mid - 1
+        return text[:lo].rstrip() + "…"
+
     def _refresh_strip(self):
         c = self.strip_canvas
-        c.delete("all")
-        width = max(int(c.winfo_width()), 128)
-        x = width // 2
+        c.delete("strip", "drag")          # the rename entry ("rename") survives redraws
+        layout = self._strip_layout()
+        cols, tw, th, cell_w, cell_h, _left = layout
         for i, pg in enumerate(self.pages):
-            top = self._THUMB_TOP + i * self._THUMB_SLOT
+            x, y = self._cell_xy(i, layout)
             selected = i == self.current_index
             if selected:
-                c.create_rectangle(x - self._THUMB_W // 2 - 5, top - 4, x + self._THUMB_W // 2 + 5, top + self._THUMB_H + 4,
-                                   outline=PRIMARY_ACCENT, width=3)
+                c.create_rectangle(x - 5, y - 4, x + tw + 5, y + th + 4, outline=PRIMARY_ACCENT, width=3, tags="strip")
             try:
-                c.create_image(x, top, image=self._page_thumb(pg), anchor="n")
+                c.create_image(x, y, image=self._page_thumb(pg, tw, th), anchor="nw", tags="strip")
             except Exception:
-                c.create_rectangle(x - self._THUMB_W // 2, top, x + self._THUMB_W // 2, top + self._THUMB_H, fill="#dfe6ee", outline="")
-            c.create_text(x, top + self._THUMB_H + 13, text=str(i + 1),
-                          fill=PRIMARY_ACCENT if selected else MUTED_TEXT, font=("Segoe UI Semibold", 9))
-        total_h = self._THUMB_TOP + len(self.pages) * self._THUMB_SLOT
-        c.configure(scrollregion=(0, 0, width, total_h))
-        if self.pages and 0 <= self.current_index < len(self.pages) and total_h > 0:
-            view_h = max(1, c.winfo_height())
-            top = self._THUMB_TOP + self.current_index * self._THUMB_SLOT
-            first, last = c.yview()
-            if top < first * total_h or top + self._THUMB_SLOT > last * total_h:
-                c.yview_moveto(max(0.0, (top - (view_h - self._THUMB_SLOT) / 2) / total_h))
+                c.create_rectangle(x, y, x + tw, y + th, fill="#dfe6ee", outline="", tags="strip")
+            font = self._caption_font_sel if selected else self._caption_font
+            caption = str(i + 1) + (f" · {pg.label}" if pg.label else "")
+            c.create_text(x + tw / 2, y + th + 13, text=self._ellipsize(caption, font, cell_w - 4),
+                          fill=PRIMARY_ACCENT if selected else MUTED_TEXT, font=font, tags="strip")
 
-    def _on_strip_click(self, event):
-        self.strip_canvas.focus_set()
-        y = self.strip_canvas.canvasy(event.y) - self._THUMB_TOP
-        index = int(y // self._THUMB_SLOT)
-        if 0 <= index < len(self.pages) and index != self.current_index:
+        width = max(int(c.winfo_width()), self._STRIP_MIN_W - 4)
+        total_h = self._THUMB_TOP + -(-len(self.pages) // cols) * cell_h
+        c.configure(scrollregion=(0, 0, width, max(total_h, 1)))
+        self._place_rename_entry(layout)
+
+        if self._strip_dragging:
+            self._draw_drag_overlay(layout)
+        elif self.pages and 0 <= self.current_index < len(self.pages) and total_h > 0:
+            # keep the selected page in view
+            view_h = max(1, c.winfo_height())
+            _x, top = self._cell_xy(self.current_index, layout)
+            first, last = c.yview()
+            if top < first * total_h or top + cell_h > last * total_h:
+                c.yview_moveto(max(0.0, (top - (view_h - cell_h) / 2) / total_h))
+
+    # ── drag to reorder ──────────────────────────────────────────────────
+
+    def _on_strip_press(self, event):
+        c = self.strip_canvas
+        c.focus_set()
+        self._finish_rename()
+        self._strip_press = None
+        index = self._strip_index_at(c.canvasx(event.x), c.canvasy(event.y), self._strip_layout())
+        if index is None:
+            return
+        self._strip_press = (self.pages[index], event.x, event.y)
+        if index != self.current_index:
             self.current_index = index
             self._show_current_page()
+
+    def _on_strip_motion(self, event):
+        if self._strip_press is None:
+            return
+        page, x0, y0 = self._strip_press
+        if not self._strip_dragging:
+            if abs(event.x - x0) < self._DRAG_START_PX and abs(event.y - y0) < self._DRAG_START_PX:
+                return
+            if page not in self.pages:
+                self._strip_press = None
+                return
+            self._strip_dragging = True
+            self._drag_ghost = self._make_drag_ghost(page)
+            self.strip_canvas.configure(cursor="fleur")
+        self._strip_drag_xy = (event.x, event.y)
+        self._draw_drag_overlay()
+        if self._autoscroll_job is None and self._autoscroll_step():
+            self._autoscroll_job = self.strip_canvas.after(40, self._autoscroll_tick)
+
+    def _on_strip_release(self, event):
+        press, dragging = self._strip_press, self._strip_dragging
+        self._end_strip_drag()
+        if press is None or not dragging:
+            return
+        c = self.strip_canvas
+        if event.x < -40 or event.x > c.winfo_width() + 40:
+            return      # dropped outside the strip: cancel
+        y = max(0, min(c.winfo_height(), event.y))
+        insert_at, _row, _col = self._strip_drop_slot(c.canvasx(event.x), c.canvasy(y), self._strip_layout())
+        self._move_page_to(press[0], insert_at)
+
+    def _end_strip_drag(self):
+        self._strip_press = None
+        self._strip_dragging = False
+        self._drag_ghost = None
+        if self._autoscroll_job is not None:
+            self.strip_canvas.after_cancel(self._autoscroll_job)
+            self._autoscroll_job = None
+        self.strip_canvas.delete("drag")
+        self.strip_canvas.configure(cursor="")
+
+    def _make_drag_ghost(self, page):
+        gw = 56
+        gh = int(round(gw * self._THUMB_ASPECT))
+        try:
+            warped = perspective_warp(page.display_image, page.corners, gw * 2, gh * 2)
+            small = cv2.resize(warped, (gw, gh), interpolation=cv2.INTER_AREA)
+            return ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB)))
+        except Exception:
+            return None
+
+    def _draw_drag_overlay(self, layout=None):
+        c = self.strip_canvas
+        c.delete("drag")
+        page = self._strip_press[0] if self._strip_press else None
+        if page is None or page not in self.pages:
+            return
+        layout = layout or self._strip_layout()
+        cols, tw, th, cell_w, cell_h, left = layout
+        half_gap = self._THUMB_GAP / 2
+
+        # fade the page being moved
+        sx, sy = self._cell_xy(self.pages.index(page), layout)
+        c.create_rectangle(sx, sy, sx + tw, sy + th, fill=SURFACE_ALT, stipple="gray50",
+                           outline=MUTED_TEXT, dash=(4, 3), tags="drag")
+
+        # where it will land
+        ex, ey = self._strip_drag_xy
+        x, y = c.canvasx(ex), c.canvasy(ey)
+        _insert_at, row, col = self._strip_drop_slot(x, y, layout)
+        if cols == 1:
+            ly = self._THUMB_TOP + row * cell_h - half_gap
+            c.create_line(left - 4, ly, left + tw + 4, ly, fill=PRIMARY_ACCENT, width=4, capstyle="round", tags="drag")
+        else:
+            lx = left + col * cell_w - half_gap
+            ly = self._THUMB_TOP + row * cell_h
+            c.create_line(lx, ly - 4, lx, ly + th + 4, fill=PRIMARY_ACCENT, width=4, capstyle="round", tags="drag")
+
+        # small copy under the pointer
+        if self._drag_ghost is not None:
+            gw, gh = self._drag_ghost.width(), self._drag_ghost.height()
+            gx = x + 14 if ex + 14 + gw < c.winfo_width() else x - 14 - gw
+            gy = y + 10
+            c.create_image(gx, gy, image=self._drag_ghost, anchor="nw", tags="drag")
+            c.create_rectangle(gx - 1, gy - 1, gx + gw + 1, gy + gh + 1, outline=PRIMARY_ACCENT, width=2, tags="drag")
+
+    def _autoscroll_step(self):
+        if not self._strip_dragging:
+            return 0
+        y = self._strip_drag_xy[1]
+        if y < self._AUTOSCROLL_ZONE:
+            return -1
+        if y > self.strip_canvas.winfo_height() - self._AUTOSCROLL_ZONE:
+            return 1
+        return 0
+
+    def _autoscroll_tick(self):
+        self._autoscroll_job = None
+        step = self._autoscroll_step()
+        if step:
+            self.strip_canvas.yview_scroll(step, "units")
+            self._draw_drag_overlay()
+            self._autoscroll_job = self.strip_canvas.after(40, self._autoscroll_tick)
+
+    # ── rename ───────────────────────────────────────────────────────────
+
+    def rename_current(self):
+        if self.current_page is not None:
+            self._start_rename(self.current_page)
+        return "break"
+
+    def _on_strip_double(self, event):
+        c = self.strip_canvas
+        index = self._strip_index_at(c.canvasx(event.x), c.canvasy(event.y), self._strip_layout())
+        if index is None:
+            return
+        self._strip_press = None
+        if index != self.current_index:
+            self.current_index = index
+            self._show_current_page()
+        self._start_rename(self.pages[index])
+
+    def _start_rename(self, page):
+        self._finish_rename()
+        if page not in self.pages:
+            return
+        entry = tk.Entry(self.strip_canvas, font=self._caption_font, justify="center", relief="flat",
+                         bg=SURFACE_COLOR, fg=TEXT_COLOR, insertbackground=TEXT_COLOR,
+                         highlightthickness=2, highlightcolor=PRIMARY_ACCENT, highlightbackground=PRIMARY_ACCENT)
+        entry.insert(0, page.label)
+        entry.select_range(0, "end")
+        entry.bind("<Return>", lambda e: self._finish_rename(refocus=True))
+        entry.bind("<KP_Enter>", lambda e: self._finish_rename(refocus=True))
+        entry.bind("<Escape>", lambda e: self._finish_rename(commit=False, refocus=True))
+        entry.bind("<Tab>", lambda e: self._rename_step(1))
+        entry.bind("<Shift-Tab>", lambda e: self._rename_step(-1))
+        entry.bind("<FocusOut>", lambda e: self._finish_rename())
+        self._rename_page = page
+        self._rename_entry = entry
+        self._place_rename_entry(self._strip_layout())
+        entry.focus_set()
+
+    def _place_rename_entry(self, layout):
+        entry, page = self._rename_entry, self._rename_page
+        if entry is None:
+            return
+        if page not in self.pages:
+            self._finish_rename(commit=False)
+            return
+        _cols, tw, th, cell_w, _cell_h, _left = layout
+        x, y = self._cell_xy(self.pages.index(page), layout)
+        c = self.strip_canvas
+        width = max(cell_w - 2, 96)
+        if c.find_withtag("rename"):
+            c.coords("rename", x + tw / 2, y + th + 2)
+            c.itemconfigure("rename", width=width)
+        else:
+            c.create_window(x + tw / 2, y + th + 2, window=entry, width=width, anchor="n", tags="rename")
+
+    def _finish_rename(self, commit=True, refocus=False):
+        entry, page = self._rename_entry, self._rename_page
+        if entry is None:
+            return "break"
+        self._rename_entry = self._rename_page = None     # before destroy(): FocusOut re-enters
+        text = entry.get()
+        self.strip_canvas.delete("rename")
+        entry.destroy()
+        if refocus:
+            self.strip_canvas.focus_set()
+        if commit and page in self.pages:
+            label = _clean_label(text)
+            if label != page.label:
+                page.label = label
+                self._update_page_label()
+                self._schedule_session_save()
+        self._refresh_strip()
+        return "break"
+
+    def _rename_step(self, step):
+        """Tab / Shift+Tab: save this name and go straight to the next page's."""
+        page = self._rename_page
+        self._finish_rename()
+        if page in self.pages:
+            index = self.pages.index(page) + step
+            if 0 <= index < len(self.pages):
+                self.current_index = index
+                self._show_current_page()
+                self._start_rename(self.pages[index])
+                return "break"
+        self.strip_canvas.focus_set()
+        return "break"
+
+    def _on_strip_menu(self, event):
+        c = self.strip_canvas
+        index = self._strip_index_at(c.canvasx(event.x), c.canvasy(event.y), self._strip_layout())
+        if index is None:
+            return
+        self._finish_rename()
+        if index != self.current_index:
+            self.current_index = index
+            self._show_current_page()
+        page = self.pages[index]
+        menu = tk.Menu(c, tearoff=0)
+        # after(): let the menu release focus first, or the new entry loses it at once.
+        menu.add_command(label=tr("scanner_page_rename"), accelerator="F2",
+                         command=lambda: self.app_root.after(50, self._start_rename, page))
+        menu.add_command(label=tr("scanner_page_to_start"), command=lambda: self._move_page_to(page, 0))
+        menu.add_command(label=tr("scanner_page_to_end"), command=lambda: self._move_page_to(page, len(self.pages)))
+        menu.add_separator()
+        menu.add_command(label=tr("scanner_remove_photo"), command=lambda: self._remove_page(page),
+                         state="disabled" if self._detecting_corners else "normal")
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    # ── resizable strip ──────────────────────────────────────────────────
+
+    def _strip_width(self):
+        return int(self.strip_frame.cget("width"))
+
+    def _set_strip_width(self, width):
+        work_w = self.work_frame.winfo_width()
+        if work_w > 1:
+            width = min(width, work_w - self._SASH_W - self._CANVAS_MIN_W)
+        width = int(max(self._STRIP_MIN_W, width))
+        if width != self._strip_width():
+            self.strip_frame.configure(width=width)
+            self._relayout_strip_header(width)
+
+    def _relayout_strip_header(self, width):
+        """Narrow strip: hint on two short lines, buttons stacked.
+        Wide strip: one hint line, buttons side by side."""
+        self._fit_page_label(width)
+        wide = width >= 260
+        if wide == self._strip_wide:
+            return
+        self._strip_wide = wide
+        sep = " · " if wide else "\n"
+        self.strip_hint_widget.configure(text=tr("scanner_strip_hint_drag") + sep + tr("scanner_strip_hint_name"))
+        self.move_up_button.pack_forget()
+        self.move_down_button.pack_forget()
+        if wide:
+            self.move_up_button.pack(side="left", fill="x", expand=True, padx=(0, 3))
+            self.move_down_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
+        else:
+            self.move_up_button.pack(fill="x")
+            self.move_down_button.pack(fill="x", pady=(4, 0))
+
+    def _fit_strip(self):
+        """Auto width: the strip takes the empty room beside a narrow (e.g. 9:16)
+        photo. Manual width: keep the user's choice, clamped to the window."""
+        if not self._strip_auto:
+            self._set_strip_width(int(cfg.get("scanner_strip_width", 0)) or self._STRIP_MIN_W)
+            return
+        work_w = self.work_frame.winfo_width()
+        canvas_h = self.canvas.winfo_height()
+        if work_w < 100 or canvas_h < 50:
+            return      # not laid out yet; <Configure> calls again
+        if not self.pages:
+            self._set_strip_width(self._STRIP_MIN_W)
+            return
+        # Median, so one odd landscape page doesn't reshape a portrait document.
+        aspect = statistics.median([pg.display_image.shape[1] / pg.display_image.shape[0] for pg in self.pages])
+        photo_w = int(canvas_h * aspect) + 2 * self._FIT_MARGIN
+        self._set_strip_width(work_w - self._SASH_W - photo_w)
+
+    def _on_sash_press(self, event):
+        self._sash_drag = [event.x_root, self._strip_width(), False]
+        self._sash_grip.configure(bg=PRIMARY_ACCENT)
+
+    def _on_sash_drag(self, event):
+        if not self._sash_drag:
+            return
+        x0, w0, _moved = self._sash_drag
+        if abs(event.x_root - x0) >= 2:
+            self._sash_drag[2] = True
+        self._set_strip_width(w0 + event.x_root - x0)
+
+    def _on_sash_release(self, _event):
+        drag, self._sash_drag = self._sash_drag, None
+        self._sash_grip.configure(bg=BORDER_COLOR)
+        if drag and drag[2]:
+            self._strip_auto = False
+            cfg.set("scanner_strip_width", self._strip_width())
+
+    def _on_sash_double(self, _event):
+        self._strip_auto = True
+        cfg.set("scanner_strip_width", 0)
+        self._fit_strip()
 
     # ─────────────────────────────────────────────────────────────────────
     #  File picking
@@ -542,10 +1077,20 @@ class ScannerTab:
                 new_corners.append((y, new_h - x))
             else:
                 new_corners.append((x, y))
+        # The quad turned with the photo, so its first point is no longer the
+        # top-left one. perspective_warp maps corners[0] to the output's top-left,
+        # so without re-anchoring the preview and PDF keep the old orientation.
+        # CW: the old bottom-left becomes top-left; CCW: the old top-right does.
+        if angle_step == 90:
+            new_corners = new_corners[-1:] + new_corners[:-1]
+        elif angle_step == -90:
+            new_corners = new_corners[1:] + new_corners[:1]
         pg.corners = new_corners
-        
+
+        self._fit_strip()     # the photo's shape changed
         self._redraw_canvas()
         self.update_preview()
+        self._schedule_session_save()
 
     def auto_detect(self):
         pg = self.current_page
@@ -555,8 +1100,8 @@ class ScannerTab:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return
 
-        image = pg.display_image.copy() if pg.rotation != 0 else None
-        path = None if image is not None else pg.path
+        path = self._detection_source_path(pg) if pg.rotation == 0 else None
+        image = pg.display_image.copy() if path is None else None
         self._start_corner_detection([{
             "page": pg,
             "path": path,
@@ -574,6 +1119,7 @@ class ScannerTab:
         pg.corners = self._default_corners_for_image(pg.display_image)
         self._redraw_canvas()
         self.update_preview()
+        self._schedule_session_save()
 
     # ─────────────────────────────────────────────────────────────────────
     #  Canvas drawing
@@ -632,7 +1178,9 @@ class ScannerTab:
             self._draw_magnifier(self.canvas, pg, self.dragging_corner, self.last_ex, self.last_ey, scale)
 
     def _on_canvas_resize(self, event):
-        self._redraw_canvas()
+        # Rescaling the photo is the slow part; do it once the size settles
+        # (window or strip being dragged fires dozens of these).
+        self._debounce("canvas", 40, self._redraw_canvas)
 
     # ─────────────────────────────────────────────────────────────────────
     #  Corner dragging
@@ -678,6 +1226,7 @@ class ScannerTab:
             self.dragging_corner = None
             self._redraw_canvas() # remove magnifier
             self.update_preview()
+            self._schedule_session_save()
 
     # ─────────────────────────────────────────────────────────────────────
     #  Live preview
@@ -716,6 +1265,220 @@ class ScannerTab:
         except Exception:
             pass
 
+    def _on_mode_changed(self, _event=None):
+        self.update_preview()
+        self._schedule_session_save()
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Session persistence (survives app restart)
+    # ─────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _mode_label(mode):
+        for m, key in _MODE_MAP:
+            if m == mode:
+                return tr(key)
+        return None
+
+    def _detection_source_path(self, pg):
+        """A file whose pixels equal pg.cv_image. The session PNG wins: the
+        original may have been moved, deleted or edited since it was added."""
+        stored = self._session_store.image_path(pg.uid)
+        if os.path.isfile(stored):
+            return stored
+        if pg.path and os.path.isfile(pg.path):
+            return pg.path
+        return None
+
+    def _schedule_session_save(self):
+        """Debounced autosave. Call after ANY change to pages, corners, rotation,
+        order, scan mode or output path. Main thread only."""
+        if self._session_restoring or not self._session_store.enabled:
+            return
+        self._session_rev += 1
+        if self._session_save_job is not None:
+            self.app_root.after_cancel(self._session_save_job)
+        self._session_save_job = self.app_root.after(SESSION_SAVE_DELAY_MS, self._save_session)
+
+    def _save_session(self):
+        """Snapshot the state (cheap, main thread) and hand it to the writer thread."""
+        self._session_save_job = None
+        if self._session_restoring or not self._session_store.enabled:
+            return
+        if not self.pages:
+            self._session_store.clear()
+            return
+
+        meta = {
+            "version": SESSION_VERSION,
+            # corners[0] is the display-space top-left (see _apply_rotation).
+            # Sessions without this key predate that fix.
+            "corner_order": "display",
+            "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "scan_mode": self._get_selected_mode(),   # internal id, not the translated label
+            "output_path": self.output_var.get().strip(),
+            "current_index": max(0, self.current_index),
+            "pages": [
+                {
+                    "uid": pg.uid,
+                    "source_path": pg.path,
+                    "width": int(pg.cv_image.shape[1]),
+                    "height": int(pg.cv_image.shape[0]),
+                    "rotation": int(pg.rotation) % 360,
+                    "label": pg.label,
+                    # Corners are integer pixels everywhere in this tab; int() also
+                    # turns any numpy scalar into something json can encode.
+                    "corners": [[int(round(float(x))), int(round(float(y)))] for x, y in pg.corners],
+                }
+                for pg in self.pages
+            ],
+        }
+        # References only, no copies: cv_image is never modified in place.
+        self._session_store.save(meta, {pg.uid: pg.cv_image for pg in self.pages})
+
+    def save_session_now(self):
+        """Run a pending debounced save immediately (e.g. window hidden to tray)."""
+        if self._session_save_job is not None:
+            self.app_root.after_cancel(self._session_save_job)
+            self._save_session()
+
+    def flush_session(self, timeout=10.0):
+        """Save pending changes and wait until they are on disk. Used on app exit."""
+        self.save_session_now()
+        return self._session_store.flush(timeout)
+
+    def _clear_session(self):
+        if self._session_save_job is not None:
+            self.app_root.after_cancel(self._session_save_job)
+            self._session_save_job = None
+        self._session_store.clear()
+
+    def _on_session_error(self, message):
+        # Once per run is enough; the next save retries whatever is missing.
+        if self._session_error_shown:
+            return
+        self._session_error_shown = True
+        self.feedback.set_error(tr("scanner_session_title"),
+                                tr("scanner_session_save_failed").format(error=message))
+
+    def _load_session(self):
+        """Called once from __init__. Reads session.json now (small, fast);
+        the images are decoded the first time the tab is shown."""
+        if self._session_store.locked_by_other:
+            self.feedback.set_info(tr("scanner_session_title"), tr("scanner_session_locked"))
+            return
+        meta = self._session_store.load_meta()
+        if not meta or not meta.get("pages"):
+            return
+        self._session_meta = meta
+        self._session_restoring = True        # nothing may overwrite it before it is applied
+        self.parent.bind("<Map>", self._on_tab_mapped, add="+")
+        if self.parent.winfo_ismapped():
+            self._begin_session_restore()
+
+    def _on_tab_mapped(self, event):
+        if event.widget is self.parent and self._session_meta is not None:
+            self._begin_session_restore()
+
+    def _begin_session_restore(self):
+        meta, self._session_meta = self._session_meta, None   # one-shot
+        if meta is None:
+            return
+        # Reuse the tab's busy lock: add/rotate/detect/scan already refuse to
+        # run while it is set, and the toolbar gets disabled.
+        self._detecting_corners = True
+        self._set_corner_detection_busy(True, tr("scanner_session_restoring"))
+        threading.Thread(target=self._restore_session_worker, args=(meta,), daemon=True).start()
+
+    def _restore_session_worker(self, meta):
+        # Worker thread: disk + numpy only, no Tk calls.
+        restored, skipped = [], 0
+        legacy_order = meta.get("corner_order") != "display"
+        for entry in meta["pages"]:
+            try:
+                page = self._page_from_session_entry(entry, legacy_order)
+            except Exception:
+                logging.exception("Scanner session page could not be restored")
+                page = None
+            if page is None:
+                skipped += 1
+            else:
+                restored.append(page)
+        self.app_root.after(0, self._apply_restored_session, meta, restored, skipped)
+
+    def _page_from_session_entry(self, entry, legacy_order=False):
+        if not isinstance(entry, dict):
+            return None
+        uid = entry.get("uid")
+        img = self._session_store.read_image(uid)    # also validates the uid
+        if img is None:
+            return None
+        h, w = img.shape[:2]
+        if entry.get("width") != w or entry.get("height") != h:
+            return None    # pixels don't match the metadata, corners would be wrong
+
+        source = entry.get("source_path")
+        if not isinstance(source, str) or not source:
+            source = self._session_store.image_path(uid)
+        label = entry.get("label", "")
+        page = _PageData(source, img, [], uid=uid, label=_clean_label(label) if isinstance(label, str) else "")
+
+        rotation = entry.get("rotation", 0)
+        if rotation in (90, 180, 270):
+            page.rotation = int(rotation)
+            page.display_image = rotate_image(img, page.rotation)
+
+        dh, dw = page.display_image.shape[:2]
+        corners = entry.get("corners")
+        if _valid_corners(corners):
+            # Already in display (rotated) coordinates: do NOT call _apply_rotation.
+            page.corners = [(min(max(int(round(x)), 0), dw), min(max(int(round(y)), 0), dh))
+                            for x, y in corners]
+            if legacy_order:
+                # Rotating used to leave the list starting at any corner (the
+                # clockwise order itself was kept). Start it at the top-left.
+                k = min(range(4), key=lambda i: page.corners[i][0] + page.corners[i][1])
+                page.corners = page.corners[k:] + page.corners[:k]
+        else:
+            page.corners = self._default_corners_for_shape(dh, dw)
+        return page
+
+    def _apply_restored_session(self, meta, restored, skipped):
+        if restored:
+            # self.pages is empty: every way to add a page was locked meanwhile.
+            self.pages = restored + self.pages
+            idx = meta.get("current_index", 0)
+            self.current_index = idx if isinstance(idx, int) and 0 <= idx < len(self.pages) else 0
+            label = self._mode_label(meta.get("scan_mode"))
+            if label:
+                self.scan_mode_var.set(label)
+            out = meta.get("output_path")
+            if isinstance(out, str) and out and not self.output_var.get().strip():
+                self.output_var.set(out)      # trace fires, saves are still suppressed
+
+        self._session_restoring = False
+        self._detecting_corners = False
+        self._set_corner_detection_busy(False)
+        self.status_var.set(tr("str_ready"))
+
+        if not restored:
+            self._session_store.clear()
+            self.feedback.set_info(tr("scanner_session_title"), tr("scanner_session_failed"))
+            return
+
+        self._show_current_page()
+        if skipped:
+            self.feedback.set_info(
+                tr("scanner_session_title"),
+                tr("scanner_session_restored_partial").format(count=len(restored), skipped=skipped),
+            )
+            self._schedule_session_save()    # rewrite session.json without the broken pages
+        else:
+            self.feedback.set_info(
+                tr("scanner_session_title"),
+                tr("scanner_session_restored").format(count=len(restored)),
+            )
+
     # ─────────────────────────────────────────────────────────────────────
     #  Scan & export (multi-page)
     # ─────────────────────────────────────────────────────────────────────
@@ -738,6 +1501,7 @@ class ScannerTab:
             self.app_root.after(0, self.footer.update_progress, current, total, message)
 
         self._task_ctx = TaskContext(progress_callback=_on_progress)
+        self._scan_start_rev = self._session_rev
         self.footer.start_busy(cancel_callback=self._cancel_task)
         self.feedback.set_busy(tr("scanner_running"))
         self.status_var.set(tr("scanner_running"))
@@ -779,6 +1543,10 @@ class ScannerTab:
                 self.footer.finish_success()
                 self.status_var.set(tr("scanner_done"))
                 self.feedback.set_success(tr("scanner_done"), msg, output_pdf)
+                # Only forget the session if nothing changed while the PDF was
+                # being written; otherwise those edits are not in the PDF yet.
+                if self._session_rev == self._scan_start_rev:
+                    self._clear_session()
             self.app_root.after(0, _done)
 
         except CancelledError:
@@ -926,6 +1694,7 @@ class ScannerTab:
             self.fs_canvas.itemconfigure(f"corner_{self.fs_dragging_corner}", fill=CORNER_COLOR)
             self.fs_dragging_corner = None
             self._fs_redraw() # remove magnifier
+            self._schedule_session_save()
 
     # ─────────────────────────────────────────────────────────────────────
     #  Magnifier UI

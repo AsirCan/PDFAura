@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import threading
@@ -296,8 +297,15 @@ class MainWindow:
     def open_settings(self):
         SettingsDialog(self.root)
 
+    def _scanner_tab(self):
+        workspace = self.workspaces.get("scanner")
+        return workspace.instance if workspace else None
+
     def on_closing(self):
         if cfg.get("close_to_tray", True) and self.icon_path:
+            scanner = self._scanner_tab()
+            if scanner:
+                scanner.save_session_now()
             self.root.withdraw()
             self._notify_running_in_tray()
         else:
@@ -320,7 +328,19 @@ class MainWindow:
     def quit_window(self, icon, _item):
         if getattr(self, "tray_icon", None):
             self.tray_icon.stop()
-        self.root.after(0, self.root.quit)
+        # May be called from the tray thread: hop to the Tk thread first.
+        self.root.after(0, self._quit_mainloop)
+
+    def _quit_mainloop(self):
+        scanner = self._scanner_tab()
+        if scanner:
+            try:
+                self.root.config(cursor="watch")
+                self.root.update_idletasks()
+                scanner.flush_session(timeout=10.0)
+            except Exception:
+                logging.exception("Scanner session could not be flushed on exit")
+        self.root.quit()
 
     def fit_window_to_content(self):
         self.root.update_idletasks()

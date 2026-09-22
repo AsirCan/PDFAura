@@ -17,6 +17,8 @@ class ConfigManager:
             "close_to_tray": True,
             "ai_model_root": "",
             "ai_model_paths": {},
+            "scanner_session_enabled": True,
+            "scanner_strip_width": 0,      # 0 = auto (fit beside the photo)
         }
         
         self.config = self.default_config.copy()
@@ -43,6 +45,11 @@ class ConfigManager:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             logging.error(f"Config kaydedilemedi: {e}")
+
+    @property
+    def scanner_session_dir(self):
+        """%APPDATA%\\PDFAura\\scanner_session – Belge Tarayıcı'nın yarım kalan işi."""
+        return os.path.join(self.config_dir, "scanner_session")
 
     def get(self, key, default=None):
         return self.config.get(key, default)
