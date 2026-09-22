@@ -34,7 +34,7 @@ from src.core.document_scanner import (
 )
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, build_hint_strip, quick_error
 from src.gui.styles import (
     SURFACE_COLOR, SURFACE_ALT, FIELD_COLOR, TEXT_COLOR, MUTED_TEXT,
     BORDER_COLOR, PRIMARY_ACCENT, CONVERT_ACCENT,
@@ -93,8 +93,9 @@ class ScannerTab:
         # ── tkinter vars ──
         self.output_var = tk.StringVar()
         self.status_var = tk.StringVar(value=tr("str_ready"))
-        self.scan_mode_var = tk.StringVar(value=tr("scanner_mode_original"))
+        self.scan_mode_var = tk.StringVar(value=tr("scanner_mode_clean_doc"))
         self.page_label_var = tk.StringVar(value=tr("scanner_no_pages"))
+        self._thumb_cache = {}   # id(page) -> ((rotation, corners), PhotoImage)
 
         self.build_ui()
 
@@ -106,53 +107,65 @@ class ScannerTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(
-            shell,
-            tr("scanner_title"),
-            tr("scanner_btn"),
-            tr("scanner_select_hint"),
-            badge_text=tr("scanner_scan_mode"),
-        )
+        build_hint_strip(shell, tr("hint_scanner"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
         # ── Left panel ──
-        left = ttk.Frame(body, style="Surface.TFrame", padding=14)
+        left = ttk.Frame(body, style="Card.TFrame", padding=14)
         left.pack(side="left", fill="both", expand=True)
 
-        # ── Toolbar row 1: add/remove photos + page nav ──
+        # ── Toolbar row 1: photos in/out ──
         toolbar1 = ttk.Frame(left, style="Surface.TFrame")
-        toolbar1.pack(fill="x", pady=(0, 6))
+        toolbar1.pack(fill="x", pady=(0, 8))
 
-        self.add_photo_button = ttk.Button(toolbar1, text=tr("scanner_add_photo"), command=self.add_photos, style="Secondary.TButton")
+        self.add_photo_button = ttk.Button(toolbar1, text="＋ " + tr("scanner_add_photo"), command=self.add_photos, style="Secondary.TButton")
         self.add_photo_button.pack(side="left", padx=(0, 6))
         self.remove_photo_button = ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current, style="Ghost.TButton")
-        self.remove_photo_button.pack(side="left", padx=(0, 14))
+        self.remove_photo_button.pack(side="left", padx=(0, 6))
+        ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop, style="Ghost.TButton").pack(side="right")
 
-        # Page navigator
-        ttk.Button(toolbar1, text="◀", command=self.prev_page, style="Small.TButton", width=3).pack(side="left", padx=(0, 4))
-        ttk.Label(toolbar1, textvariable=self.page_label_var, style="Field.TLabel").pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar1, text="▶", command=self.next_page, style="Small.TButton", width=3).pack(side="left", padx=(0, 14))
+        # ── Toolbar row 2: per-page corrections ──
+        toolbar2 = ttk.Frame(left, style="Surface.TFrame")
+        toolbar2.pack(fill="x", pady=(0, 8))
+        ttk.Button(toolbar2, text=tr("scanner_rotate_ccw"), command=self.rotate_ccw, style="Small.TButton").pack(side="left", padx=(0, 4))
+        ttk.Button(toolbar2, text=tr("scanner_rotate_cw"), command=self.rotate_cw, style="Small.TButton").pack(side="left", padx=(0, 12))
+        ttk.Button(toolbar2, text=tr("scanner_auto_detect"), command=self.auto_detect, style="Small.TButton").pack(side="left", padx=(0, 4))
+        ttk.Button(toolbar2, text=tr("scanner_reset_corners"), command=self.reset_corners, style="Small.TButton").pack(side="left")
 
-        # Rotation
-        ttk.Button(toolbar1, text=tr("scanner_rotate_ccw"), command=self.rotate_ccw, style="Small.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar1, text=tr("scanner_rotate_cw"), command=self.rotate_cw, style="Small.TButton").pack(side="left", padx=(0, 10))
+        # ── Page strip (left) + crop canvas (right) ──
+        work = ttk.Frame(left, style="Surface.TFrame")
+        work.pack(fill="both", expand=True)
 
-        # Auto detect + reset
-        ttk.Button(toolbar1, text=tr("scanner_auto_detect"), command=self.auto_detect, style="Small.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar1, text=tr("scanner_reset_corners"), command=self.reset_corners, style="Small.TButton").pack(side="left", padx=(0, 10))
-        
-        # Fullscreen crop
-        ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop, style="Secondary.TButton").pack(side="left")
+        strip = ttk.Frame(work, style="Surface.TFrame", width=132)
+        strip.pack(side="left", fill="y", padx=(0, 10))
+        strip.pack_propagate(False)
+        ttk.Label(strip, text=tr("scanner_pages"), style="Section.TLabel").pack(anchor="w")
+        ttk.Label(strip, textvariable=self.page_label_var, style="Hint.TLabel", wraplength=128, justify="left").pack(anchor="w", pady=(2, 6))
+        strip_buttons = ttk.Frame(strip, style="Surface.TFrame")
+        strip_buttons.pack(side="bottom", fill="x", pady=(8, 0))
+        move_up = ttk.Button(strip_buttons, text=tr("scanner_move_up"), command=lambda: self.move_page(-1), style="Small.TButton")
+        move_up.pack(fill="x")
+        move_down = ttk.Button(strip_buttons, text=tr("scanner_move_down"), command=lambda: self.move_page(1), style="Small.TButton")
+        move_down.pack(fill="x", pady=(4, 0))
+
+        self.strip_canvas = tk.Canvas(strip, bg=SURFACE_ALT, highlightthickness=1, highlightbackground=BORDER_COLOR, width=128)
+        self.strip_canvas.pack(fill="both", expand=True)
+        self.strip_canvas.bind("<Button-1>", self._on_strip_click)
+        self.strip_canvas.bind("<MouseWheel>", lambda e: self.strip_canvas.yview_scroll(int(-e.delta / 120), "units"))
+        self.strip_canvas.bind("<Up>", lambda e: self.prev_page())
+        self.strip_canvas.bind("<Down>", lambda e: self.next_page())
+
         self._detect_controls = [
-            child for child in toolbar1.winfo_children()
+            child
+            for row in (toolbar1, toolbar2)
+            for child in row.winfo_children()
             if isinstance(child, ttk.Button)
         ]
 
-        # ── Canvas ──
-        canvas_frame = ttk.Frame(left, style="Surface.TFrame")
-        canvas_frame.pack(fill="both", expand=True)
+        canvas_frame = ttk.Frame(work, style="Surface.TFrame")
+        canvas_frame.pack(side="left", fill="both", expand=True)
 
         self.canvas = tk.Canvas(canvas_frame, bg=CANVAS_BG, highlightthickness=0, cursor="crosshair")
         self.canvas.pack(fill="both", expand=True)
@@ -189,7 +202,7 @@ class ScannerTab:
         right = ttk.Frame(body, style="App.TFrame")
         right.pack(side="left", fill="y", padx=(14, 0))
 
-        ttk.Label(right, text=tr("scanner_preview"), style="Section.TLabel").pack(anchor="w", pady=(0, 6))
+        ttk.Label(right, text=tr("scanner_preview"), style="PageEyebrow.TLabel").pack(anchor="w", pady=(0, 6))
         self.preview_canvas = tk.Canvas(right, bg=CANVAS_BG, width=260, height=370,
                                          highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.preview_canvas.pack(fill="x")
@@ -231,7 +244,7 @@ class ScannerTab:
         h, w = img.shape[:2]
         return self._default_corners_for_shape(h, w)
 
-    def _add_image_pages(self, files, select_last=False):
+    def _add_image_pages(self, files):
         if self._detecting_corners:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return 0
@@ -256,10 +269,8 @@ class ScannerTab:
         if not jobs:
             return 0
 
-        if self.current_index < 0:
-            self.current_index = self.pages.index(first_new_page)
-        elif select_last:
-            self.current_index = len(self.pages) - 1
+        # Jump to the first newly added photo so its corners can be checked.
+        self.current_index = self.pages.index(first_new_page)
 
         if not self.output_var.get().strip() and self.pages:
             base = os.path.splitext(self.pages[0].path)[0]
@@ -390,6 +401,7 @@ class ScannerTab:
     def remove_current(self):
         if not self.pages or self.current_index < 0:
             return
+        self._thumb_cache.pop(id(self.pages[self.current_index]), None)
         del self.pages[self.current_index]
         if not self.pages:
             self.current_index = -1
@@ -409,6 +421,72 @@ class ScannerTab:
             self.current_index += 1
             self._show_current_page()
 
+    def move_page(self, step):
+        """Move the selected page earlier (-1) or later (+1) in the PDF order."""
+        # Detection results are matched by page object, so reordering while
+        # corners are still being detected is safe.
+        i = self.current_index
+        j = i + step
+        if not self.pages or not (0 <= i < len(self.pages)) or not (0 <= j < len(self.pages)):
+            return
+        self.pages[i], self.pages[j] = self.pages[j], self.pages[i]
+        self.current_index = j
+        self._show_current_page()
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Page strip (thumbnails)
+    # ─────────────────────────────────────────────────────────────────────
+
+    _THUMB_W = 88
+    _THUMB_H = 124
+    _THUMB_SLOT = 150   # vertical space per thumbnail incl. number + gap
+    _THUMB_TOP = 8
+
+    def _page_thumb(self, pg):
+        key = (pg.rotation, tuple(pg.corners))
+        cached = self._thumb_cache.get(id(pg))
+        if cached and cached[0] == key:
+            return cached[1]
+        warped = perspective_warp(pg.display_image, pg.corners, self._THUMB_W * 2, self._THUMB_H * 2)
+        small = cv2.resize(warped, (self._THUMB_W, self._THUMB_H), interpolation=cv2.INTER_AREA)
+        photo = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB)))
+        self._thumb_cache[id(pg)] = (key, photo)
+        return photo
+
+    def _refresh_strip(self):
+        c = self.strip_canvas
+        c.delete("all")
+        width = max(int(c.winfo_width()), 128)
+        x = width // 2
+        for i, pg in enumerate(self.pages):
+            top = self._THUMB_TOP + i * self._THUMB_SLOT
+            selected = i == self.current_index
+            if selected:
+                c.create_rectangle(x - self._THUMB_W // 2 - 5, top - 4, x + self._THUMB_W // 2 + 5, top + self._THUMB_H + 4,
+                                   outline=PRIMARY_ACCENT, width=3)
+            try:
+                c.create_image(x, top, image=self._page_thumb(pg), anchor="n")
+            except Exception:
+                c.create_rectangle(x - self._THUMB_W // 2, top, x + self._THUMB_W // 2, top + self._THUMB_H, fill="#dfe6ee", outline="")
+            c.create_text(x, top + self._THUMB_H + 13, text=str(i + 1),
+                          fill=PRIMARY_ACCENT if selected else MUTED_TEXT, font=("Segoe UI Semibold", 9))
+        total_h = self._THUMB_TOP + len(self.pages) * self._THUMB_SLOT
+        c.configure(scrollregion=(0, 0, width, total_h))
+        if self.pages and 0 <= self.current_index < len(self.pages) and total_h > 0:
+            view_h = max(1, c.winfo_height())
+            top = self._THUMB_TOP + self.current_index * self._THUMB_SLOT
+            first, last = c.yview()
+            if top < first * total_h or top + self._THUMB_SLOT > last * total_h:
+                c.yview_moveto(max(0.0, (top - (view_h - self._THUMB_SLOT) / 2) / total_h))
+
+    def _on_strip_click(self, event):
+        self.strip_canvas.focus_set()
+        y = self.strip_canvas.canvasy(event.y) - self._THUMB_TOP
+        index = int(y // self._THUMB_SLOT)
+        if 0 <= index < len(self.pages) and index != self.current_index:
+            self.current_index = index
+            self._show_current_page()
+
     # ─────────────────────────────────────────────────────────────────────
     #  File picking
     # ─────────────────────────────────────────────────────────────────────
@@ -421,9 +499,15 @@ class ScannerTab:
             self.output_var.set(selected)
 
     def handle_external_drop(self, file_path):
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"):
-            self._add_image_pages([file_path], select_last=True)
+        self.handle_external_drop_many([file_path])
+
+    def handle_external_drop_many(self, file_paths):
+        # All dropped photos go in as one batch; one-by-one adds would be
+        # rejected while the first photo's corners are still being detected.
+        images = [p for p in file_paths
+                  if os.path.splitext(p)[1].lower() in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")]
+        if images:
+            self._add_image_pages(images)
 
     # ─────────────────────────────────────────────────────────────────────
     #  Rotation
@@ -498,13 +582,17 @@ class ScannerTab:
     def _redraw_canvas(self):
         self.canvas.delete("all")
         pg = self.current_page
-        if pg is None:
-            return
 
         cw = self.canvas.winfo_width()
         ch = self.canvas.winfo_height()
         if cw < 10 or ch < 10:
             self.canvas.after(50, self._redraw_canvas)
+            return
+
+        if pg is None:
+            self.canvas.create_text(cw // 2, ch // 2 - 22, text="📷", fill="#64748b", font=("Segoe UI Emoji", 30))
+            self.canvas.create_text(cw // 2, ch // 2 + 26, text=tr("scanner_empty_canvas"), fill="#cbd5e1",
+                                    font=("Segoe UI", 11), width=max(200, cw - 80), justify="center")
             return
 
         ih, iw = pg.display_image.shape[:2]
@@ -559,6 +647,7 @@ class ScannerTab:
             return
         pg = self.current_page
         if pg is None:
+            self.add_photos()
             return
         ox, oy = self.canvas_offset
         for i, (px, py) in enumerate(pg.corners):
@@ -602,6 +691,7 @@ class ScannerTab:
         return MODE_ORIGINAL
 
     def update_preview(self):
+        self._refresh_strip()
         pg = self.current_page
         if pg is None:
             return
@@ -724,7 +814,7 @@ class ScannerTab:
         self.fs_top.configure(bg=CANVAS_BG)
         self.fs_top.state('zoomed')  # Maximize on Windows
 
-        header = ttk.Frame(self.fs_top, style="Surface.TFrame", padding=10)
+        header = ttk.Frame(self.fs_top, style="Card.TFrame", padding=10)
         header.pack(fill="x", side="top")
         
         ttk.Label(header, text=tr("scanner_corners_hint"), style="Hint.TLabel").pack(side="left")

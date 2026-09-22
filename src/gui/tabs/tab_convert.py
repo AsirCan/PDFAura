@@ -6,8 +6,16 @@ from tkinter import ttk, filedialog
 from src.core.convert import excel_to_pdf, images_to_pdf, pdf_to_images, pdf_to_txt, pdf_to_word, ppt_to_pdf, word_to_pdf
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, notify_preview, quick_error
-from src.gui.styles import CONVERT_ACCENT, FIELD_COLOR, TEXT_COLOR
+from src.gui.helpers import (
+    InlineFeedback,
+    ProgressFooter,
+    bind_preview,
+    build_hint_strip,
+    move_listbox_item,
+    notify_preview,
+    quick_error,
+    style_listbox,
+)
 from src.utils.file_helper import format_size_mb
 
 
@@ -51,12 +59,12 @@ class ConvertTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(shell, _("txt_convert"), _("convert_btn"), _("convert_type"), badge_text=_("convert_type"))
+        build_hint_strip(shell, _("hint_convert"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("convert_type"), style="Field.TLabel").pack(anchor="w")
@@ -79,7 +87,7 @@ class ConvertTab:
         self.convert_mode_combo.pack(anchor="w", pady=(8, 0))
         self.convert_mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_convert_mode())
 
-        self.convert_dynamic = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        self.convert_dynamic = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.convert_dynamic.pack(fill="both", expand=True, pady=(18, 0))
 
         f1 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
@@ -107,23 +115,14 @@ class ConvertTab:
 
         f2 = ttk.Frame(self.convert_dynamic, style="Panel.TFrame")
         ttk.Label(f2, text=_("convert_image_files"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
-        self.i2p_listbox = tk.Listbox(
-            f2,
-            bg=FIELD_COLOR,
-            fg=TEXT_COLOR,
-            selectbackground=CONVERT_ACCENT,
-            selectforeground=TEXT_COLOR,
-            font=("Segoe UI", 9),
-            height=5,
-            borderwidth=1,
-            relief="solid",
-            highlightthickness=0,
-            activestyle="none",
-        )
+        self.i2p_listbox = tk.Listbox(f2, height=7)
+        style_listbox(self.i2p_listbox)
         self.i2p_listbox.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
         ib = ttk.Frame(f2, style="Panel.TFrame")
         ib.grid(row=1, column=1, sticky="n", padx=(10, 0), pady=(8, 0))
         ttk.Button(ib, text=_("str_add"), command=self.i2p_add_files, style="Secondary.TButton").pack(fill="x")
+        ttk.Button(ib, text="▲ " + _("str_up"), command=lambda: move_listbox_item(self.i2p_listbox, self.i2p_file_list, -1), style="Ghost.TButton").pack(fill="x", pady=(8, 0))
+        ttk.Button(ib, text="▼ " + _("str_down"), command=lambda: move_listbox_item(self.i2p_listbox, self.i2p_file_list, 1), style="Ghost.TButton").pack(fill="x", pady=(6, 0))
         ttk.Button(ib, text=_("str_remove"), command=self.i2p_remove_selected, style="Ghost.TButton").pack(fill="x", pady=(8, 0))
 
         ttk.Label(f2, text=_("str_output_pdf"), style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(14, 0))

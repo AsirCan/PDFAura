@@ -13,6 +13,8 @@ TEXT_COLOR = "#18212b"
 MUTED_TEXT = "#627285"
 PREVIEW_BG = "#ecf2f8"
 PROGRESS_TROUGH = "#dde6f0"
+HINT_BG = "#eef5f3"
+HINT_BORDER = "#cfe3dd"
 
 # Accents
 PRIMARY_ACCENT = "#0f766e"
@@ -30,20 +32,32 @@ VOICE_HOVER = "#7c3aed"
 VOICE_ACTIVE = "#ef4444"
 
 
-def _configure_button(style, name, background, hover, foreground="#ffffff", padding=(14, 10), font=None):
-    style.configure(
-        name,
+def _configure_button(style, name, background, hover, foreground="#ffffff", padding=(14, 10), font=None, anchor=None, border=None):
+    # clam draws a bevel from bordercolor/lightcolor/darkcolor; paint it the
+    # button colour so buttons render flat instead of boxed.
+    edge = border or background
+    options = dict(
         background=background,
         foreground=foreground,
-        borderwidth=0,
+        borderwidth=1,
+        bordercolor=edge,
+        lightcolor=background,
+        darkcolor=background,
+        focuscolor=background,
         focusthickness=0,
         padding=padding,
         font=font or ("Segoe UI Semibold", 10),
     )
+    if anchor:
+        options["anchor"] = anchor
+    style.configure(name, **options)
     style.map(
         name,
-        background=[("active", hover), ("disabled", "#c7d0db")],
-        foreground=[("disabled", "#7e8b99")],
+        background=[("disabled", "#e3e8ee"), ("active", hover)],
+        foreground=[("disabled", "#98a4b1")],
+        lightcolor=[("disabled", "#e3e8ee"), ("active", hover)],
+        darkcolor=[("disabled", "#e3e8ee"), ("active", hover)],
+        bordercolor=[("disabled", "#e3e8ee"), ("active", border or hover)],
     )
 
 
@@ -55,14 +69,23 @@ def setup_styles():
     style.configure("App.TFrame", background=APP_BG)
     style.configure("Content.TFrame", background=APP_BG)
     style.configure("Sidebar.TFrame", background=SIDEBAR_BG)
-    style.configure("Surface.TFrame", background=SURFACE_COLOR, borderwidth=1, relief="solid", bordercolor=BORDER_COLOR)
-    style.configure("Panel.TFrame", background=SURFACE_ALT, borderwidth=1, relief="solid", bordercolor=BORDER_COLOR)
-    style.configure("Hero.TFrame", background="#eef5f3", borderwidth=1, relief="solid", bordercolor="#cfe3dd")
+    # Surface/Panel are plain layout rows (no border) so nested rows don't draw
+    # boxes around every button; Card/PanelCard are the bordered containers.
+    style.configure("Surface.TFrame", background=SURFACE_COLOR, borderwidth=0, relief="flat")
+    style.configure("Panel.TFrame", background=SURFACE_COLOR, borderwidth=0, relief="flat")
+    style.configure("Card.TFrame", background=SURFACE_COLOR, borderwidth=1, relief="solid", bordercolor=BORDER_COLOR)
+    style.configure("PanelCard.TFrame", background=SURFACE_COLOR, borderwidth=1, relief="solid", bordercolor="#e4e9f0")
+    style.configure("Feedback.TFrame", background=SURFACE_ALT, borderwidth=1, relief="solid", bordercolor=BORDER_COLOR)
+    style.configure("FeedbackRow.TFrame", background=SURFACE_ALT, borderwidth=0, relief="flat")
+    style.configure("Hint.TFrame", background=HINT_BG, borderwidth=1, relief="solid", bordercolor=HINT_BORDER)
     style.configure("Preview.TFrame", background=PREVIEW_BG, borderwidth=1, relief="solid", bordercolor="#d3dfeb")
 
     style.configure("SidebarBrand.TLabel", background=SIDEBAR_BG, foreground="#f8fbff", font=("Bahnschrift SemiBold", 18))
     style.configure("SidebarMeta.TLabel", background=SIDEBAR_BG, foreground="#9ab0c7", font=("Segoe UI", 9))
     style.configure("SidebarSection.TLabel", background=SIDEBAR_BG, foreground="#87a1bb", font=("Segoe UI Semibold", 9))
+    style.configure("HintIcon.TLabel", background=HINT_BG, foreground=PRIMARY_ACCENT, font=("Segoe UI Semibold", 12))
+    style.configure("HintStrip.TLabel", background=HINT_BG, foreground=TEXT_COLOR, font=("Segoe UI", 10))
+    style.configure("EmptyHint.TLabel", background=SURFACE_COLOR, foreground=MUTED_TEXT, font=("Segoe UI", 10))
 
     style.configure("PageEyebrow.TLabel", background=APP_BG, foreground=PRIMARY_ACCENT, font=("Segoe UI Semibold", 9))
     style.configure("PageTitle.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=("Bahnschrift SemiBold", 22))
@@ -146,13 +169,13 @@ def setup_styles():
     _configure_button(style, "Voice.TButton", VOICE_ACCENT, VOICE_HOVER, padding=(12, 10))
     _configure_button(style, "VoiceActive.TButton", VOICE_ACTIVE, "#cd1f1f", padding=(12, 10))
 
-    _configure_button(style, "Nav.TButton", SIDEBAR_BG, SIDEBAR_HOVER, foreground="#d9e6f2", padding=(16, 11), font=("Segoe UI Semibold", 10))
-    _configure_button(style, "NavSelected.TButton", SIDEBAR_ACTIVE, "#28425f", foreground="#ffffff", padding=(16, 11), font=("Segoe UI Semibold", 10))
-    _configure_button(style, "Subnav.TButton", "#eaf0f6", "#dde8f2", foreground=TEXT_COLOR, padding=(12, 8), font=("Segoe UI Semibold", 9))
-    _configure_button(style, "SubnavSelected.TButton", "#d8ece9", "#cae5e0", foreground=PRIMARY_ACCENT, padding=(12, 8), font=("Segoe UI Semibold", 9))
-    _configure_button(style, "Ghost.TButton", SURFACE_ALT, "#e8edf3", foreground=TEXT_COLOR, padding=(12, 9), font=("Segoe UI", 10))
-    _configure_button(style, "Secondary.TButton", SURFACE_ALT, "#e8edf3", foreground=TEXT_COLOR, padding=(12, 9), font=("Segoe UI", 10))
-    _configure_button(style, "Small.TButton", SURFACE_ALT, "#e8edf3", foreground=TEXT_COLOR, padding=(9, 6), font=("Segoe UI", 9))
+    _configure_button(style, "Nav.TButton", SIDEBAR_BG, SIDEBAR_HOVER, foreground="#d9e6f2", padding=(14, 11), font=("Segoe UI Semibold", 10), anchor="w")
+    _configure_button(style, "NavSelected.TButton", SIDEBAR_ACTIVE, "#28425f", foreground="#ffffff", padding=(14, 11), font=("Segoe UI Semibold", 10), anchor="w", border="#2dd4bf")
+    _configure_button(style, "Subnav.TButton", "#eaf0f6", "#dde8f2", foreground=TEXT_COLOR, padding=(14, 8), font=("Segoe UI Semibold", 9))
+    _configure_button(style, "SubnavSelected.TButton", "#d8ece9", "#cae5e0", foreground=PRIMARY_ACCENT, padding=(14, 8), font=("Segoe UI Semibold", 9))
+    _configure_button(style, "Ghost.TButton", SURFACE_ALT, "#e8edf3", foreground=TEXT_COLOR, padding=(12, 9), font=("Segoe UI", 10), border=BORDER_COLOR)
+    _configure_button(style, "Secondary.TButton", "#e6f2ef", "#d5ebe6", foreground=PRIMARY_ACCENT, padding=(12, 9), font=("Segoe UI Semibold", 10), border="#cfe3dd")
+    _configure_button(style, "Small.TButton", SURFACE_ALT, "#e8edf3", foreground=TEXT_COLOR, padding=(9, 6), font=("Segoe UI", 9), border=BORDER_COLOR)
 
     style.configure(
         "Flat.TCheckbutton",

@@ -159,7 +159,8 @@ def _detect_document_corners_lines(img):
         return None, 0.0
 
     candidates = {"top": [], "bottom": [], "left": [], "right": []}
-    for raw_line in lines[:, 0]:
+    # OpenCV 4 returns (N, 1, 4), OpenCV 5 returns (N, 4)
+    for raw_line in lines.reshape(-1, 4):
         x1, y1, x2, y2 = [int(v) for v in raw_line]
         length = float(np.hypot(x2 - x1, y2 - y1))
         if length <= 1:
@@ -1154,18 +1155,18 @@ def _group_lines(lines, img_shape):
     h_lines = []
     v_lines = []
     
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
+    for line in lines.reshape(-1, 4):
+        x1, y1, x2, y2 = line
         
         # Calculate angle
         angle = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
         
         # Horizontal lines (angle close to 0 or 180)
         if abs(angle) < 20 or abs(angle) > 160:
-            h_lines.append(line[0])
+            h_lines.append(line)
         # Vertical lines (angle close to 90 or -90)
         elif 70 < abs(angle) < 110:
-            v_lines.append(line[0])
+            v_lines.append(line)
     
     return h_lines, v_lines
 
@@ -1324,8 +1325,11 @@ def apply_scan_mode(img_bgr, mode: str):
         return cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
 
     if mode == MODE_CLEAN_DOC:
-        # Morphological background estimation map (removes text to find background)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
+        # Morphological background estimation map (removes text to find background).
+        # Kernel scales with image size so solid dark bars survive at export
+        # resolution the same way they do in the small live preview.
+        k = max(25, int(min(gray.shape[:2]) * 0.04)) | 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
         bg = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
         bg = cv2.medianBlur(bg, 21)
         

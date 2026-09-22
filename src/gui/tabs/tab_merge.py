@@ -36,7 +36,7 @@ class MergeTab:
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("merge_pdf_files"), style="Section.TLabel").pack(anchor="w")

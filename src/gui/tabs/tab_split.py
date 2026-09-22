@@ -7,7 +7,7 @@ from src.core.common import get_pdf_page_count
 from src.core.lang_manager import _
 from src.core.split import split_pdf
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 from src.utils.file_helper import format_size_mb, suggest_split_output_path
 
 
@@ -31,18 +31,12 @@ class SplitTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(
-            shell,
-            _("txt_split"),
-            _("split_btn"),
-            _("split_hint"),
-            badge_text=_("split_page_range"),
-        )
+        build_hint_strip(shell, _("hint_split"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
@@ -70,7 +64,7 @@ class SplitTab:
             justify="left",
         ).pack(anchor="w", pady=(8, 0))
 
-        range_card = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        range_card = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         range_card.pack(fill="x", pady=(22, 0))
         ttk.Label(range_card, text=_("split_page_range"), style="Section.TLabel").pack(anchor="w")
         grid = ttk.Frame(range_card, style="Panel.TFrame")

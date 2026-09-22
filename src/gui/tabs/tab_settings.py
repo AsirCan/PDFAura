@@ -42,15 +42,15 @@ class SettingsPanel(ttk.Frame):
         settings_tabs = ttk.Notebook(body, style="Dark.TNotebook")
         settings_tabs.pack(side="left", fill="both", expand=True)
 
-        general_tab = ttk.Frame(settings_tabs, style="Surface.TFrame", padding=20)
-        ai_tab = ttk.Frame(settings_tabs, style="Surface.TFrame", padding=20)
+        general_tab = ttk.Frame(settings_tabs, style="Card.TFrame", padding=20)
+        ai_tab = ttk.Frame(settings_tabs, style="Card.TFrame", padding=20)
         settings_tabs.add(general_tab, text=_("settings_general_tab"))
         settings_tabs.add(ai_tab, text=_("settings_local_ai_tab"))
 
         self._build_general_settings(general_tab)
         self._build_ai_settings(ai_tab)
 
-        right = ttk.Frame(body, style="Panel.TFrame", padding=18)
+        right = ttk.Frame(body, style="PanelCard.TFrame", padding=18)
         right.pack(side="left", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")

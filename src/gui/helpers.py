@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from src.core.lang_manager import _
+from src.gui.styles import BORDER_COLOR, FIELD_COLOR, PRIMARY_ACCENT, TEXT_COLOR
 
 
 def notify_preview(root, path):
@@ -45,15 +46,48 @@ def open_containing_folder(path):
         open_path(target)
 
 
-def build_tool_header(parent, eyebrow, title, description, badge_text=None):
-    frame = ttk.Frame(parent, style="Hero.TFrame", padding=22)
-    frame.pack(fill="x", pady=(0, 18))
-    ttk.Label(frame, text=eyebrow, style="HeroEyebrow.TLabel").pack(anchor="w")
-    ttk.Label(frame, text=title, style="HeroTitle.TLabel").pack(anchor="w", pady=(6, 0))
-    ttk.Label(frame, text=description, style="HeroBody.TLabel", wraplength=780, justify="left").pack(anchor="w", pady=(8, 0))
-    if badge_text:
-        ttk.Label(frame, text=badge_text, style="Badge.TLabel").pack(anchor="w", pady=(14, 0))
+def build_hint_strip(parent, text):
+    """One-line "how to use this tool" hint shown above a tool's form."""
+    frame = ttk.Frame(parent, style="Hint.TFrame", padding=(14, 9))
+    frame.pack(fill="x", pady=(0, 14))
+    ttk.Label(frame, text="ⓘ", style="HintIcon.TLabel").pack(side="left", anchor="n")
+    ttk.Label(frame, text=text, style="HintStrip.TLabel", wraplength=820, justify="left").pack(side="left", padx=(10, 0), pady=(2, 0))
     return frame
+
+
+def style_listbox(listbox):
+    """Give a tk.Listbox the same flat look as the ttk entries around it."""
+    listbox.configure(
+        bg=FIELD_COLOR,
+        fg=TEXT_COLOR,
+        selectbackground=PRIMARY_ACCENT,
+        selectforeground="#ffffff",
+        font=("Segoe UI", 10),
+        borderwidth=0,
+        relief="flat",
+        highlightthickness=1,
+        highlightbackground=BORDER_COLOR,
+        highlightcolor=PRIMARY_ACCENT,
+        activestyle="none",
+    )
+
+
+def move_listbox_item(listbox, items, step):
+    """Move the selected listbox row (and its backing list entry) by *step*."""
+    selected = listbox.curselection()
+    if not selected:
+        return
+    index = selected[0]
+    target = index + step
+    if target < 0 or target >= len(items):
+        return
+    items[index], items[target] = items[target], items[index]
+    text = listbox.get(index)
+    listbox.delete(index)
+    listbox.insert(target, text)
+    listbox.selection_clear(0, tk.END)
+    listbox.selection_set(target)
+    listbox.see(target)
 
 
 def build_file_picker_row(parent, label_text, variable, button_text, command):
@@ -144,7 +178,7 @@ class ProgressFooter(ttk.Frame):
 
 class InlineFeedback(ttk.Frame):
     def __init__(self, parent):
-        super().__init__(parent, style="Panel.TFrame", padding=16)
+        super().__init__(parent, style="Feedback.TFrame", padding=16)
         self.output_path = None
 
         self.badge = tk.Label(
@@ -164,7 +198,7 @@ class InlineFeedback(ttk.Frame):
         self.message_var = tk.StringVar(value=_("feedback_ready_body"))
         ttk.Label(self, textvariable=self.message_var, style="StatusBody.TLabel", wraplength=420, justify="left").pack(anchor="w", pady=(6, 0))
 
-        actions = ttk.Frame(self, style="Panel.TFrame")
+        actions = ttk.Frame(self, style="FeedbackRow.TFrame")
         actions.pack(anchor="w", pady=(14, 0))
         self.open_file_button = ttk.Button(actions, text=_("feedback_open_output"), command=self.open_result, style="Secondary.TButton")
         self.open_file_button.pack(side="left")

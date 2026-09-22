@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, decrypt_pdf, encrypt_pdf
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 
 
 class SecurityTab:
@@ -29,12 +29,12 @@ class SecurityTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(shell, _("txt_security"), _("str_apply"), _("security_running").format(mode=_("security_encrypt")), badge_text=_("security_op_type"))
+        build_hint_strip(shell, _("hint_security"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
@@ -57,7 +57,7 @@ class SecurityTab:
         self.mode_combo.pack(anchor="w", pady=(8, 0))
         self.mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_mode())
 
-        self.dynamic_frame = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        self.dynamic_frame = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.dynamic_frame.pack(fill="x", pady=(18, 0))
 
         self.password_frame = ttk.Frame(self.dynamic_frame, style="Panel.TFrame")

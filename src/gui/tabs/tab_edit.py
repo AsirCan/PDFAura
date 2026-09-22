@@ -7,7 +7,7 @@ from src.core.common import get_pdf_page_count, parse_page_numbers
 from src.core.edit import delete_pages_from_pdf, reorder_pages_in_pdf, rotate_pages_in_pdf
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 
 
 class EditTab:
@@ -32,12 +32,12 @@ class EditTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(shell, _("txt_edit"), _("str_apply"), _("edit_order_hint"), badge_text=_("edit_operation"))
+        build_hint_strip(shell, _("hint_edit"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
@@ -61,7 +61,7 @@ class EditTab:
         self.edit_mode_combo.pack(anchor="w", pady=(8, 0))
         self.edit_mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_edit_mode())
 
-        self.edit_dynamic = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        self.edit_dynamic = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.edit_dynamic.pack(fill="x", pady=(18, 0))
 
         self.edit_delete_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")

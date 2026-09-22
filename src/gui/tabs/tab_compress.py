@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from src.core.compress import VALID_QUALITIES, compress_pdf
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 from src.utils.file_helper import format_size_mb, suggest_output_path
 
 
@@ -28,18 +28,12 @@ class CompressTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(
-            shell,
-            _("txt_compress"),
-            _("compress_btn"),
-            _("compress_quality_hint"),
-            badge_text=_("str_drag_drop_hint"),
-        )
+        build_hint_strip(shell, _("hint_compress"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("str_file_selection"), style="Section.TLabel").pack(anchor="w")
@@ -59,7 +53,7 @@ class CompressTab:
         self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output_pdf, style="Ghost.TButton")
         self.output_button.pack(side="right")
 
-        settings = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        settings = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         settings.pack(fill="x", pady=(22, 0))
         ttk.Label(settings, text=_("compress_settings"), style="Section.TLabel").pack(anchor="w")
         ttk.Label(settings, text=_("compress_quality"), style="Field.TLabel").pack(anchor="w", pady=(14, 0))

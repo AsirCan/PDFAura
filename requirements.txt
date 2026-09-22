@@ -14,3 +14,4 @@ numpy
 pyttsx3
 opencv-python
 onnxruntime>=1.16.0  # AI model inference for document corner detection
+tkinterdnd2

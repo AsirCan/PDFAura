@@ -38,13 +38,16 @@ PAGE_META_KEYS = {
     "security": ("page_meta_security_eyebrow", "page_meta_security_title", "page_meta_security_body"),
     "advanced": ("page_meta_advanced_eyebrow", "page_meta_advanced_title", "page_meta_advanced_body"),
     "batch": ("page_meta_batch_eyebrow", "page_meta_batch_title", "page_meta_batch_body"),
+    "scanner": ("page_meta_scanner_eyebrow", "page_meta_scanner_title", "page_meta_scanner_body"),
 }
 
 
 class ToolWorkspace:
-    def __init__(self, parent, tab_class, root):
+    def __init__(self, parent, tab_class, root, show_preview=True):
         self.frame = ttk.Frame(parent, style="App.TFrame")
         self.instance = tab_class(self.frame, root)
+        # Tools that have their own preview (scanner) hide the shared PDF preview.
+        self.show_preview = show_preview
 
     def get_active_tab(self):
         return self.instance
@@ -57,6 +60,7 @@ class GroupWorkspace:
         self.groups = {}
         self.buttons = {}
         self.current_key = None
+        self.show_preview = True
 
         self.nav = ttk.Frame(self.frame, style="App.TFrame")
         self.nav.pack(fill="x", pady=(0, 16))
@@ -123,11 +127,11 @@ class MainWindow:
         # Arka planda AI modelini indir veya yükle
         def _on_model_start():
             if hasattr(self, 'btn_mic'):
-                self.root.after(0, lambda: self.btn_mic.configure(state="disabled", text="🎙️ AI Modeli İniyor / Yükleniyor..."))
-            
+                self.root.after(0, lambda: self.btn_mic.configure(state="disabled", text=_("voice_loading")))
+
         def _on_model_complete():
             if hasattr(self, 'btn_mic'):
-                self.root.after(0, lambda: self.btn_mic.configure(state="normal", text="🎙️ Asistan"))
+                self.root.after(0, lambda: self.btn_mic.configure(state="normal", text=_("voice_idle")))
 
         recognizer.preload_model_async(on_start=_on_model_start, on_complete=_on_model_complete)
 
@@ -140,20 +144,21 @@ class MainWindow:
         sidebar.pack_propagate(False)
 
         ttk.Label(sidebar, text="PDF Aura", style="SidebarBrand.TLabel").pack(anchor="w")
-        ttk.Label(sidebar, text=_("header_subtitle"), style="SidebarMeta.TLabel", wraplength=180, justify="left").pack(anchor="w", pady=(8, 0))
+        ttk.Label(sidebar, text=_("brand_tagline"), style="SidebarMeta.TLabel", wraplength=180, justify="left").pack(anchor="w", pady=(6, 0))
 
         ttk.Label(sidebar, text=_("sidebar_workspace"), style="SidebarSection.TLabel").pack(anchor="w", pady=(26, 8))
         nav_items = [
-            ("compress", _("txt_compress")),
-            ("organize", _("txt_edit")),
-            ("convert", _("txt_convert")),
-            ("security", _("txt_security")),
-            ("advanced", _("txt_advanced")),
-            ("batch", _("txt_batch")),
+            ("compress", "🗜", _("txt_compress")),
+            ("organize", "📝", _("txt_edit")),
+            ("scanner", "📷", _("txt_scan")),
+            ("convert", "🔄", _("txt_convert")),
+            ("security", "🔒", _("txt_security")),
+            ("advanced", "🧰", _("txt_advanced")),
+            ("batch", "📦", _("txt_batch")),
         ]
-        for key, label in nav_items:
-            button = ttk.Button(sidebar, text=label, style="Nav.TButton", command=lambda current=key: self.show_page(current))
-            button.pack(fill="x", pady=4)
+        for key, icon, label in nav_items:
+            button = ttk.Button(sidebar, text=f"{icon}   {label}", style="Nav.TButton", command=lambda current=key: self.show_page(current))
+            button.pack(fill="x", pady=3)
             self.nav_buttons[key] = button
 
         ttk.Label(sidebar, text=_("sidebar_drag_drop"), style="SidebarSection.TLabel").pack(anchor="w", pady=(28, 8))
@@ -181,21 +186,22 @@ class MainWindow:
         header_actions.pack(side="right")
         ttk.Button(header_actions, text=_("txt_settings"), command=self.open_settings, style="Ghost.TButton").pack(side="right")
         
-        self.btn_mic = ttk.Button(header_actions, text="🎙️ Asistan", style="Voice.TButton")
+        self.btn_mic = ttk.Button(header_actions, text=_("voice_idle"), style="Voice.TButton")
         self.btn_mic.pack(side="right", padx=(0, 10))
         self.btn_mic.bind("<ButtonPress-1>", self.on_mic_press)
         self.btn_mic.bind("<ButtonRelease-1>", self.on_mic_release)
 
-        self.txt_chat = ttk.Entry(header_actions, width=25)
+        self.chat_placeholder = _("chat_placeholder")
+        self.txt_chat = ttk.Entry(header_actions, width=28, style="Dark.TEntry")
         self.txt_chat.pack(side="right", padx=(0, 10))
-        self.txt_chat.insert(0, "Aura'ya yazın...")
-        
+        self.txt_chat.insert(0, self.chat_placeholder)
+
         def on_focus_in(e):
-            if self.txt_chat.get() == "Aura'ya yazın...":
+            if self.txt_chat.get() == self.chat_placeholder:
                 self.txt_chat.delete(0, 'end')
         def on_focus_out(e):
             if not self.txt_chat.get():
-                self.txt_chat.insert(0, "Aura'ya yazın...")
+                self.txt_chat.insert(0, self.chat_placeholder)
                 
         self.txt_chat.bind('<FocusIn>', on_focus_in)
         self.txt_chat.bind('<FocusOut>', on_focus_out)
@@ -207,10 +213,10 @@ class MainWindow:
         self.content = ttk.Frame(body, style="App.TFrame")
         self.content.pack(side="left", fill="both", expand=True)
 
-        preview_host = ttk.Frame(body, width=340, style="App.TFrame")
-        preview_host.pack(side="left", fill="y", padx=(18, 0))
-        preview_host.pack_propagate(False)
-        self.preview_panel = PreviewPanel(preview_host, self.root)
+        self.preview_host = ttk.Frame(body, width=340, style="App.TFrame")
+        self.preview_host.pack(side="left", fill="y", padx=(18, 0))
+        self.preview_host.pack_propagate(False)
+        self.preview_panel = PreviewPanel(self.preview_host, self.root)
         self.preview_panel.pack(fill="both", expand=True)
 
         self.workspaces["compress"] = ToolWorkspace(self.content, CompressTab, self.root)
@@ -221,9 +227,9 @@ class MainWindow:
                 ("split", _("txt_split"), SplitTab),
                 ("merge", _("txt_merge"), MergeTab),
                 ("edit", _("txt_edit"), EditTab),
-                ("scanner", _("scanner_title"), ScannerTab),
             ],
         )
+        self.workspaces["scanner"] = ToolWorkspace(self.content, ScannerTab, self.root, show_preview=False)
         self.workspaces["convert"] = ToolWorkspace(self.content, ConvertTab, self.root)
         self.workspaces["security"] = ToolWorkspace(self.content, SecurityTab, self.root)
         self.workspaces["advanced"] = ToolWorkspace(self.content, AdvancedTab, self.root)
@@ -256,7 +262,12 @@ class MainWindow:
             self.nav_buttons[self.current_page].configure(style="Nav.TButton")
 
         self.current_page = key
-        self.workspaces[key].frame.pack(fill="both", expand=True)
+        workspace = self.workspaces[key]
+        if workspace.show_preview:
+            self.preview_host.pack(side="left", fill="y", padx=(18, 0))
+        else:
+            self.preview_host.pack_forget()
+        workspace.frame.pack(fill="both", expand=True)
         self.nav_buttons[key].configure(style="NavSelected.TButton")
 
         eyebrow_key, title_key, body_key = PAGE_META_KEYS[key]
@@ -272,10 +283,12 @@ class MainWindow:
         if not files:
             return
 
-        file_path = files[0]
         active_tab = self.get_active_tab()
-        if hasattr(active_tab, "handle_external_drop"):
-            active_tab.handle_external_drop(file_path)
+        if hasattr(active_tab, "handle_external_drop_many"):
+            active_tab.handle_external_drop_many(list(files))
+        elif hasattr(active_tab, "handle_external_drop"):
+            for file_path in files:
+                active_tab.handle_external_drop(file_path)
 
     def set_preview_file(self, path):
         self.preview_panel.set_path(path)
@@ -286,8 +299,20 @@ class MainWindow:
     def on_closing(self):
         if cfg.get("close_to_tray", True) and self.icon_path:
             self.root.withdraw()
+            self._notify_running_in_tray()
         else:
             self.quit_window(None, None)
+
+    def _notify_running_in_tray(self):
+        # Closing only hides the window; say so once, otherwise it looks like
+        # the app quit while it keeps running next to the clock.
+        if getattr(self, "_tray_notice_shown", False) or not getattr(self, "tray_icon", None):
+            return
+        self._tray_notice_shown = True
+        try:
+            self.tray_icon.notify(_("tray_background_body"), _("tray_background_title"))
+        except Exception:
+            pass
 
     def show_window(self, icon, _item):
         self.root.after(0, self.root.deiconify)
@@ -299,17 +324,23 @@ class MainWindow:
 
     def fit_window_to_content(self):
         self.root.update_idletasks()
-        self.root.geometry("1480x920")
-        self.root.minsize(1200, 760)
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        w = min(1480, max(1100, screen_w - 60))
+        h = min(920, max(720, screen_h - 80))
+        x = max(0, (screen_w - w) // 2)
+        y = max(0, (screen_h - h) // 2)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.minsize(min(1100, screen_w - 40), min(720, screen_h - 60))
         self.root.resizable(True, True)
 
     def on_text_chat_submit(self, event=None):
         text = self.txt_chat.get().strip()
-        if not text or text == "Aura'ya yazın...":
+        if not text or text == self.chat_placeholder:
             return
             
         self.txt_chat.delete(0, "end")
-        self.btn_mic.configure(style="Voice.TButton", text="🎙️ İşleniyor...")
+        self.btn_mic.configure(style="Voice.TButton", text=_("voice_processing"))
         self.root.update_idletasks()
         
         def _run():
@@ -319,7 +350,7 @@ class MainWindow:
             execute_intent(intent)
             self.root.after(0, lambda: self.btn_mic.configure(
                 style="Voice.TButton",
-                text="🎙️ Asistan"
+                text=_("voice_idle")
             ))
         
         import threading
@@ -331,13 +362,13 @@ class MainWindow:
             return
         if str(self.btn_mic.cget("state")) == "disabled":
             return
-        self.btn_mic.configure(style="VoiceActive.TButton", text="🎙️ Dinleniyor...")
+        self.btn_mic.configure(style="VoiceActive.TButton", text=_("voice_listening"))
         recognizer.start_recording()
         
     def on_mic_release(self, event):
         if not recognizer.is_recording:
             return
-        self.btn_mic.configure(style="Voice.TButton", text="🎙️ İşleniyor...")
+        self.btn_mic.configure(style="Voice.TButton", text=_("voice_processing"))
         self.root.update_idletasks()
         
         def _handle_speech(text):
@@ -353,14 +384,14 @@ class MainWindow:
                         execute_intent(intent)
                         self.root.after(0, lambda: self.btn_mic.configure(
                             style="Voice.TButton",
-                            text="🎙️ Asistan"
+                            text=_("voice_idle")
                         ))
                     threading.Thread(target=_run, daemon=True).start()
                 else:
                     speak("Sizi duyamadım, lütfen tekrar deneyin.")
                     self.btn_mic.configure(
                         style="Voice.TButton",
-                        text="🎙️ Asistan"
+                        text=_("voice_idle")
                     )
             
             # UI güncellemelerini ana thread'de yap

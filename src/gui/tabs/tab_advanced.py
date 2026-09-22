@@ -8,7 +8,7 @@ from src.core.metainfo import read_metadata, update_metadata
 from src.core.ocr import check_tesseract_availability, perform_ocr_to_text
 from src.core.signature import stamp_visual_signature
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 from src.gui.pdf_viewer import PDFViewerWindow
 
 
@@ -42,12 +42,12 @@ class AdvancedTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(shell, _("txt_advanced"), _("adv_operation"), _("adv_preview_hint"), badge_text=_("adv_operation"))
+        build_hint_strip(shell, _("hint_advanced"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
@@ -69,7 +69,7 @@ class AdvancedTab:
         self.mode_combo.pack(anchor="w", pady=(8, 0))
         self.mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_mode())
 
-        self.dyn_frame = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        self.dyn_frame = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.dyn_frame.pack(fill="both", expand=True, pady=(18, 0))
 
         self.f_preview = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
@@ -77,7 +77,7 @@ class AdvancedTab:
 
         self.f_ocr = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Label(self.f_ocr, text=_("adv_ocr_hint"), style="Hint.TLabel", wraplength=620, justify="left").pack(anchor="w")
-        self.tess_warn_label = ttk.Label(self.f_ocr, text="", style="StatusTitle.TLabel")
+        self.tess_warn_label = ttk.Label(self.f_ocr, text="", style="Section.TLabel")
         self.tess_warn_label.pack(anchor="w", pady=(12, 0))
         self.tess_install_btn = ttk.Button(self.f_ocr, text=_("adv_tess_install_btn"), command=self.trigger_tesseract_install, style="Secondary.TButton")
 

@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from src.core.batch import batch_compress_dir, batch_convert_dir, batch_rename_dir
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, build_tool_header, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, build_hint_strip, quick_error
 
 
 class BatchTab:
@@ -28,12 +28,12 @@ class BatchTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        build_tool_header(shell, _("txt_batch"), _("batch_start_btn"), _("batch_rename_hint"), badge_text=_("batch_main_type"))
+        build_hint_strip(shell, _("hint_batch"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        left = ttk.Frame(body, style="Surface.TFrame", padding=22)
+        left = ttk.Frame(body, style="Card.TFrame", padding=22)
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(left, text=_("str_input_folder"), style="Field.TLabel").pack(anchor="w")
@@ -54,7 +54,7 @@ class BatchTab:
         self.mode_combo.pack(anchor="w", pady=(8, 0))
         self.mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_mode())
 
-        self.dyn_frame = ttk.Frame(left, style="Panel.TFrame", padding=16)
+        self.dyn_frame = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.dyn_frame.pack(fill="x", pady=(18, 0))
 
         self.f_compress = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
@@ -86,7 +86,7 @@ class BatchTab:
         self.footer = ProgressFooter(left, _("batch_start_btn"), self.start_action, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
         self.footer.pack(fill="x", pady=(22, 0))
 
-        log_card = ttk.Frame(left, style="Panel.TFrame", padding=14)
+        log_card = ttk.Frame(left, style="PanelCard.TFrame", padding=14)
         log_card.pack(fill="both", expand=True, pady=(18, 0))
         ttk.Label(log_card, text=_("batch_log_title"), style="Section.TLabel").pack(anchor="w")
         self.log_text = tk.Text(log_card, height=10, bg="#fbfdff", fg="#18212b", bd=0, state="disabled", font=("Consolas", 9), wrap="word")
