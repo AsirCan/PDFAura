@@ -66,7 +66,7 @@ Piyasadaki birçok çevrim içi PDF dönüştürücü hassas belgelerinizi uzak 
 > U2-Net derin öğrenme algoritması belgenin sınırlarını otomatik yakalar. Etkileşimli 4 köşe kontrolüyle ince ayar yapabilir, çoklu sayfa sıralayabilir ve **Temiz Belge (Adaptive Text Thresholding)** filtresiyle gölgeleri yok edip bembeyaz bir A4 PDF çıktısı alabilirsiniz.
 
 <p align="center">
-  <img src="docs/screenshots/03_scanner.png" alt="PDF Aura Akıllı Belge Tarayıcı" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+  <img src="docs/screenshots/03_scanner.png?v=2" alt="PDF Aura Akıllı Belge Tarayıcı" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
 </p>
 
 ---
