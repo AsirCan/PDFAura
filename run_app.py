@@ -8,9 +8,16 @@ import time
 
 def launch():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    python_exe = os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Python\Python312\python.exe")
-    if not os.path.exists(python_exe):
-        python_exe = sys.executable
+    # Prefer the project's venv, then the interpreter running this script.
+    # A path baked in from one machine only ever worked on that machine.
+    python_exe = sys.executable
+    for candidate in (
+        os.path.join(base_dir, "venv", "Scripts", "python.exe"),
+        os.path.join(base_dir, ".venv", "Scripts", "python.exe"),
+    ):
+        if os.path.exists(candidate):
+            python_exe = candidate
+            break
 
     si = win32process.STARTUPINFO()
     si.lpDesktop = r"WinSta0\Default"

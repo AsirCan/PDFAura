@@ -37,7 +37,7 @@ python download_models.py --skip-optional
 Eğer otomatik indirme çalışmazsa, modelleri manuel olarak indirebilirsiniz:
 
 1. **u2netp_document.onnx**:
-   - URL: https://huggingface.co/BritishWerewolf/U-2-Net/resolve/main/u2netp.onnx
+   - URL: https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/main/u2netp.onnx
    - Bu dosyayı `models/` klasörüne kaydedin
 
 2. **u2net_document.onnx** (opsiyonel):

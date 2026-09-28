@@ -10,6 +10,7 @@ dist/
 *.egg
 *.manifest
 *.spec
+!PDFAura.spec
 
 # Installer
 Output/

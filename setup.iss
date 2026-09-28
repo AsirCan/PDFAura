@@ -20,7 +20,7 @@ UninstallDisplayIcon={app}\PDFAura.exe
 
 ; Output
 OutputDir=dist
-OutputBaseFilename=PDFAura
+OutputBaseFilename=PDFAura-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 
@@ -29,9 +29,16 @@ PrivilegesRequired=admin
 CloseApplications=yes
 RestartApplications=no
 
+#define GhostscriptInstaller "assets\gs10040w64.exe"
+
 [Files]
 Source: "dist\PDFAura\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "assets\gs10040w64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+; The Ghostscript installer is not in the repository (it is a third-party
+; binary). Bundle it only if it has been placed in assets\, so that
+; `iscc setup.iss` works on a clean clone.
+#if FileExists(GhostscriptInstaller)
+Source: "{#GhostscriptInstaller}"; DestDir: "{tmp}"; Flags: deleteafterinstall
+#endif
 
 [Icons]
 Name: "{group}\PDF Aura"; Filename: "{app}\PDFAura.exe"
@@ -41,7 +48,9 @@ Name: "{autodesktop}\PDF Aura"; Filename: "{app}\PDFAura.exe"; Tasks: desktopico
 Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"
 
 [Run]
+#if FileExists(GhostscriptInstaller)
 Filename: "{tmp}\gs10040w64.exe"; Parameters: "/S"; StatusMsg: "Ghostscript motoru arka planda kuruluyor, lutfen bekleyin..."; Flags: waituntilterminated; Check: NeedsGhostscript
+#endif
 Filename: "{app}\PDFAura.exe"; Description: "PDF Aura'yi baslat"; Flags: nowait postinstall skipifsilent
 
 [Code]

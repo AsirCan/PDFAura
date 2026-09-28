@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(64--bit)-0078D6?logo=windows&logoColor=white" alt="Windows 10/11" />
   <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python 3.10+" />
-  <img src="https://img.shields.io/badge/Privacy-%25100%20Offline%20%26%20Secure-059669?logo=shield&logoColor=white" alt="Offline & Secure" />
+  <img src="https://img.shields.io/badge/Privacy-Local%20Processing-059669?logo=shield&logoColor=white" alt="Local processing" />
   <img src="https://img.shields.io/badge/Ads-%25100%20Ad--Free-critical?logo=adblock&logoColor=white" alt="100% Ad-Free" />
   <img src="https://img.shields.io/badge/AI%20Inside-U2--Net%20%2B%20Whisper-8B5CF6?logo=openai&logoColor=white" alt="AI Powered" />
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License MIT" />
@@ -133,10 +133,19 @@ Piyasadaki birçok çevrim içi PDF dönüştürücü hassas belgelerinizi uzak 
 
 ### 8. Sesli ve Metin AI Asistanı (Aura Assistant)
 > **Klavyeye dokunmadan doküman yönetimi.**  
-> Yerel ses tanıma modeli (**Faster-Whisper**) ve intent ayrıştırıcı motor ile uygulamanın sağ üstündeki mikrofon butonuna basılı tutarak ya da sohbet çubuğuna yazarak komut verebilirsiniz:
-> - *"Masaüstündeki sözleşmeyi sıkıştır"*
-> - *"İlk 3 sayfayı ayır"*
-> - *"Belgeler klasöründeki raporları birleştir"*
+> Yerel ses tanıma modeli (**Faster-Whisper**) ve intent ayrıştırıcı motor ile uygulamanın sağ üstündeki mikrofon butonuna basılı tutarak ya da sohbet çubuğuna yazarak komut verebilirsiniz. Asistanın yanıtı hem sesli okunur hem de ekranda metin olarak gösterilir.
+>
+> Çalışan örnek komutlar:
+> - *"rapor.pdf dosyasını sıkıştır"*
+> - *"rapor.pdf ilk 3 sayfayı ayır"*
+> - *"a.pdf ve b.pdf dosyalarını birleştir"*
+> - *"rapor.pdf dosyasını Word'e çevir"*
+> - *"rapor.pdf dosyasını abc123 ile şifrele"*
+> - *"Masaüstündeki sözleşmeyi sıkıştır"* (uzantısız ad Masaüstü / Belgeler / İndirilenler klasörlerinde aranır)
+>
+> Komutlar Masaüstü, Belgeler ve İndirilenler klasörlerindeki dosyalar üzerinde çalışır. Arayüz İngilizceyken İngilizce komutlar da anlaşılır (*"compress report.pdf"*).
+>
+> **Not:** Ses tanıma modeli mikrofon ilk kez kullanıldığında yüklenir ve ilk yüklemede (~460 MB) internet bağlantısı gerekir. Model indirildikten sonra tanıma tamamen çevrimdışı çalışır.
 
 ---
 
@@ -146,14 +155,14 @@ Piyasadaki birçok çevrim içi PDF dönüştürücü hassas belgelerinizi uzak 
 | :--- | :--- | :--- |
 | **🗜️ Boyut Optimizasyonu** | **Sıkıştırma** | 4 farklı profil (`screen`, `ebook`, `printer`, `prepress`), DPI ve renk derinliği optimizasyonu |
 | **📝 Sayfa Yönetimi** | **Böl & Kes** | Belirli sayfa veya sayfa aralıklarını (örn. 5-12) yeni PDF olarak dışa aktarma |
-| | **Birleştir** | Sürükle-bırak sıralama ile sınırsız sayıda PDF dosyasını tek dosyada toplama |
+| | **Birleştir** | Yukarı/Aşağı düğmeleriyle sıralayarak sınırsız sayıda PDF dosyasını tek dosyada toplama |
 | | **Düzenle** | Sayfa silme, sayfa sırası değiştirme, 90°/180°/270° döndürme |
 | **📷 Akıllı Tarayıcı** | **Fotoğraftan PDF'e** | AI tabanlı 4 köşe algılama, etkileşimli köşe düzenleme, çoklu sayfa yönetimi, perspektif düzeltme |
-| | **Görüntü Filtreleri** | Temiz Belge (Adaptive Thresholding), Siyah-Beyaz (Otsu), Gri Tonlama, Keskinleştirme, Orijinal |
+| | **Görüntü Filtreleri** | Temiz Belge (arka plan bölme), Siyah-Beyaz (adaptif eşikleme), Gri Tonlama (CLAHE), Keskinleştirme, Orijinal |
 | **🔄 Dönüştürme** | **Görsel & Metin** | PDF ➔ PNG / JPG (özel DPI seçimi), Görseller ➔ PDF, PDF ➔ TXT |
-| | **Microsoft Office** | Word (`.docx`) ➔ PDF, Excel (`.xlsx`) ➔ PDF, PowerPoint (`.pptx`) ➔ PDF |
-| **🔒 Güvenlik** | **Kriptolama & Damga**| 128-Bit parola şifreleme, şifre kaldırma, sayfa bazlı metin filigranı ekleme |
-| **🧰 Gelişmiş** | **OCR & Evrak** | Resim tabanlı PDF'lerden Tesseract ile Türkçe metin tanıma, meta veri (Title, Author vb.) düzenleme, görsel imza damgalama |
+| | **Microsoft Office** | Word (`.doc`, `.docx`) ➔ PDF, Excel (`.xls`, `.xlsx`) ➔ PDF, PowerPoint (`.ppt`, `.pptx`) ➔ PDF |
+| **🔒 Güvenlik** | **Kriptolama & Damga**| AES-256 parola şifreleme, şifre kaldırma, sayfa bazlı metin filigranı ekleme |
+| **🧰 Gelişmiş** | **OCR & Evrak** | Resim tabanlı PDF'lerden Tesseract ile metin tanıma (kurulu dil paketlerine göre Türkçe/İngilizce), meta veri (Title, Author vb.) düzenleme, görsel imza damgalama |
 | **📦 Otomasyon** | **Toplu İşlemler** | Klasör bazlı toplu sıkıştırma, toplu dönüştürme, değişken parametreli akıllı yeniden adlandırma |
 | **🤖 Yapay Zekâ** | **Aura Assistant** | Faster-Whisper yerel konuşma tanıma, metin/ses ile doğal dilde komut çalıştırma |
 
@@ -166,12 +175,12 @@ PDF Aura, doküman algılama ve köşe tespitinde **hibrit bir yapay zekâ boru 
 ```mermaid
 flowchart LR
     A["Girdi Fotoğrafı"] --> B{"Tespit Motorları"}
-    B -->|"Öncelik 1"| C["ONNX U2-Net / U2-Net-P Derin Öğrenme"]
-    B -->|"Öncelik 2"| D["ML-Enhanced GrabCut & Watershed"]
-    B -->|"Öncelik 3"| E["Klasik CV (Canny, Hough, Morfoloji)"]
-    C --> F["Kalite Değerlendirme & Skorlama"]
+    B -->|"Öncelik 1"| E["Çizgi Tespiti (Hough)"]
+    B -->|"Öncelik 2"| D["Hızlı CV (Canny, Kontur, Morfoloji)"]
+    B -->|"Öncelik 3 (yedek)"| C["ONNX U2-Net / U2-Net-P"]
+    E --> F["Kalite Değerlendirme & Skorlama"]
     D --> F
-    E --> F
+    C --> F
     F --> G["En Yüksek Skorlu 4 Köşe"]
     G --> H["Perspektif Düzeltme (Warp) & A4 Normalizasyonu"]
     H --> I["Adaptif Eşikleme & Çoklu Sayfalı PDF Çıktısı"]
@@ -188,7 +197,7 @@ Tespit edilen dörtgenler 4 farklı metriğe göre ağırlıklandırılarak değ
 
 ## 🗺️ Gelecek Yol Haritası (Roadmap)
 
-- [x] Modern CustomTkinter / TkinterDnD arayüzü ve canlı PDF önizleme
+- [x] Modern ttk / TkinterDnD arayüzü ve canlı PDF önizleme
 - [x] U2-Net ONNX tabanlı belge tarayıcı ve çoklu sayfa oturumu
 - [x] Yerel Faster-Whisper sesli komut asistanı
 - [x] Windows Sistem Tepsisi (Tray Icon) entegrasyonu
@@ -279,9 +288,9 @@ PDF Aura belge tarama özelliğinde yapay zekâ çıkarımı için ONNX modeller
 
 Tam fonksiyonel kullanım için aşağıdaki ek bileşenler önerilir:
 
-- **Ghostscript (Önerilen):** Sıkıştırma motorunun en yüksek verimle çalışması için Ghostscript'in sisteminizde kurulu olması tavsiye edilir. ([Ghostscript İndir](https://www.ghostscript.com/releases/index.html))
+- **Ghostscript (Sıkıştırma için gerekli):** PDF sıkıştırma Ghostscript ile yapılır; kurulu değilse Sıkıştır sekmesi kurulum bağlantısı içeren bir uyarı gösterir. ([Ghostscript İndir](https://www.ghostscript.com/releases/index.html))
 - **Microsoft Office:** Word (`.docx`), PowerPoint (`.pptx`) ve Excel (`.xlsx`) dosyalarını PDF'e dönüştürürken sisteminizde yüklü MS Office kullanılır.
-- **Tesseract OCR (Opsiyonel):** Resim tabanlı PDF'lerden Türkçe metin okumak için Tesseract kurulu olmalıdır. Uygulama içerisindeki Gelişmiş sekmesinden tek tıkla otomatik olarak da kurulabilir.
+- **Tesseract OCR (Opsiyonel):** Resim tabanlı PDF'lerden metin okumak için Tesseract kurulu olmalıdır. Hangi dil paketleri kuruluysa OCR onları kullanır (Türkçe yoksa İngilizce ile çalışır). Uygulama içerisindeki Gelişmiş sekmesinden tek tıkla otomatik olarak da kurulabilir.
 
 ---
 
@@ -291,8 +300,10 @@ Projeyi tek bir Windows kurulum dosyasına dönüştürmek için:
 
 #### 1. PyInstaller ile Executable Oluşturma
 ```powershell
+pip install -r requirements.txt pyinstaller
 pyinstaller --noconfirm PDFAura.spec
 ```
+Çıktı: `dist\PDFAura\PDFAura.exe` (bir sonraki adım bu klasörü paketler).
 
 #### 2. Inno Setup ile Setup.exe Üretme
 1. Sisteminizde [Inno Setup](https://jrsoftware.org/isdl.php) kurulu olduğundan emin olun.
@@ -300,7 +311,18 @@ pyinstaller --noconfirm PDFAura.spec
    ```powershell
    iscc setup.iss
    ```
-İşlem bittiğinde `dist/` klasörü altında son kullanıcılar için hazır **PDFAura-Setup.exe** oluşturulacaktır.
+İşlem bittiğinde `dist\PDFAura-Setup.exe` oluşur.
+
+> **Ghostscript'i kuruluma dahil etmek (isteğe bağlı):** Ghostscript kurulum dosyasını
+> `assets\gs10040w64.exe` olarak yerleştirirseniz setup onu da paketler ve hedef
+> makinede Ghostscript yoksa sessizce kurar. Dosya yoksa kurulum yine sorunsuz
+> derlenir; kullanıcı Ghostscript'i ayrıca kurabilir.
+
+#### Testleri çalıştırma
+```powershell
+pip install pytest
+pytest
+```
 
 ---
 
