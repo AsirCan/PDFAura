@@ -25,6 +25,7 @@ from src.gui.tabs.tab_split import SplitTab
 from src.ai.speech_recognizer import recognizer
 from src.ai.intent_parser import parse_intent
 from src.ai.action_runner import execute_intent
+from src.ai import text_speaker
 from src.ai.text_speaker import speak
 
 try:
@@ -125,16 +126,12 @@ class MainWindow:
         self.show_page("compress")
         self.fit_window_to_content()
         
-        # Arka planda AI modelini indir veya yükle
-        def _on_model_start():
-            if hasattr(self, 'btn_mic'):
-                self.root.after(0, lambda: self.btn_mic.configure(state="disabled", text=_("voice_loading")))
-
-        def _on_model_complete():
-            if hasattr(self, 'btn_mic'):
-                self.root.after(0, lambda: self.btn_mic.configure(state="normal", text=_("voice_idle")))
-
-        recognizer.preload_model_async(on_start=_on_model_start, on_complete=_on_model_complete)
+        # The voice model is loaded on first use, not here: preloading cost
+        # ~330 MB of RAM and ~4 s of CPU on every launch, and a ~460 MB
+        # download on the first one, even if the assistant was never used.
+        self._model_loading = False
+        self._model_error = None
+        text_speaker.add_listener(self._show_assistant_reply)
 
     def build_ui(self):
         shell = ttk.Frame(self.root, padding=20, style="App.TFrame")
@@ -207,6 +204,13 @@ class MainWindow:
         self.txt_chat.bind('<FocusIn>', on_focus_in)
         self.txt_chat.bind('<FocusOut>', on_focus_out)
         self.txt_chat.bind("<Return>", self.on_text_chat_submit)
+
+        # Every assistant reply is shown here as text: speech alone left the
+        # user with nothing when the voice engine was off or unavailable.
+        self.assistant_reply_var = tk.StringVar()
+        self.assistant_reply = ttk.Label(
+            main, textvariable=self.assistant_reply_var, style="Hint.TLabel",
+            wraplength=900, justify="left")
 
         body = ttk.Frame(main, style="App.TFrame")
         body.pack(fill="both", expand=True, pady=(18, 0))
@@ -373,6 +377,49 @@ class MainWindow:
         self.root.minsize(min(1100, screen_w - 40), min(720, screen_h - 60))
         self.root.resizable(True, True)
 
+    def _show_assistant_reply(self, text):
+        """Show an assistant reply on screen (called from worker threads)."""
+        def _update():
+            self.assistant_reply_var.set(text)
+            if not self.assistant_reply.winfo_ismapped():
+                self.assistant_reply.pack(fill="x", pady=(10, 0))
+        try:
+            self.root.after(0, _update)
+        except Exception:
+            pass   # window already gone
+
+    def _set_mic_state(self, text, enabled=True, style="Voice.TButton"):
+        self.btn_mic.configure(text=text, style=style,
+                               state="normal" if enabled else "disabled")
+
+    def _start_model_load(self, on_ready=None):
+        """Load the voice model on demand, keeping the button honest."""
+        if self._model_loading:
+            return
+
+        self._model_loading = True
+
+        def _started():
+            self.root.after(0, lambda: self._set_mic_state(_("voice_loading"), enabled=False))
+
+        def _ready():
+            self._model_loading = False
+            self._model_error = None
+            self.root.after(0, lambda: self._set_mic_state(_("voice_idle")))
+            if on_ready:
+                self.root.after(0, on_ready)
+
+        def _failed(exc):
+            self._model_loading = False
+            self._model_error = exc
+            # Say why, rather than leaving a live-looking button that does
+            # nothing; the reason only ever went to the console before.
+            self.root.after(0, lambda: self._set_mic_state(_("voice_model_missing")))
+            self.root.after(0, lambda: self._show_assistant_reply(
+                _("voice_model_error_body").format(error=exc)))
+
+        recognizer.load_model_async(on_start=_started, on_success=_ready, on_error=_failed)
+
     def on_text_chat_submit(self, event=None):
         text = self.txt_chat.get().strip()
         if not text or text == self.chat_placeholder:
@@ -396,11 +443,21 @@ class MainWindow:
         threading.Thread(target=_run, daemon=True).start()
 
     def on_mic_press(self, event):
-        # Model yüklenmeden veya buton disabled iken basılmasını engelle
-        if not recognizer.model_ready:
-            return
         if str(self.btn_mic.cget("state")) == "disabled":
             return
+
+        if self._model_error is not None:
+            # Explain rather than sit there looking usable.
+            self._show_assistant_reply(
+                _("voice_model_error_body").format(error=self._model_error))
+            self._start_model_load()
+            return
+
+        if not recognizer.model_ready:
+            # First use: load now and tell the user it is happening.
+            self._start_model_load()
+            return
+
         self.btn_mic.configure(style="VoiceActive.TButton", text=_("voice_listening"))
         recognizer.start_recording()
         
@@ -427,7 +484,7 @@ class MainWindow:
                         ))
                     threading.Thread(target=_run, daemon=True).start()
                 else:
-                    speak("Sizi duyamadım, lütfen tekrar deneyin.")
+                    speak(_("assist_not_heard"))
                     self.btn_mic.configure(
                         style="Voice.TButton",
                         text=_("voice_idle")

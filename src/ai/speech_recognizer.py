@@ -8,7 +8,8 @@ import threading
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
-from faster_whisper import WhisperModel
+
+from src.core.config_manager import cfg
 
 
 class SpeechRecognizer:
@@ -22,29 +23,56 @@ class SpeechRecognizer:
         self.audio_data = []
         self.stream = None
         self._lock = threading.Lock()
+        # Set when loading fails, so the UI can explain why the mic is dead
+        # instead of silently doing nothing.
+        self.load_error = None
+
+    @property
+    def language(self):
+        """Recognise in the UI's language rather than always Turkish."""
+        return cfg.get("language", "tr")
 
     def load_model(self):
-        """Modeli ilk ihtiyaç anında yükler (Lazy load)."""
-        if self.model is None:
+        """Load the model on first use. Raises if it cannot be loaded."""
+        if self.model is not None:
+            return self.model
+        # Imported here, not at module scope: importing faster_whisper alone
+        # costs time and memory at every app start, assistant used or not.
+        from faster_whisper import WhisperModel
+        try:
             self.model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
-            self.model_ready = True
+        except Exception as exc:
+            self.load_error = exc
+            self.model_ready = False
+            raise
+        self.load_error = None
+        self.model_ready = True
+        return self.model
 
-    def preload_model_async(self, on_start=None, on_complete=None):
-        """Arayüz yüklenirken arka planda modeli yüklemek için çağrılabilir."""
+    def load_model_async(self, on_start=None, on_success=None, on_error=None):
+        """Load the model in the background, reporting what happened.
+
+        Called when the microphone is first used, not at startup: preloading
+        cost ~330 MB of RAM and ~4 s of CPU on every launch even if the
+        assistant was never touched.
+        """
         def _worker():
-            if self.model is None:
-                if on_start:
-                    on_start()
-                try:
-                    self.load_model()
-                except Exception as e:
-                    print(f"[Model Load Error] {e}")
-                if on_complete:
-                    on_complete()
-            else:
+            if self.model is not None:
                 self.model_ready = True
-                if on_complete:
-                    on_complete()
+                if on_success:
+                    on_success()
+                return
+            if on_start:
+                on_start()
+            try:
+                self.load_model()
+            except Exception as exc:
+                print(f"[Model Load Error] {exc}")
+                if on_error:
+                    on_error(exc)
+                return
+            if on_success:
+                on_success()
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -122,7 +150,8 @@ class SpeechRecognizer:
             return
 
         # Geçici dosyaya kaydet
-        temp_wav = tempfile.mktemp(suffix=".wav")
+        handle, temp_wav = tempfile.mkstemp(suffix=".wav", prefix="pdfaura-")
+        os.close(handle)
         try:
             sf.write(temp_wav, audio_concat, self.samplerate)
         except Exception as e:
@@ -133,7 +162,7 @@ class SpeechRecognizer:
         def _recognize_worker():
             try:
                 self.load_model()
-                segments, info = self.model.transcribe(temp_wav, language="tr")
+                segments, info = self.model.transcribe(temp_wav, language=self.language)
                 text = " ".join([segment.text for segment in segments])
                 callback(text.strip())
             except Exception as e:

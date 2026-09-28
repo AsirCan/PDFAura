@@ -20,19 +20,19 @@ NON_PDF_ACTIONS = {"ocr", "pdf_to_image", "pdf_to_word", "pdf_to_text"}
 
 def execute_intent(intent: dict):
     if not intent:
-        speak("Anlayamadım, lütfen tekrar söyleyin.")
+        speak(_("assist_not_understood"))
         return
 
     input_file = intent.get("input_file")
     if not input_file:
-        speak("Hangi dosya üzerinde işlem yapmak istediğinizi anlayamadım. Lütfen dosya adını belirtin.")
+        speak(_("assist_no_file"))
         return
 
     # Dosya adını case-insensitive arayalım
     found_path = _find_file(input_file)
 
     if not found_path:
-        speak(f"Belirttiğiniz {input_file} dosyasını masaüstünde, belgelerimde veya indirilenler klasöründe bulamadım.")
+        speak(_("assist_file_not_found").format(name=input_file))
         return
 
     # Any further files named in the same command (for merge).
@@ -40,13 +40,13 @@ def execute_intent(intent: dict):
     for name in intent.get("input_files", [])[1:]:
         path = _find_file(name)
         if not path:
-            speak(f"Belirttiğiniz {name} dosyasını masaüstünde, belgelerimde veya indirilenler klasöründe bulamadım.")
+            speak(_("assist_file_not_found").format(name=name))
             return
         extra_paths.append(path)
 
     actions = intent.get("action_chain", [])
     if not actions:
-        speak("Dosyaya ne yapmam gerektiğini tam olarak anlayamadım. Örneğin sıkıştır, kes veya filigran ekle diyebilirsiniz.")
+        speak(_("assist_no_action"))
         return
 
     # Hedef klasör parse edilmediyse mevcut klasöre kaydet
@@ -76,9 +76,7 @@ def execute_intent(intent: dict):
             # Son PDF action mı?
             remaining_pdf_actions = [a for a in actions[i+1:] if a["action"] not in NON_PDF_ACTIONS]
             is_last_pdf = len(remaining_pdf_actions) == 0
-            current_output = final_output_path if is_last_pdf else tempfile.mktemp(suffix=".pdf")
-            if not is_last_pdf:
-                temp_files.append(current_output)
+            current_output = final_output_path if is_last_pdf else _temp_pdf_path(temp_files)
 
             if action_type == "split":
                 split_pdf(current_input, current_output, kwargs.get("start", 1), kwargs.get("end", 1))
@@ -116,18 +114,18 @@ def execute_intent(intent: dict):
         target_str = _get_target_display_name(output_target_dir)
         action_names = [_get_action_name(a["action"]) for a in actions]
         action_summary = ", ".join(action_names)
-        msg = f"{action_summary} işlemleri başarıyla tamamlandı. Dosyanız {target_str} kaydedildi."
+        msg = _("assist_result").format(actions=action_summary, target=target_str)
         speak(msg)
 
     except FileNotFoundError as e:
-        speak(f"Dosya bulunamadı hatası: {str(e)}")
+        speak(_("assist_error").format(error=e))
     except ValueError as e:
-        speak(f"Geçersiz parametre hatası: {str(e)}")
+        speak(_("assist_error").format(error=e))
     except PermissionError:
-        speak("Dosya yazma izni yok. Hedef klasöre erişim reddedildi.")
+        speak(_("assist_no_permission"))
     except Exception as e:
         print(f"[Action Runner Error] {e}")
-        speak(f"İşlem sırasında beklenmedik bir hata oluştu.")
+        speak(_("assist_unexpected_error"))
     finally:
         # Geçici dosyaları her durumda temizle (hata olsa bile)
         for tf in temp_files:
@@ -136,6 +134,14 @@ def execute_intent(intent: dict):
                     os.remove(tf)
             except Exception:
                 pass
+
+
+def _temp_pdf_path(temp_files):
+    """A temp path for an intermediate step. mktemp() was insecure."""
+    handle, path = tempfile.mkstemp(suffix=".pdf", prefix="pdfaura-")
+    os.close(handle)
+    temp_files.append(path)
+    return path
 
 
 def _find_file(input_file: str) -> str:
@@ -171,54 +177,43 @@ def _run_non_pdf_action(action_type, input_path, output_dir, base_name, kwargs):
         if action_type == "ocr":
             output_txt = os.path.join(output_dir, f"{base_name}_ocr.txt")
             perform_ocr_to_text(input_path, output_txt)
-            speak("OCR işlemi tamamlandı. Metin dosyası kaydedildi.")
+            speak(_("assist_ocr_done"))
 
         elif action_type == "pdf_to_image":
             img_folder = os.path.join(output_dir, f"{base_name}_resimler")
             fmt = kwargs.get("format", "png")
             count = pdf_to_images(input_path, img_folder, dpi=300, img_format=fmt)
-            speak(f"PDF başarıyla {count} adet {fmt.upper()} resme dönüştürüldü.")
+            speak(_("assist_images_done").format(count=count, fmt=fmt.upper()))
 
         elif action_type == "pdf_to_word":
             output_docx = os.path.join(output_dir, f"{base_name}.docx")
             pdf_to_word(input_path, output_docx)
-            speak("PDF başarıyla Word formatına dönüştürüldü.")
+            speak(_("assist_word_done"))
 
         elif action_type == "pdf_to_text":
             output_txt = os.path.join(output_dir, f"{base_name}.txt")
             pdf_to_txt(input_path, output_txt)
-            speak("PDF'deki metinler başarıyla çıkarıldı ve metin dosyasına kaydedildi.")
+            speak(_("assist_text_done"))
 
     except Exception as e:
         print(f"[Non-PDF Action Error] {e}")
-        speak(f"İşlem sırasında bir hata oluştu: {str(e)}")
+        speak(_("assist_error").format(error=e))
 
 
 def _get_target_display_name(output_target_dir: str) -> str:
-    """Hedef klasörü kullanıcı dostu Türkçe isme çevirir."""
+    """Name the destination folder in the UI's language."""
     folder = os.path.basename(output_target_dir).lower()
     if folder in ("desktop", "masaüstü"):
-        return "Masaüstüne"
-    elif folder in ("documents", "belgeler"):
-        return "Belgelerim klasörüne"
-    elif folder in ("downloads", "indirilenler"):
-        return "İndirilenler klasörüne"
-    return "bulunduğu klasöre"
+        return _("assist_target_desktop")
+    if folder in ("documents", "belgeler"):
+        return _("assist_target_documents")
+    if folder in ("downloads", "indirilenler"):
+        return _("assist_target_downloads")
+    return _("assist_target_same")
 
 
 def _get_action_name(action: str) -> str:
-    """İşlem kodlarını Türkçe isimlendirme."""
-    names = {
-        "split": "Kesme",
-        "watermark": "Filigran ekleme",
-        "compress": "Sıkıştırma",
-        "encrypt": "Şifreleme",
-        "delete_pages": "Sayfa silme",
-        "rotate": "Döndürme",
-        "merge": _("assist_merge_name"),
-        "ocr": "OCR",
-        "pdf_to_image": "Resme dönüştürme",
-        "pdf_to_word": "Word'e dönüştürme",
-        "pdf_to_text": "Metin çıkarma",
-    }
-    return names.get(action, action)
+    """Name an operation in the UI's language."""
+    if action == "merge":
+        return _("assist_merge_name")
+    return _(f"assist_act_{action}")
