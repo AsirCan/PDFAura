@@ -37,6 +37,25 @@ def _unique_paths(paths):
             yield resolved
 
 
+def _managed_model_dirs():
+    """The model root the ModelManager downloads into, and its vision folder.
+
+    Imported lazily and defensively: the scanner must keep working even if
+    the AI settings module cannot be loaded.
+    """
+    try:
+        from src.ai.model_manager import ModelManager
+        root = ModelManager().model_root
+    except Exception:
+        try:
+            from src.core.config_manager import cfg
+            configured = cfg.get("ai_model_root", "")
+            root = Path(configured) if configured else Path(cfg.config_dir) / "models"
+        except Exception:
+            return []
+    return [Path(root) / "vision", Path(root)]
+
+
 def _candidate_model_dirs():
     """Directories to search in source, frozen, and installed builds."""
     module_path = Path(__file__).resolve()
@@ -47,7 +66,11 @@ def _candidate_model_dirs():
     env_model_dir = os.environ.get("PDFAURA_MODEL_DIR")
     local_app_data = os.environ.get("LOCALAPPDATA")
 
-    candidates = [
+    # Where Settings > Local AI actually downloads the model. Without these,
+    # the "Download" button wrote a model the scanner never looked at.
+    managed_dirs = _managed_model_dirs()
+
+    candidates = managed_dirs + [
         Path(env_model_dir) if env_model_dir else None,
         project_root / "models",
         Path.cwd() / "models",

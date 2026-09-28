@@ -2,7 +2,9 @@ import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from src.core.config_manager import cfg
 from src.core.lang_manager import _
+from src.core.notify import play_error, play_success
 from src.gui.styles import BORDER_COLOR, FIELD_COLOR, PRIMARY_ACCENT, TEXT_COLOR
 
 
@@ -239,12 +241,19 @@ class InlineFeedback(ttk.Frame):
         self.title_var.set(title)
         self.message_var.set(message)
         self._set_actions(output_path)
+        # Every tool finishes through here, so this is where the "play a
+        # sound when a job finishes" setting and the recent-files list are
+        # actually honoured.
+        play_success()
+        if output_path:
+            cfg.add_recent_file(output_path)
 
     def set_error(self, title, message):
         self._set_badge(_("feedback_error_badge"), "#fff1f2", "#b42318")
         self.title_var.set(title)
         self.message_var.set(message)
         self.clear_actions()
+        play_error()
 
     def set_warning(self, title, message, output_path=None):
         """Partial success: some items worked, some did not."""

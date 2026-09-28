@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 from src.core.config_manager import cfg
+from src.core.lang_manager import _
 
 
 ProgressCallback = Callable[[int, int], None]
@@ -70,7 +71,9 @@ DEFAULT_MODEL_SPECS: tuple[ModelSpec, ...] = (
         relative_dir="llm",
         patterns=("*.gguf",),
         size_mb=900.0,
-        required=True,
+        # No feature uses this yet (LocalLLM.generate always raises), so it
+        # must not be advertised as required.
+        required=False,
         license_name="Seçilen modele göre değişir; ticari kullanım ayrıca doğrulanmalı",
         source_url="https://huggingface.co/models?search=gguf%20qwen%20instruct",
         hardware_profile="Hafif/Standart",
@@ -84,7 +87,8 @@ DEFAULT_MODEL_SPECS: tuple[ModelSpec, ...] = (
         relative_dir="embeddings",
         patterns=("*.onnx", "*.bin", "*.safetensors", "*.gguf"),
         size_mb=120.0,
-        required=True,
+        # Planned, not wired into any feature yet.
+        required=False,
         license_name="Seçilen modele göre değişir; ticari kullanım ayrıca doğrulanmalı",
         source_url="https://huggingface.co/models?search=multilingual%20embedding",
         hardware_profile="Hafif",
@@ -119,6 +123,58 @@ DEFAULT_MODEL_SPECS: tuple[ModelSpec, ...] = (
         notes="Mevcut sesli asistan small modeli lazy-load eder; model yoksa uygulama açılışını bozmaz.",
     ),
 )
+
+
+def _find_tesseract() -> str:
+    """Tesseract's path, checking PATH and the standard install folder.
+
+    Settings only looked on PATH while the Advanced tab also checked
+    Program Files, so the two screens could disagree.
+    """
+    found = shutil.which("tesseract")
+    if found:
+        return found
+    for candidate in (
+        os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"),
+                     "Tesseract-OCR", "tesseract.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                     "Tesseract-OCR", "tesseract.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs",
+                     "Tesseract-OCR", "tesseract.exe"),
+    ):
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return ""
+
+
+def _find_whisper_in_hf_cache() -> Path | None:
+    """The faster-whisper model in the Hugging Face cache, if it is there.
+
+    That is where faster-whisper downloads it, so a perfectly working
+    assistant used to be reported as "missing".
+    """
+    roots = []
+    hf_home = os.environ.get("HF_HOME")
+    if hf_home:
+        roots.append(Path(hf_home) / "hub")
+    cache = os.environ.get("HUGGINGFACE_HUB_CACHE")
+    if cache:
+        roots.append(Path(cache))
+    roots.append(Path(os.path.expanduser("~")) / ".cache" / "huggingface" / "hub")
+
+    for root in roots:
+        try:
+            if not root.is_dir():
+                continue
+            for entry in root.iterdir():
+                if not entry.is_dir() or "faster-whisper" not in entry.name.lower():
+                    continue
+                for model_file in entry.rglob("model.bin"):
+                    if model_file.is_file():
+                        return model_file
+        except OSError:
+            continue
+    return None
 
 
 class ModelManager:
@@ -213,9 +269,18 @@ class ModelManager:
 
     def _status_for_spec(self, spec: ModelSpec) -> ModelStatus:
         if spec.id == "ocr_engine":
-            tesseract_path = shutil.which("tesseract")
+            # Look where the Advanced tab looks too, not only on PATH: the
+            # two screens used to disagree about whether OCR was available.
+            tesseract_path = _find_tesseract()
             if tesseract_path:
-                return ModelStatus(spec, True, tesseract_path, "Tesseract PATH üzerinden hazır.", 0.0)
+                return ModelStatus(spec, True, tesseract_path, _("model_status_ocr_ready"), 0.0)
+
+        if spec.id == "speech_whisper":
+            # faster-whisper keeps its model in the Hugging Face cache, which
+            # this never looked at: a working assistant showed as "missing".
+            cached = _find_whisper_in_hf_cache()
+            if cached:
+                return self._installed_status(spec, cached, _("model_status_cached"))
 
         configured = self.configured_paths().get(spec.id, "")
         if configured:

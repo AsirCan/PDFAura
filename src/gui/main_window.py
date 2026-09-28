@@ -168,6 +168,13 @@ class MainWindow:
             justify="left",
         ).pack(anchor="w")
 
+        # Recent files were recorded nowhere, so "Clear recent files" in
+        # Settings cleared a list that could never fill up.
+        ttk.Label(sidebar, text=_("sidebar_recent"), style="SidebarSection.TLabel").pack(anchor="w", pady=(28, 8))
+        self.recent_frame = ttk.Frame(sidebar, style="Sidebar.TFrame")
+        self.recent_frame.pack(fill="x")
+        self.refresh_recent_files()
+
         main = ttk.Frame(shell, style="App.TFrame")
         main.pack(side="left", fill="both", expand=True, padx=(18, 0))
 
@@ -376,6 +383,31 @@ class MainWindow:
         self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.root.minsize(min(1100, screen_w - 40), min(720, screen_h - 60))
         self.root.resizable(True, True)
+
+    def refresh_recent_files(self):
+        """Redraw the sidebar's recent-files list from the config."""
+        for child in self.recent_frame.winfo_children():
+            child.destroy()
+
+        recent = cfg.get_recent_files()[:5]
+        if not recent:
+            ttk.Label(self.recent_frame, text=_("sidebar_recent_empty"),
+                      style="SidebarMeta.TLabel", wraplength=180,
+                      justify="left").pack(anchor="w")
+            return
+
+        for path in recent:
+            name = os.path.basename(path)
+            label = name if len(name) <= 24 else name[:21] + "…"
+            ttk.Button(self.recent_frame, text=label, style="Nav.TButton",
+                       command=lambda p=path: self._open_recent(p)).pack(fill="x", pady=2)
+
+    def _open_recent(self, path):
+        from src.gui.helpers import open_path
+        if os.path.isfile(path):
+            open_path(path)
+        else:
+            self.refresh_recent_files()   # it has since been deleted
 
     def _show_assistant_reply(self, text):
         """Show an assistant reply on screen (called from worker threads)."""

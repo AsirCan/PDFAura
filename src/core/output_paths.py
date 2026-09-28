@@ -9,6 +9,7 @@ import os
 import tempfile
 from contextlib import contextmanager
 
+from src.core.config_manager import cfg
 from src.core.lang_manager import _
 
 # Default filename suffixes, by lang_manager key.
@@ -30,10 +31,26 @@ def suffix(name):
     return _(SUFFIX_KEYS[name])
 
 
+def default_output_dir():
+    """The folder set in Settings, if it is usable. "" means "next to the input"."""
+    folder = (cfg.get("default_output_dir") or "").strip()
+    return folder if folder and os.path.isdir(folder) else ""
+
+
 def suggest_output(input_path, kind, ext=None):
-    """Suggest '<input stem><localised suffix><ext>' next to the input."""
+    """Suggest '<input stem><localised suffix><ext>' for this input.
+
+    Goes in the folder from Settings when one is set -- that setting was
+    stored but never read anywhere -- otherwise next to the input.
+    """
     base, original_ext = os.path.splitext(input_path)
-    return f"{base}{suffix(kind)}{ext if ext is not None else original_ext}"
+    target_ext = ext if ext is not None else original_ext
+    name = f"{os.path.basename(base)}{suffix(kind)}{target_ext}"
+
+    folder = default_output_dir()
+    if folder:
+        return os.path.join(folder, name)
+    return f"{base}{suffix(kind)}{target_ext}"
 
 
 def unique_path(path, taken=None, check_disk=True):

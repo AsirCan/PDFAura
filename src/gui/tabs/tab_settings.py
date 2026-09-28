@@ -30,7 +30,7 @@ class SettingsPanel(ttk.Frame):
         ttk.Label(hero, text=_("settings_appearance"), style="HeroTitle.TLabel").pack(anchor="w", pady=(6, 0))
         ttk.Label(
             hero,
-            text=_("settings_saved"),
+            text=_("settings_intro"),
             style="HeroBody.TLabel",
             wraplength=720,
             justify="left",
@@ -54,9 +54,11 @@ class SettingsPanel(ttk.Frame):
         right.pack(side="left", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
+        # set_info, not set_success: nothing has been saved yet, and the
+        # success panel offers "Open output" buttons that mean nothing here.
         self.feedback.set_info(
             _("txt_settings"),
-            _("settings_saved"),
+            _("settings_intro"),
         )
 
     def _build_general_settings(self, parent):
@@ -209,14 +211,14 @@ class SettingsPanel(ttk.Frame):
 
         status = self.model_manager.status(model_id)
         spec = status.spec
-        detail = (
-            f"{spec.name}\n"
-            f"{spec.description}\n"
-            f"Durum: {status.message}\n"
-            f"Yol: {status.path or '-'}\n"
-            f"Lisans: {spec.license_name or '-'}\n"
-            f"Not: {spec.notes or '-'}"
-        )
+        detail = "\n".join([
+            spec.name,
+            spec.description,
+            f"{_('model_detail_status')}: {status.message}",
+            f"{_('model_detail_path')}: {status.path or '-'}",
+            f"{_('model_detail_license')}: {spec.license_name or '-'}",
+            f"{_('model_detail_notes')}: {spec.notes or '-'}",
+        ])
         self.ai_detail_var.set(detail)
 
     def pick_selected_model_path(self):
@@ -265,13 +267,16 @@ class SettingsPanel(ttk.Frame):
         def _progress(downloaded, total):
             if total:
                 pct = int(downloaded * 100 / total)
-                self.after(0, self.ai_detail_var.set, f"{spec.name}\nİndiriliyor: {pct}%")
+                self.after(0, self.ai_detail_var.set,
+                           f"{spec.name}\n{_('model_detail_downloading')}: {pct}%")
 
         def _worker():
             try:
                 path = self.model_manager.download_model(model_id, progress=_progress)
                 self.after(0, self._download_done, str(path), None)
-            except ModelDownloadError as exc:
+            except Exception as exc:
+                # Catch everything: any other error used to escape the thread
+                # and leave the Download button disabled for good.
                 self.after(0, self._download_done, "", str(exc))
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -294,7 +299,10 @@ class SettingsPanel(ttk.Frame):
         self.ai_test_btn.config(state="disabled")
 
         def _worker():
-            ok, message = self.model_manager.test_model(model_id)
+            try:
+                ok, message = self.model_manager.test_model(model_id)
+            except Exception as exc:
+                ok, message = False, str(exc)
             self.after(0, self._test_done, ok, message)
 
         threading.Thread(target=_worker, daemon=True).start()
