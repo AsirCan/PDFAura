@@ -199,13 +199,10 @@ def excel_to_pdf(input_excel, output_pdf, ctx=None):
         ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
 def pdf_to_txt(input_pdf, output_txt, ctx=None):
-    """Convert PDF to Text natively using PyPDF2."""
-    try:
-        from PyPDF2 import PdfReader
-    except ImportError:
-        raise ImportError("PyPDF2 kutuphanesi bulunamadi.")
-    
-    reader = PdfReader(input_pdf)
+    """Convert PDF to Text natively using pypdf."""
+    from src.core.common import open_pdf_reader
+
+    reader = open_pdf_reader(input_pdf)
     text = []
     total = len(reader.pages)
     

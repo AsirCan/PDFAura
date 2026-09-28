@@ -1,5 +1,8 @@
 import io
-from PyPDF2 import PdfReader, PdfWriter
+
+from pypdf import PdfReader, PdfWriter
+
+from src.core.common import open_pdf_reader
 try:
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
@@ -11,7 +14,7 @@ def stamp_visual_signature(input_pdf, output_pdf, image_path, page_num=1, x_pos=
     Stamp a visual signature (image) onto a specific document page.
     page_num is 1-indexed. Coordinates are from bottom-left in points (pt).
     """
-    reader = PdfReader(input_pdf)
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     
     total_pages = len(reader.pages)

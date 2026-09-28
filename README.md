@@ -1,96 +1,315 @@
-# PDF Aura
+<p align="center">
+  <img src="assets/icon.png" width="130" height="130" alt="PDF Aura Logo" />
+</p>
 
-PDF Aura, Windows 64-bit işletim sistemleri için geliştirilen modern, çevrimdışı ve kapsamlı bir PDF araç setidir. Gündelik doküman işlemlerinden karmaşık ofis otomasyonlarına kadar tüm PDF ihtiyaçlarınıza profesyonel ve güvenli bir çözüm sunmayı hedefler. Tamamen kendi bilgisayarınızda çalışır, böylece hiçbir belgeniz dışarıdaki bir sunucuya yüklenmez ve gizliliğiniz %100 oranında korunur.
+<h1 align="center">PDF Aura</h1>
 
-## Neler Yapabilirsiniz?
+<p align="center">
+  <b>Windows için Çevrimdışı, Gizlilik Odaklı ve Yapay Zekâ Destekli Hepsi Bir Arada PDF İsviçre Çakısı</b>
+</p>
 
-Mevcut sürümde kullanabileceğiniz temel araçlar:
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(64--bit)-0078D6?logo=windows&logoColor=white" alt="Windows 10/11" />
+  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python 3.10+" />
+  <img src="https://img.shields.io/badge/Privacy-%25100%20Offline%20%26%20Secure-059669?logo=shield&logoColor=white" alt="Offline & Secure" />
+  <img src="https://img.shields.io/badge/Ads-%25100%20Ad--Free-critical?logo=adblock&logoColor=white" alt="100% Ad-Free" />
+  <img src="https://img.shields.io/badge/AI%20Inside-U2--Net%20%2B%20Whisper-8B5CF6?logo=openai&logoColor=white" alt="AI Powered" />
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License MIT" />
+</p>
 
-*   **PDF Sıkıştırma:** Dosya boyutlarını görünüm kalitesinden ödün vermeden 4 farklı profil (screen, ebook, printer, prepress) üzerinden optimize ederek küçültün.
-*   **Sayfa İşlemleri (Kes, Böl, Düzenle):** İstemediğiniz sayfaları atın, belirli aralıkları (örn. 5-15) kesin, sayfaları dilediğiniz gibi 90/180/270 derece döndürün veya sıralamalarını tamamen değiştirin.
-*   **PDF Birleştirme:** Sürükleyip bırakarak sınırsız sayıda PDF dosyasını anında tek bir dosya altında birleştirin.
-*   **Format Dönüştürme Merkezi:**
-    *   PDF'lerinizi görsellere (PNG/JPG) veya PDF'ten çıkarılabilir formattaki saf metin dosyalarına (TXT) dönüştürün.
-    *   Fotoğraflarınızı, Word (.docx), Excel (.xlsx) ve PowerPoint (.pptx) belgelerinizi saniyeler içinde otomatik olarak PDF'e çevirin.
-*   **Akıllı Belge Tarayıcı (Kamera/Fotoğraf Okuyucu):**
-    *   Cep telefonu ile çektiğiniz kağıt/belge fotoğraflarını, akıllı yapay sinir algoritmalarıyla otomatik algılar ve perspektifini 4 köşeden (CamScanner tarzı) düzelterek A4 boyutuna getirir.
-    *   Gölge ve kötü ışık düşen fotoğraflarınızı "Temiz Belge" modundaki **Adaptive Text Thresholding** ile arkaplanı bembeyaz, yazıları simsiyah ve okunaklı yapacak şekilde restore eder. Çoklu fotoğraf yükleme desteğiyle anında dergi/kitap PDF'leri çıkartabilirsiniz.
-*   **Güvenlik:** Hassas belgelerinize 128-Bit parola koruması atayın, şifre bildiğiniz dosyaların şifre gereksinimini kaldırın veya tüm sayfalara özel filigran (watermark) ekleyin.
-*   **Gelişmiş:** Optik Karakter Tanıma (OCR) sayesinde resim tabanlı PDF'lerden yazıları çekin veya resmi belgelerinize kendi ıslak/görsel imzanızı damgalayın.
-*   **Toplu İşlemler:** Klasör dolusu belgeyi tek komutla aynı formata çevirin, sıkıştırın veya akıllı parametrelerle otomatik olarak yeniden isimlendirin.
+---
 
-## Gelecekte Neler Eklenecek? (Yol Haritası)
+## 📌 İçindekiler
+- [🌟 Neden PDF Aura?](#-neden-pdf-aura)
+- [📸 Ekran Görüntüleri ve Tanıtım Vitrini](#-ekran-görüntüleri-ve-tanıtım-vitrini)
+  - [1. Akıllı Belge Tarayıcı (AI Destekli)](#1-akıllı-belge-tarayıcı-ai-destekli)
+  - [2. Akıllı PDF Sıkıştırma](#2-akıllı-pdf-sıkıştırma)
+  - [3. Sayfa Yönetimi (Kes, Birleştir, Düzenle)](#3-sayfa-yönetimi-kes-birleştir-düzenle)
+  - [4. Kapsamlı Format Dönüştürücü](#4-kapsamlı-format-dönüştürücü)
+  - [5. Güvenlik ve Filigran Koruma](#5-güvenlik-ve-filigran-koruma)
+  - [6. Gelişmiş Araçlar, OCR ve Meta Veri](#6-gelişmiş-araçlar-ocr-ve-meta-veri)
+  - [7. Toplu İşlemler ve Otomasyon](#7-toplu-işlemler-ve-otomasyon)
+  - [8. Sesli ve Metin AI Asistanı (Aura Assistant)](#8-sesli-ve-metin-ai-asistanı-aura-assistant)
+- [🧩 Yetenekler ve Özellik Tablosu](#-yetenekler-ve-özellik-tablosu)
+- [🧠 Yapay Zekâ ve Görüntü İşleme Mimarisi](#-yapay-zekâ-ve-görüntü-işleme-mimarisi)
+- [🗺️ Gelecek Yol Haritası (Roadmap)](#️-gelecek-yol-haritası-roadmap)
+- [⚙️ Kurulum ve Çalıştırma Kılavuzu](#️-kurulum-ve-çalıştırma-kılavuzu)
+  - [Sistem Gereksinimleri](#sistem-gereksinimleri)
+  - [Son Kullanıcı İçin (.exe Kurulumu)](#son-kullanıcı-için-exe-kurulumu)
+  - [Geliştiriciler İçin Kaynak Koddan Kurulum](#geliştiriciler-için-kaynak-koddan-kurulum)
+  - [🤖 AI Modellerini İndirme](#-ai-modellerini-indirme)
+  - [İsteğe Bağlı Sistem Bileşenleri](#isteğe-bağlı-sistem-bileşenleri)
+  - [🛠️ Kurulum Dosyası (.exe / Setup) Paketleme](#️-kurulum-dosyası-exe--setup-paketleme)
+- [📄 Lisans ve Katkı](#-lisans-ve-katkı)
 
-PDF Aura halihazırda güçlü bir araca dönüşmüş olsa da, onu piyasadaki diğer rakiplerinden üstün kılacak sıradaki özelliklerin entegre edilmesi planlanmaktadır:
+---
 
-1.  **AI Odaklı Sesli Doküman Asistanı:** Kullanıcıların tamamen sesli komutlarla ("Masaüstündeki raporu sıkıştır ve ilk 10 sayfasını kes") işlemi yapmasını sağlayacak Yapay Zeka tabanlı devrim niteliğinde bir hands-free sistem.
-2.  **Otomasyon Entegrasyonu:** İşletim sisteminin sağ tık menüsüne eklenerek ("Bunu PDF Aura ile Sıkıştır") hızı maksimum seviyeye çıkarma.
-3.  **Bulut Senkronizasyonu:** Yerel işlemin güvenliğini bozmadan, isteğe bağlı Google Drive ve OneDrive çıkış destekleri.
+## 🌟 Neden PDF Aura?
 
-## ⚙️ Gereksinimler
+Piyasadaki birçok çevrim içi PDF dönüştürücü hassas belgelerinizi uzak sunuculara yükler, can sıkıcı reklamlar ve pop-up'lar gösterir, dosya boyutu/işlem sınırı koyar veya fahiş ücretli abonelikler dayatır. **PDF Aura**, tamamen **reklamsız**, **%100 yerel, sınırsız ve güvenli** bir deneyim sunmak üzere tasarlanmıştır.
 
-*   **İşletim Sistemi:** Windows 10 veya Windows 11 (64-bit)
-*   **Altyapı:** Python 3.10 veya daha yenisi
-*   Sıkıştırma motoru için açık kaynaklı *Ghostscript* entegrasyonu kullanır.
-*   Ofis belgelerini (Word, PowerPoint, Excel) dönüştürme işlemleri, sisteminizde *Microsoft Office* 'in kurulu olmasını gerektirir.
+| Avantaj | Açıklama |
+| :--- | :--- |
+| 🔒 **%100 Çevrimdışı ve Gizli** | Belgeleriniz hiçbir zaman bilgisayarınızdan dışarı çıkmaz. İnternet bağlantısı gerektirmez; kurumsal ve kişisel gizlilik tam koruma altındadır. |
+| 🚫 **Tamamen Reklamsız** | Hiçbir reklam, açılır pencere (pop-up) ya da üçüncü taraf izleyici barındırmaz; temiz, profesyonel ve kesintisiz bir çalışma alanı sunar. |
+| 🤖 **Yapay Zekâ ile Belge Tarama** | Masada telefonla çekilmiş eğri belgeleri U2-Net ONNX derin öğrenme modeliyle otomatik tespit eder, 4 köşeden kırpar ve tarayıcı kalitesine getirir. |
+| 🎙️ **Akıllı Asistan Desteği** | Entegre sesli ve metin tabanlı AI asistanı sayesinde *"PDF'i sıkıştır"*, *"İlk 5 sayfayı kes"* gibi doğal dil komutlarıyla eller serbest işlem yapabilirsiniz. |
+| ⚡ **Modern ve Sezgisel Arayüz** | Dosyaları doğrudan sürükleyip bırakın, dahili canlı PDF önizleme panelinde inceleyin ve sistem tepsisine (system tray) küçülterek arka planda tutun. |
+| 🚀 **Donanım Hızlandırma & Verimlilik** | Düşük bellek tüketimi, CPU/GPU optimize edilmiş ONNX çıkarım motoru ve Ghostscript tabanlı kayıpsız sıkıştırma algoritmaları. |
 
-## 🧰 Geliştiriciler İçin Kurulum
+---
 
-Uygulamayı mevcut kaynak kodlarından çalıştırmak isterseniz:
+## 📸 Ekran Görüntüleri ve Tanıtım Vitrini
 
+### 1. Akıllı Belge Tarayıcı (AI Destekli)
+> **Telefonla çektiğiniz belgeleri stüdyo tarayıcısı kalitesine dönüştürün.**  
+> U2-Net derin öğrenme algoritması belgenin sınırlarını otomatik yakalar. Etkileşimli 4 köşe kontrolüyle ince ayar yapabilir, çoklu sayfa sıralayabilir ve **Temiz Belge (Adaptive Text Thresholding)** filtresiyle gölgeleri yok edip bembeyaz bir A4 PDF çıktısı alabilirsiniz.
+
+<p align="center">
+  <img src="docs/screenshots/03_scanner.png" alt="PDF Aura Akıllı Belge Tarayıcı" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 2. Akıllı PDF Sıkıştırma
+> **Görsel netliği korurken dosya boyutlarını dramatik şekilde düşürün.**  
+> E-posta, arşiv veya baskı senaryolarına özel 4 optimize profil (*Screen, eBook, Printer, Prepress*). Dosya boyutunu tek tıkla %80'e varan oranlarda küçültün.
+
+<p align="center">
+  <img src="docs/screenshots/01_compress.png" alt="PDF Aura Sıkıştırma Paneli" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 3. Sayfa Yönetimi (Kes, Birleştir, Düzenle)
+> **Belgelerinizi dilediğiniz gibi parçalayın, birleştirin ve şekillendirin.**  
+> İstemediğiniz sayfaları çıkartın, belirli aralıkları (ör. 1-15) ayırın, sınırsız sayıda PDF'i tek dosyada birleştirin veya sayfaları 90°/180°/270° döndürün.
+
+<p align="center">
+  <img src="docs/screenshots/02_organize.png" alt="PDF Aura Sayfa Yönetimi" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 4. Kapsamlı Format Dönüştürücü
+> **Office belgeleri, görseller ve PDF arasında kayıpsız geçiş köprüsü.**  
+> PDF'lerinizi yüksek çözünürlüklü görsellere (PNG/JPG) veya saf metne (TXT) aktarın. Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`) ve fotoğraflarınızı saniyeler içinde PDF formatına dönüştürün.
+
+<p align="center">
+  <img src="docs/screenshots/04_convert.png" alt="PDF Aura Format Dönüştürücü" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 5. Güvenlik ve Filigran Koruma
+> **Kurumsal düzeyde belge koruması ve telif damgası.**  
+> Hassas dokümanlarınızı endüstri standardı 128-bit şifreleme ile kilitleyin, şifresini bildiğiniz dosyaların korumasını kaldırın veya sayfaların üzerine dilediğiniz açı ve opaklıkta özel filigran (watermark) ekleyin.
+
+<p align="center">
+  <img src="docs/screenshots/05_security.png" alt="PDF Aura Güvenlik ve Filigran" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 6. Gelişmiş Araçlar, OCR ve Meta Veri
+> **Resim tabanlı PDF'lerden metin okuma, meta veri düzenleme ve dijital imza.**  
+> Tesseract OCR motoru ile taranmış belgelerdeki metinleri çıkarıp aranabilir metin dosyalarına dönüştürün. Başlık, yazar ve konu meta verilerini güncelleyin, resmi evraklarınıza sayfa ve koordinat belirterek görsel imza basın.
+
+<p align="center">
+  <img src="docs/screenshots/06_advanced.png" alt="PDF Aura Gelişmiş Araçlar ve Meta Veri" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 7. Toplu İşlemler ve Otomasyon
+> **Yüzlerce belgeyi tek tıklamayla dakikalar içinde işleyin.**  
+> Bir klasör dolusu PDF'i toplu olarak sıkıştırın, formatlarını dönüştürün veya `[TARIH]_[ORIJINAL_AD]_Sayfa[SAYFA_SAYISI]` gibi dinamik şablonlarla otomatik olarak yeniden adlandırın.
+
+<p align="center">
+  <img src="docs/screenshots/07_batch.png" alt="PDF Aura Toplu İşlemler" width="95%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);" />
+</p>
+
+---
+
+### 8. Sesli ve Metin AI Asistanı (Aura Assistant)
+> **Klavyeye dokunmadan doküman yönetimi.**  
+> Yerel ses tanıma modeli (**Faster-Whisper**) ve intent ayrıştırıcı motor ile uygulamanın sağ üstündeki mikrofon butonuna basılı tutarak ya da sohbet çubuğuna yazarak komut verebilirsiniz:
+> - *"Masaüstündeki sözleşmeyi sıkıştır"*
+> - *"İlk 3 sayfayı ayır"*
+> - *"Belgeler klasöründeki raporları birleştir"*
+
+---
+
+## 🧩 Yetenekler ve Özellik Tablosu
+
+| Kategori | Modül | Desteklenen İşlemler |
+| :--- | :--- | :--- |
+| **🗜️ Boyut Optimizasyonu** | **Sıkıştırma** | 4 farklı profil (`screen`, `ebook`, `printer`, `prepress`), DPI ve renk derinliği optimizasyonu |
+| **📝 Sayfa Yönetimi** | **Böl & Kes** | Belirli sayfa veya sayfa aralıklarını (örn. 5-12) yeni PDF olarak dışa aktarma |
+| | **Birleştir** | Sürükle-bırak sıralama ile sınırsız sayıda PDF dosyasını tek dosyada toplama |
+| | **Düzenle** | Sayfa silme, sayfa sırası değiştirme, 90°/180°/270° döndürme |
+| **📷 Akıllı Tarayıcı** | **Fotoğraftan PDF'e** | AI tabanlı 4 köşe algılama, etkileşimli köşe düzenleme, çoklu sayfa yönetimi, perspektif düzeltme |
+| | **Görüntü Filtreleri** | Temiz Belge (Adaptive Thresholding), Siyah-Beyaz (Otsu), Gri Tonlama, Keskinleştirme, Orijinal |
+| **🔄 Dönüştürme** | **Görsel & Metin** | PDF ➔ PNG / JPG (özel DPI seçimi), Görseller ➔ PDF, PDF ➔ TXT |
+| | **Microsoft Office** | Word (`.docx`) ➔ PDF, Excel (`.xlsx`) ➔ PDF, PowerPoint (`.pptx`) ➔ PDF |
+| **🔒 Güvenlik** | **Kriptolama & Damga**| 128-Bit parola şifreleme, şifre kaldırma, sayfa bazlı metin filigranı ekleme |
+| **🧰 Gelişmiş** | **OCR & Evrak** | Resim tabanlı PDF'lerden Tesseract ile Türkçe metin tanıma, meta veri (Title, Author vb.) düzenleme, görsel imza damgalama |
+| **📦 Otomasyon** | **Toplu İşlemler** | Klasör bazlı toplu sıkıştırma, toplu dönüştürme, değişken parametreli akıllı yeniden adlandırma |
+| **🤖 Yapay Zekâ** | **Aura Assistant** | Faster-Whisper yerel konuşma tanıma, metin/ses ile doğal dilde komut çalıştırma |
+
+---
+
+## 🧠 Yapay Zekâ ve Görüntü İşleme Mimarisi
+
+PDF Aura, doküman algılama ve köşe tespitinde **hibrit bir yapay zekâ boru hattı** kullanır:
+
+```mermaid
+flowchart LR
+    A["Girdi Fotoğrafı"] --> B{"Tespit Motorları"}
+    B -->|"Öncelik 1"| C["ONNX U2-Net / U2-Net-P Derin Öğrenme"]
+    B -->|"Öncelik 2"| D["ML-Enhanced GrabCut & Watershed"]
+    B -->|"Öncelik 3"| E["Klasik CV (Canny, Hough, Morfoloji)"]
+    C --> F["Kalite Değerlendirme & Skorlama"]
+    D --> F
+    E --> F
+    F --> G["En Yüksek Skorlu 4 Köşe"]
+    G --> H["Perspektif Düzeltme (Warp) & A4 Normalizasyonu"]
+    H --> I["Adaptif Eşikleme & Çoklu Sayfalı PDF Çıktısı"]
+```
+
+### Kalite Değerlendirme Skorlaması
+Tespit edilen dörtgenler 4 farklı metriğe göre ağırlıklandırılarak değerlendirilir:
+1. **Kenar Skoru (%35):** Köşelerin fotoğraf kenarlarına olan mesafe ve netliği.
+2. **Alan Skoru (%25):** Belgenin fotoğrafın %15-95'lik mantıklı alanını kaplaması.
+3. **En-Boy Oranı (%20):** A4 / Letter oranlarına uygunluk (1:1 ile 3:1 arası).
+4. **Açı Skoru (%20):** 4 köşenin 90 dereceye yakınlığı.
+
+---
+
+## 🗺️ Gelecek Yol Haritası (Roadmap)
+
+- [x] Modern CustomTkinter / TkinterDnD arayüzü ve canlı PDF önizleme
+- [x] U2-Net ONNX tabanlı belge tarayıcı ve çoklu sayfa oturumu
+- [x] Yerel Faster-Whisper sesli komut asistanı
+- [x] Windows Sistem Tepsisi (Tray Icon) entegrasyonu
+- [ ] Windows Gezgini sağ tık menü entegrasyonu (*"PDF Aura ile Sıkıştır / Dönüştür"*)
+- [ ] Çoklu dil desteği genişletmesi (İngilizce / Almanca / İspanyolca)
+- [ ] İsteğe bağlı yerel açık kaynak LLM entegrasyonu (Ollama / Llama.cpp ile doküman özeti çıkarma)
+
+---
+
+## ⚙️ Kurulum ve Çalıştırma Kılavuzu
+
+### Sistem Gereksinimleri
+
+| Bileşen | Minimum | Önerilen |
+| :--- | :--- | :--- |
+| **İşletim Sistemi** | Windows 10 (64-bit) | Windows 11 (64-bit) |
+| **İşlemci (CPU)** | Intel Core i3 / AMD Ryzen 3 | Intel Core i5 / AMD Ryzen 5 veya üzeri |
+| **Bellek (RAM)** | 4 GB | 8 GB veya üzeri |
+| **Disk Alanı** | ~500 MB (Temel mod) | ~1 GB (Tüm AI modelleri ve kütüphanelerle) |
+| **Python** *(Geliştiriciler için)* | Python 3.10 | Python 3.12 (64-bit) |
+
+---
+
+### Son Kullanıcı İçin (.exe Kurulumu)
+
+Uygulamanın hazır derlenmiş Windows sürümünü kullanmak için:
+
+1. **Releases** sayfasından en güncel `PDFAura-Setup.exe` dosyasını indirin.
+2. İndirdiğiniz kurulum sihirbazını çalıştırın ve adımları takip edin.
+3. Masaüstündeki veya Başlat menüsündeki **PDF Aura** simgesine tıklayarak hemen kullanmaya başlayın!
+
+---
+
+### Geliştiriciler İçin Kaynak Koddan Kurulum
+
+Projeyi kaynak kodundan geliştirmek veya çalıştırmak için aşağıdaki adımları izleyin:
+
+#### 1. Depoyu Klonlayın
 ```powershell
-# Gerekli kütüphaneleri sisteminize kurun
+git clone https://github.com/AsirCan/PDFAura.git
+cd PDFAura
+```
+
+#### 2. Sanal Ortam (Virtualenv) Oluşturun ve Aktif Edin
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+#### 3. Bağımlılıkları Yükleyin
+```powershell
+pip install --upgrade pip
 pip install -r requirements.txt
+```
 
-# AI modellerini indirin (ilk kurulumda gerekli)
+#### 4. AI Modellerini İndirin
+Belge köşe tespiti yapay zekâ modelini indirin:
+```powershell
+# Önerilen: Hafif ve hızlı U2-Net-P modeli (~4.7 MB)
+python download_models.py --skip-optional
+
+# Veya tam model dahil tüm modelleri indirin (~170 MB)
 python download_models.py
+```
 
-# Uygulamayı başlatın
+#### 5. Uygulamayı Başlatın
+```powershell
 python main.py
 ```
+*(Alternatif olarak proje dizinindeki `baslat.bat` dosyasını çift tıklayarak da çalıştırabilirsiniz.)*
 
-### 🤖 AI Model İndirme
+---
 
-PDF Aura, belge köşe tespiti için gelişmiş yapay zeka modelleri kullanır. İlk kurulumda modelleri indirmeniz gerekir:
+### 🤖 AI Modellerini İndirme
 
-```powershell
-# Tüm modelleri indir (önerilen)
-python download_models.py
+PDF Aura belge tarama özelliğinde yapay zekâ çıkarımı için ONNX modelleri kullanır:
 
-# Sadece hafif modeli indir (~5 MB)
-python download_models.py --skip-optional
-```
+| Model Dosyası | Boyut | Donanım | Açıklama |
+| :--- | :--- | :--- | :--- |
+| **`u2netp_document.onnx`** | ~4.7 MB | CPU / Düşük Sistemler | **Önerilen.** Hafif, ultra hızlı ve yüksek doğrulukta köşe tespiti. |
+| **`u2net_document.onnx`** | ~168 MB | GPU / Güçlü CPU | Tam ölçekli derin öğrenme modeli (isteğe bağlı). |
 
-**Modeller:**
-- **u2netp_document.onnx** (~4.7 MB) - Hafif ve hızlı, CPU'da bile çalışır (Önerilen)
-- **u2net_document.onnx** (~168 MB) - Daha yüksek doğruluk, GPU önerilir (Opsiyonel)
+> **Not:** Model dosyaları `models/` klasörüne otomatik indirilir. Modeller indirilmemiş olsa bile uygulama çalışır; bu durumda sistem otomatik olarak klasik bilgisayarlı görü (OpenCV) algoritmalarına geçiş yapar.
 
-Modeller `models/` klasörüne indirilir. Eğer otomatik indirme çalışmazsa, manuel olarak indirebilirsiniz:
-- Hafif model: https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/main/u2netp.onnx
-- Tam model: https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx
+---
 
-**Not:** Modeller olmadan da uygulama çalışır, ancak belge tarayıcı özelliği klasik bilgisayarlı görü yöntemlerini kullanır.
+### İsteğe Bağlı Sistem Bileşenleri
 
-## 🛠️ Kurulum Dosyası (Setup) Oluşturma
+Tam fonksiyonel kullanım için aşağıdaki ek bileşenler önerilir:
 
-Uygulamayı son kullanıcı için tek bir `.exe` kurulum dosyasına dönüştürmek için aşağıdaki adımları izleyebilirsiniz:
+- **Ghostscript (Önerilen):** Sıkıştırma motorunun en yüksek verimle çalışması için Ghostscript'in sisteminizde kurulu olması tavsiye edilir. ([Ghostscript İndir](https://www.ghostscript.com/releases/index.html))
+- **Microsoft Office:** Word (`.docx`), PowerPoint (`.pptx`) ve Excel (`.xlsx`) dosyalarını PDF'e dönüştürürken sisteminizde yüklü MS Office kullanılır.
+- **Tesseract OCR (Opsiyonel):** Resim tabanlı PDF'lerden Türkçe metin okumak için Tesseract kurulu olmalıdır. Uygulama içerisindeki Gelişmiş sekmesinden tek tıkla otomatik olarak da kurulabilir.
 
-### 1. Executable (.exe) Paketleme
-Öncelikle kaynak kodları `dist` klasörü altında çalışabilir bir yapıya dönüştürmek için PyInstaller kullanın:
+---
 
+### 🛠️ Kurulum Dosyası (.exe / Setup) Paketleme
+
+Projeyi tek bir Windows kurulum dosyasına dönüştürmek için:
+
+#### 1. PyInstaller ile Executable Oluşturma
 ```powershell
 pyinstaller --noconfirm PDFAura.spec
 ```
-*(Bu işlem bilgisayar hızına bağlı olarak yaklaşık 3-5 dakika sürebilir.)*
 
-### 2. Kurulum Sihirbazı (Setup.exe) Oluşturma
-Oluşturulan dosyaları profesyonel bir Windows yükleyicisine dönüştürmek için **Inno Setup** kullanın:
+#### 2. Inno Setup ile Setup.exe Üretme
+1. Sisteminizde [Inno Setup](https://jrsoftware.org/isdl.php) kurulu olduğundan emin olun.
+2. Terminalden derleyin:
+   ```powershell
+   iscc setup.iss
+   ```
+İşlem bittiğinde `dist/` klasörü altında son kullanıcılar için hazır **PDFAura-Setup.exe** oluşturulacaktır.
 
-1.  Bilgisayarınızda [Inno Setup](https://jrsoftware.org/isdl.php) kurulu olduğundan emin olun.
-2.  `setup.iss` dosyasına sağ tıklayıp **"Compile"** seçeneğini seçin.
-3.  Alternatif olarak terminalden şu komutu çalıştırın:
-    ```powershell
-    iscc setup.iss
-    ```
+---
 
-İşlem tamamlandığında `dist` klasörü içerisinde **PDFAura.exe** adında, yaklaşık **150-200 MB** boyutunda bir kurulum dosyası oluşacaktır.
+## 📄 Lisans ve Katkı
+
+Bu proje [MIT Lisansı](LICENSE) altında sunulmaktadır. Ticari ve kişisel amaçlarla özgürce kullanılabilir, geliştirilebilir ve dağıtılabilir.
+
+Hata bildirimleri, öneriler ve katkılarınız için GitHub Issues veya Pull Request açmaktan çekinmeyin!
+
+<p align="center">
+  <b>Geliştirici:</b> <a href="https://github.com/AsirCan">AsirCan</a> • <b>PDF Aura</b> ile belgeleriniz güvende, kontrol sizde!
+</p>

@@ -2,7 +2,6 @@ import os
 import shutil
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from PyPDF2 import PdfReader
 
 from src.core.compress import compress_pdf
 from src.core.convert import images_to_pdf, pdf_to_images

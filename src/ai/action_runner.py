@@ -80,8 +80,8 @@ def execute_intent(intent: dict):
             elif action_type == "delete_pages":
                 delete_pages_from_pdf(current_input, current_output, kwargs.get("pages", []))
             elif action_type == "rotate":
-                from PyPDF2 import PdfReader
-                reader = PdfReader(current_input)
+                from src.core.common import open_pdf_reader
+                reader = open_pdf_reader(current_input)
                 all_pages = list(range(1, len(reader.pages) + 1))
                 rotate_pages_in_pdf(current_input, current_output, all_pages, kwargs.get("angle", 90))
             else:

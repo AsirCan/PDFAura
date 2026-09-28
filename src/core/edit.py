@@ -1,7 +1,8 @@
 def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
     """Delete specific pages from PDF. pages_to_delete is 1-indexed list."""
-    from PyPDF2 import PdfReader, PdfWriter
-    reader = PdfReader(input_pdf)
+    from pypdf import PdfWriter
+    from src.core.common import open_pdf_reader
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     delete_set = set(pages_to_delete)
     total = len(reader.pages)
@@ -20,8 +21,9 @@ def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
 
 def rotate_pages_in_pdf(input_pdf, output_pdf, pages_to_rotate, angle, ctx=None):
     """Rotate specific pages by angle (90, 180, 270). Pages are 1-indexed."""
-    from PyPDF2 import PdfReader, PdfWriter
-    reader = PdfReader(input_pdf)
+    from pypdf import PdfWriter
+    from src.core.common import open_pdf_reader
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     rotate_set = set(pages_to_rotate)
     total = len(reader.pages)
@@ -39,8 +41,9 @@ def rotate_pages_in_pdf(input_pdf, output_pdf, pages_to_rotate, angle, ctx=None)
 
 def reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=None):
     """Reorder pages according to new_order (1-indexed list)."""
-    from PyPDF2 import PdfReader, PdfWriter
-    reader = PdfReader(input_pdf)
+    from pypdf import PdfWriter
+    from src.core.common import open_pdf_reader
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     total = len(new_order)
     

@@ -1,9 +1,12 @@
-from PyPDF2 import PdfReader, PdfWriter
 from datetime import datetime
+
+from pypdf import PdfWriter
+
+from src.core.common import open_pdf_reader
 
 def read_metadata(input_pdf):
     """Retrieve metadata from PDF."""
-    reader = PdfReader(input_pdf)
+    reader = open_pdf_reader(input_pdf)
     meta = reader.metadata
     if meta is None:
         return {}
@@ -18,7 +21,7 @@ def read_metadata(input_pdf):
 
 def update_metadata(input_pdf, output_pdf, title=None, author=None, subject=None, creator=None, clean=False):
     """Update or completely clear the metadata of a PDF."""
-    reader = PdfReader(input_pdf)
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
 
     for page in reader.pages:

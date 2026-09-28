@@ -1,9 +1,22 @@
 import io
-from PyPDF2 import PdfReader, PdfWriter
+from pypdf import PdfReader, PdfWriter
+
+from src.core.common import open_pdf_reader
+from src.core.lang_manager import _
+
+
+def check_new_password(password, confirm=None):
+    """Validate a password chosen for encryption. Raises ValueError."""
+    if not password:
+        raise ValueError(_("err_password_empty"))
+    if confirm is not None and password != confirm:
+        raise ValueError(_("err_password_mismatch"))
+
 
 def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
-    """Encrypt a PDF with the given password."""
-    reader = PdfReader(input_pdf)
+    """Encrypt a PDF with the given password (AES-256)."""
+    check_new_password(password)
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     total = len(reader.pages)
 
@@ -13,27 +26,24 @@ def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
             ctx.report_progress(i, total + 1, f"Sayfa {i}/{total} şifreleniyor...")
         writer.add_page(page)
 
-    writer.encrypt(password)
-    
+    writer.encrypt(user_password=password, algorithm="AES-256")
+
     with open(output_pdf, "wb") as f:
         writer.write(f)
-    
+
     if ctx:
         ctx.report_progress(total + 1, total + 1, "Şifreleme tamamlandı.")
 
 def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     """Decrypt a PDF using the given password."""
-    reader = PdfReader(input_pdf)
-    
-    if not reader.is_encrypted:
-        raise ValueError("Bu PDF zaten sifreli degil.")
-        
-    if not reader.decrypt(password):
-        raise ValueError("Gecersiz parola.")
-    
+    if not PdfReader(input_pdf).is_encrypted:
+        raise ValueError(_("err_pdf_not_encrypted"))
+
+    reader = open_pdf_reader(input_pdf, password)
+
     if ctx:
         ctx.report_progress(1, 3, "Şifre çözülüyor...")
-        
+
     writer = PdfWriter()
     total = len(reader.pages)
     for i, page in enumerate(reader.pages, 1):
@@ -41,10 +51,10 @@ def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
             ctx.check_cancelled()
             ctx.report_progress(i, total + 1, f"Sayfa {i}/{total} çözülüyor...")
         writer.add_page(page)
-        
+
     with open(output_pdf, "wb") as f:
         writer.write(f)
-    
+
     if ctx:
         ctx.report_progress(total + 1, total + 1, "Şifre çözme tamamlandı.")
 
@@ -56,10 +66,10 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
         from reportlab.lib.colors import Color, black
     except ImportError:
         raise ImportError("Filigran eklemek icin reportlab kutuphanesi kurulmali. (pip install reportlab)")
-    
+
     if ctx:
         ctx.report_progress(1, 10, "Filigran oluşturuluyor...")
-    
+
     # Generate watermark PDF in memory
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=A4)
@@ -73,15 +83,15 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
     can.setFont("Helvetica-Bold", font_size)
     can.drawCentredString(0, 0, text)
     can.save()
-    
+
     packet.seek(0)
     watermark_reader = PdfReader(packet)
     watermark_page = watermark_reader.pages[0]
-    
-    reader = PdfReader(input_pdf)
+
+    reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     total = len(reader.pages)
-    
+
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
@@ -89,9 +99,9 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
         # Merge watermark
         page.merge_page(watermark_page)
         writer.add_page(page)
-        
+
     with open(output_pdf, "wb") as f:
         writer.write(f)
-    
+
     if ctx:
         ctx.report_progress(total, total, "Filigran ekleme tamamlandı.")

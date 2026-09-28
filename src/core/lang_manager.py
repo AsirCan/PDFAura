@@ -95,6 +95,13 @@ _STRINGS = {
         "err_pdf_open_fail":        "PDF Açılamadı: ",
         "err_set_output_file":      "Çıktı dosyası belirleyin.",
 
+        # ── Parola / Şifreleme ──
+        "err_password_empty":       "Parola boş olamaz.",
+        "err_password_mismatch":    "Parolalar eşleşmiyor.",
+        "err_wrong_password":       "Parola yanlış.",
+        "err_pdf_not_encrypted":    "Bu PDF şifreli değil.",
+        "err_pdf_password_protected": "Bu PDF parola korumalı. Lütfen önce Güvenlik sekmesinden parolayı kaldırın.",
+
         # ── Drag & Drop ──
         "str_drag_drop_hint": "Bir PDF dosyasını pencereye sürükleyip bırakabilirsiniz.",
         "str_files_added_to_list": " dosya listeye eklendi.",
@@ -205,6 +212,7 @@ _STRINGS = {
         "security_decrypt":         "Şifre Kaldır",
         "security_watermark":       "Filigran Ekle",
         "security_password":        "Parola:",
+        "security_password_confirm": "Parola (tekrar):",
         "security_watermark_text":  "Filigran Metni:",
         "security_running":         "{mode} işleniyor...",
         "security_dialog_input":    "PDF Seç",
@@ -212,6 +220,9 @@ _STRINGS = {
         "security_result_encrypt":  "PDF başarıyla şifrelendi.\nKaydedildi:\n{output}",
         "security_result_decrypt":  "PDF şifresi başarıyla kaldırıldı.\nKaydedildi:\n{output}",
         "security_result_watermark": "Filigran eklendi.\nKaydedildi:\n{output}",
+        "security_suffix_encrypted":  "_sifreli",
+        "security_suffix_decrypted":  "_sifresiz",
+        "security_suffix_watermarked": "_filigranli",
 
         # ── Gelişmiş (Advanced) Sekmesi ──
         "adv_operation":            "Gelişmiş İşlem",
@@ -531,6 +542,13 @@ _STRINGS = {
         "err_pdf_open_fail":        "Could not open PDF: ",
         "err_set_output_file":      "Set the output file.",
 
+        # ── Password / Encryption ──
+        "err_password_empty":       "Password cannot be empty.",
+        "err_password_mismatch":    "Passwords do not match.",
+        "err_wrong_password":       "Wrong password.",
+        "err_pdf_not_encrypted":    "This PDF is not encrypted.",
+        "err_pdf_password_protected": "This PDF is password protected. Please remove the password from the Security tab first.",
+
         # ── Drag & Drop ──
         "str_drag_drop_hint": "You can drag and drop a PDF file into the window.",
         "str_files_added_to_list": " file(s) added to list.",
@@ -641,6 +659,7 @@ _STRINGS = {
         "security_decrypt":         "Remove Password",
         "security_watermark":       "Add Watermark",
         "security_password":        "Password:",
+        "security_password_confirm": "Password (again):",
         "security_watermark_text":  "Watermark Text:",
         "security_running":         "Processing {mode}...",
         "security_dialog_input":    "Select PDF",
@@ -648,6 +667,9 @@ _STRINGS = {
         "security_result_encrypt":  "PDF encrypted successfully.\nSaved:\n{output}",
         "security_result_decrypt":  "PDF password removed successfully.\nSaved:\n{output}",
         "security_result_watermark": "Watermark added.\nSaved:\n{output}",
+        "security_suffix_encrypted":  "_encrypted",
+        "security_suffix_decrypted":  "_decrypted",
+        "security_suffix_watermarked": "_watermarked",
 
         # ── Advanced Tab ──
         "adv_operation":            "Advanced Operation",

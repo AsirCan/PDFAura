@@ -1,7 +1,8 @@
 def split_pdf(input_pdf, output_pdf, start_page, end_page, ctx=None):
     """Extract a range of pages from a PDF (1-indexed)."""
-    from PyPDF2 import PdfReader, PdfWriter
-    reader = PdfReader(input_pdf)
+    from pypdf import PdfWriter
+    from src.core.common import open_pdf_reader
+    reader = open_pdf_reader(input_pdf)
     total_pages = len(reader.pages)
     if start_page < 1:
         raise ValueError("Baslangic sayfasi 1'den kucuk olamaz.")

@@ -62,6 +62,7 @@ venv.bak/
 !assets/*.png
 !assets/*.ico
 !assets/*.bmp
+!docs/screenshots/*.png
 
 # Audio and Video / Temporary Media (Generated outputs)
 *.mp3

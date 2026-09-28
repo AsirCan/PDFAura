@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 from src.core.lang_manager import _
-from src.core.security import add_watermark_to_pdf, decrypt_pdf, encrypt_pdf
+from src.core.security import add_watermark_to_pdf, check_new_password, decrypt_pdf, encrypt_pdf
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 
@@ -19,6 +19,7 @@ class SecurityTab:
         self.output_var = tk.StringVar()
         self.mode_var = tk.StringVar(value=_("security_encrypt"))
         self.password_var = tk.StringVar()
+        self.confirm_var = tk.StringVar()
         self.watermark_text_var = tk.StringVar(value="GIZLI")
         self.status_var = tk.StringVar(value=_("str_ready"))
 
@@ -65,6 +66,12 @@ class SecurityTab:
         self.password_entry = ttk.Entry(self.password_frame, textvariable=self.password_var, show="*", style="Dark.TEntry")
         self.password_entry.pack(fill="x", pady=(8, 0))
 
+        # Only shown when encrypting; removing a password needs no confirmation.
+        self.confirm_row = ttk.Frame(self.password_frame, style="Panel.TFrame")
+        ttk.Label(self.confirm_row, text=_("security_password_confirm"), style="Field.TLabel").pack(anchor="w", pady=(12, 0))
+        self.confirm_entry = ttk.Entry(self.confirm_row, textvariable=self.confirm_var, show="*", style="Dark.TEntry")
+        self.confirm_entry.pack(fill="x", pady=(8, 0))
+
         self.watermark_frame = ttk.Frame(self.dynamic_frame, style="Panel.TFrame")
         ttk.Label(self.watermark_frame, text=_("security_watermark_text"), style="Field.TLabel").pack(anchor="w")
         self.watermark_entry = ttk.Entry(self.watermark_frame, textvariable=self.watermark_text_var, style="Dark.TEntry")
@@ -100,6 +107,10 @@ class SecurityTab:
         current = self.mode_var.get()
         if current in self.frames:
             self.frames[current].pack(fill="x", expand=True)
+        if current == _("security_encrypt"):
+            self.confirm_row.pack(fill="x")
+        else:
+            self.confirm_row.pack_forget()
         if self.input_var.get().strip():
             self._set_input(self.input_var.get().strip())
 
@@ -112,7 +123,12 @@ class SecurityTab:
         self.input_var.set(path)
         base, ext = os.path.splitext(path)
         current = self.mode_var.get()
-        suffix = "_şifreli" if current == _("security_encrypt") else "_şifresiz" if current == _("security_decrypt") else "_filigranlı"
+        if current == _("security_encrypt"):
+            suffix = _("security_suffix_encrypted")
+        elif current == _("security_decrypt"):
+            suffix = _("security_suffix_decrypted")
+        else:
+            suffix = _("security_suffix_watermarked")
         self.output_var.set(f"{base}{suffix}{ext}")
 
     def choose_output_pdf(self):
@@ -138,6 +154,17 @@ class SecurityTab:
             return
         if not output_pdf:
             quick_error(_("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
+            return
+
+        # Validate on the main thread so the user is told before any work starts.
+        if mode == _("security_encrypt"):
+            try:
+                check_new_password(self.password_var.get(), self.confirm_var.get())
+            except ValueError as exc:
+                quick_error(str(exc), self.footer.action_button, None, self.status_var, self.feedback)
+                return
+        elif mode == _("security_decrypt") and not self.password_var.get():
+            quick_error(_("err_password_empty"), self.footer.action_button, None, self.status_var, self.feedback)
             return
 
         def _on_progress(current, total, message=""):

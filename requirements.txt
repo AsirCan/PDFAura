@@ -1,4 +1,5 @@
-PyPDF2
+pypdf>=4.0
+cryptography>=42.0  # AES-256 encryption support for pypdf
 Pillow
 pdf2docx
 docx2pdf

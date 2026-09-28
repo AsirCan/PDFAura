@@ -1,6 +1,7 @@
 def merge_pdfs(pdf_list, output_pdf, ctx=None):
     """Merge multiple PDF files into one."""
-    from PyPDF2 import PdfReader, PdfWriter
+    from pypdf import PdfWriter
+    from src.core.common import open_pdf_reader
     from src.core.task_manager import memory_optimize
     
     writer = PdfWriter()
@@ -12,7 +13,7 @@ def merge_pdfs(pdf_list, output_pdf, ctx=None):
             ctx.check_cancelled()
             ctx.report_progress(file_idx, total_files, f"Dosya birleştiriliyor: {file_idx + 1}/{total_files}")
         
-        reader = PdfReader(pdf_path)
+        reader = open_pdf_reader(pdf_path)
         for page in reader.pages:
             writer.add_page(page)
             page_counter += 1
