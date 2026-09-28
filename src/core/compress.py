@@ -1,74 +1,71 @@
-import subprocess
 import os
-import time
-import threading
-from src.utils.ghostscript_helper import find_ghostscript
+import tempfile
+
+from src.core.lang_manager import _
+from src.utils.ghostscript_helper import escape_gs_path, run_ghostscript
 
 VALID_QUALITIES = ("screen", "ebook", "printer", "prepress")
 
+
 def compress_pdf(input_pdf, output_pdf, quality, ctx=None):
-    """Run Ghostscript to compress the PDF."""
-    gs_path = find_ghostscript()
-    if not gs_path:
-        raise FileNotFoundError(
-            "Ghostscript bulunamadi. 64-bit surumu kurun ve "
-            "'gswin64c' PATH'te erisilebilir olsun."
-        )
+    """Run Ghostscript to compress the PDF.
+
+    Ghostscript writes to a temporary file in the destination folder that is
+    moved into place only on success, so the input survives being picked as
+    the output and a cancelled run leaves no half-written file behind.
+    """
+    if quality not in VALID_QUALITIES:
+        raise ValueError(f"{_('err_select_quality')}{', '.join(VALID_QUALITIES)}")
+
+    input_pdf = os.path.abspath(input_pdf)
+    output_pdf = os.path.abspath(output_pdf)
+
+    out_dir = os.path.dirname(output_pdf) or "."
+    os.makedirs(out_dir, exist_ok=True)
+
+    handle, temp_output = tempfile.mkstemp(suffix=".pdf", prefix=".pdfaura-", dir=out_dir)
+    os.close(handle)
+
     command = [
-        gs_path, "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
+        "-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.4",
         f"-dPDFSETTINGS=/{quality}", "-dNOPAUSE", "-dQUIET", "-dBATCH",
-        f"-sOutputFile={output_pdf}", input_pdf,
+        f"-sOutputFile={escape_gs_path(temp_output)}", input_pdf,
     ]
 
     if ctx:
         ctx.check_cancelled()
         ctx.report_progress(0, 100, "Sıkıştırma başlatılıyor...")
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    # Ghostscript subprocess ile ilerleme takibi
-    if ctx:
-        input_size = os.path.getsize(input_pdf)
-        _monitor_subprocess_progress(process, output_pdf, input_size, ctx)
-    else:
-        process.wait()
-
-    if process.returncode != 0:
-        _, stderr = process.communicate()
-        error_message = stderr.decode().strip() if stderr else "Bilinmeyen Ghostscript hatasi."
-        raise RuntimeError(f"Ghostscript hatasi: {error_message}")
+    try:
+        on_tick = _progress_ticker(temp_output, input_pdf, ctx) if ctx else None
+        run_ghostscript(command, ctx=ctx, on_tick=on_tick)
+        os.replace(temp_output, output_pdf)
+    except BaseException:
+        if os.path.exists(temp_output):
+            try:
+                os.remove(temp_output)
+            except OSError:
+                pass
+        raise
 
     if ctx:
         ctx.report_progress(100, 100, "Sıkıştırma tamamlandı.")
 
 
-def _monitor_subprocess_progress(process, output_path, input_size, ctx):
-    """Ghostscript subprocess'in ilerlemesini output dosyası boyutuna göre takip eder."""
-    estimated_ratio = 0.6  # Sıkıştırma tahmini oran
-    target_size = input_size * estimated_ratio
+def _progress_ticker(temp_output, input_pdf, ctx):
+    """Estimate progress from how large the output has grown so far."""
+    try:
+        input_size = os.path.getsize(input_pdf)
+    except OSError:
+        input_size = 0
+    target_size = max(input_size * 0.6, 1)  # rough expected compression ratio
 
-    while process.poll() is None:
-        if ctx.is_cancelled:
-            process.terminate()
-            try:
-                process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                process.kill()
-            # Yarım kalan output dosyasını temizle
-            if os.path.exists(output_path):
-                try:
-                    os.remove(output_path)
-                except OSError:
-                    pass
-            from src.core.task_manager import CancelledError
-            raise CancelledError("İşlem kullanıcı tarafından iptal edildi.")
-
+    def tick():
         try:
-            if os.path.exists(output_path):
-                current_size = os.path.getsize(output_path)
-                progress = min(int((current_size / max(target_size, 1)) * 90), 90)
-                ctx.report_progress(progress, 100, f"İşleniyor... ({progress}%)")
+            current_size = os.path.getsize(temp_output)
         except OSError:
-            pass
+            return
+        progress = min(int((current_size / target_size) * 90), 90)
+        ctx.report_progress(progress, 100, f"İşleniyor... ({progress}%)")
 
-        time.sleep(0.3)
+    return tick

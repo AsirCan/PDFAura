@@ -101,6 +101,10 @@ _STRINGS = {
         "err_wrong_password":       "Parola yanlış.",
         "err_pdf_not_encrypted":    "Bu PDF şifreli değil.",
         "err_pdf_password_protected": "Bu PDF parola korumalı. Lütfen önce Güvenlik sekmesinden parolayı kaldırın.",
+        "err_ghostscript_missing":  "Ghostscript bulunamadi. Sikistirma icin Ghostscript kurun (https://www.ghostscript.com/releases/gsdnld.html).",
+        "err_ghostscript_failed":   "Ghostscript hatasi:",
+        "err_ghostscript_unknown":  "Bilinmeyen Ghostscript hatasi.",
+        "err_input_is_output":      "Girdi ve cikti dosyasi ayni olamaz. Farkli bir cikti yolu secin.",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "Bir PDF dosyasını pencereye sürükleyip bırakabilirsiniz.",
@@ -548,6 +552,10 @@ _STRINGS = {
         "err_wrong_password":       "Wrong password.",
         "err_pdf_not_encrypted":    "This PDF is not encrypted.",
         "err_pdf_password_protected": "This PDF is password protected. Please remove the password from the Security tab first.",
+        "err_ghostscript_missing":  "Ghostscript was not found. Install Ghostscript to compress PDFs (https://www.ghostscript.com/releases/gsdnld.html).",
+        "err_ghostscript_failed":   "Ghostscript error:",
+        "err_ghostscript_unknown":  "Unknown Ghostscript error.",
+        "err_input_is_output":      "The input and output file cannot be the same. Choose a different output path.",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "You can drag and drop a PDF file into the window.",

@@ -1,64 +1,50 @@
 import os
-import subprocess
-import time
-from src.utils.ghostscript_helper import find_ghostscript
+
+from src.core.lang_manager import _
 
 def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None):
-    """Convert PDF pages to images using Ghostscript. Returns number of created files."""
-    gs_path = find_ghostscript()
-    if not gs_path:
-        raise FileNotFoundError("Ghostscript bulunamadi.")
+    """Render PDF pages to images with PyMuPDF. Returns number of created files.
+
+    PyMuPDF renders page by page, so progress and cancellation are exact and
+    no external Ghostscript install is needed.
+    """
+    import fitz
+
     os.makedirs(output_folder, exist_ok=True)
-    device = "png16m" if img_format.lower() == "png" else "jpeg"
     ext = "png" if img_format.lower() == "png" else "jpg"
-    output_pattern = os.path.join(output_folder, f"sayfa_%03d.{ext}")
-    command = [
-        gs_path, f"-sDEVICE={device}", f"-r{dpi}",
-        "-dNOPAUSE", "-dQUIET", "-dBATCH",
-        f"-sOutputFile={output_pattern}", input_pdf,
-    ]
-    if device == "jpeg":
-        command.insert(-1, "-dJPEGQ=95")
-    
+
     if ctx:
         ctx.check_cancelled()
         ctx.report_progress(0, 100, "PDF resme dönüştürülüyor...")
-    
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+
+    doc = fitz.open(input_pdf)
+    try:
+        if doc.needs_pass:
+            from src.core.common import PdfPasswordError
+            raise PdfPasswordError(_("err_pdf_password_protected"))
+
+        total = doc.page_count
+        written = 0
+        for index in range(total):
+            if ctx:
+                ctx.check_cancelled()
+            pixmap = doc.load_page(index).get_pixmap(dpi=dpi)
+            target = os.path.join(output_folder, f"sayfa_{index + 1:03d}.{ext}")
+            if ext == "jpg":
+                pixmap.save(target, jpg_quality=95)
+            else:
+                pixmap.save(target)
+            written += 1
+            if ctx:
+                ctx.report_progress(written, total, f"{written}/{total} sayfa dönüştürüldü...")
+    finally:
+        doc.close()
+
     if ctx:
-        # Çıktı klasöründeki dosya sayısını izleyerek ilerleme takibi
-        while process.poll() is None:
-            if ctx.is_cancelled:
-                process.terminate()
-                try:
-                    process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                from src.core.task_manager import CancelledError
-                raise CancelledError("İşlem kullanıcı tarafından iptal edildi.")
-            
-            try:
-                files = [f for f in os.listdir(output_folder) if f.startswith("sayfa_") and f.endswith(f".{ext}")]
-                count = len(files)
-                if count > 0:
-                    ctx.report_progress(count, max(count + 1, 10), f"{count} sayfa dönüştürüldü...")
-            except OSError:
-                pass
-            time.sleep(0.3)
-    else:
-        process.wait()
-    
-    if process.returncode != 0:
-        _, stderr = process.communicate()
-        raise RuntimeError(f"Ghostscript hatasi: {stderr.decode().strip() if stderr else 'Bilinmeyen hata'}")
-    
-    files = [f for f in os.listdir(output_folder) if f.startswith("sayfa_") and f.endswith(f".{ext}")]
-    
-    if ctx:
-        ctx.report_progress(len(files), len(files), f"{len(files)} sayfa dönüştürüldü.")
-    
-    return len(files)
+        ctx.report_progress(total, total, f"{written} sayfa dönüştürüldü.")
+
+    return written
+
 
 def images_to_pdf(image_paths, output_pdf, page_size="Orijinal", ctx=None):
     """Convert images to PDF using Pillow."""
