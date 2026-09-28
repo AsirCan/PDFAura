@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 
 from src.core.lang_manager import _
 
@@ -101,88 +102,170 @@ def pdf_to_word(input_pdf, output_docx, ctx=None):
     if ctx:
         ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
-def word_to_pdf(input_docx, output_pdf, ctx=None):
-    """Convert Word to PDF using docx2pdf (requires Microsoft Word)."""
+# ── Microsoft Office interop ───────────────────────────────────────────────
+#
+# These run on a worker thread, so every one of them must CoInitialize that
+# thread first. They also use DispatchEx rather than Dispatch: Dispatch
+# attaches to the user's already-open Office instance, and quitting it would
+# close their unsaved documents.
+
+# HRESULTs meaning "this Office application is not installed here".
+_COM_NOT_INSTALLED = (-2147221005, -2147221164)  # invalid class string, class not registered
+
+WD_EXPORT_FORMAT_PDF = 17
+PP_SAVE_AS_PDF = 32
+XL_TYPE_PDF = 0
+
+
+def _require_win32com():
     try:
-        from docx2pdf import convert
+        import pythoncom
+        import win32com.client
     except ImportError:
-        raise ImportError(
-            "docx2pdf kutuphanesi bulunamadi.\n"
-            "Lutfen kurun: pip install docx2pdf\n"
-            "Not: Bu ozellik Microsoft Word gerektirir."
-        )
+        raise ImportError(_("err_pywin32_missing"))
+    return pythoncom, win32com.client
+
+
+def _office_error(exc, app_name):
+    """Turn a raw COM error into something a user can act on."""
+    code = getattr(exc, "hresult", None)
+    if code is None:
+        args = getattr(exc, "args", ())
+        code = args[0] if args else None
+    if code in _COM_NOT_INSTALLED:
+        return RuntimeError(_("err_office_not_installed").format(app=app_name))
+    return RuntimeError(f"{_('err_office_failed').format(app=app_name)} {exc}")
+
+
+def _is_already_running(client, prog_id):
+    """True if the user already has this Office application open."""
+    try:
+        client.GetActiveObject(prog_id)
+        return True
+    except Exception:
+        return False
+
+
+@contextmanager
+def _office_app(prog_id, app_name, single_instance=False):
+    """Yield an Office COM application, cleaning up without touching the user's.
+
+    CoInitialize is required because we run on a worker thread. DispatchEx
+    asks for a private instance; PowerPoint ignores that and hands back the
+    running one, so for single-instance apps we only quit what we started.
+    """
+    pythoncom, client = _require_win32com()
+    pythoncom.CoInitialize()
+    app = None
+    user_had_it_open = False
+    try:
+        user_had_it_open = single_instance and _is_already_running(client, prog_id)
+        try:
+            app = client.DispatchEx(prog_id)
+        except Exception as exc:
+            raise _office_error(exc, app_name)
+
+        try:
+            app.DisplayAlerts = False
+        except Exception:
+            pass  # PowerPoint rejects this in some versions
+
+        yield app
+    finally:
+        if app is not None and not user_had_it_open:
+            try:
+                app.Quit()
+            except Exception:
+                pass
+        del app
+        pythoncom.CoUninitialize()
+
+
+def word_to_pdf(input_docx, output_pdf, ctx=None):
+    """Convert Word to PDF via COM (requires Microsoft Word). Supports .doc and .docx."""
+    input_abs = os.path.abspath(input_docx)
+    output_abs = os.path.abspath(output_pdf)
+
     if ctx:
         ctx.check_cancelled()
         ctx.report_progress(0, 100, "Word PDF'e dönüştürülüyor...")
-    
-    convert(input_docx, output_pdf)
-    
+
+    with _office_app("Word.Application", "Word") as word:
+        doc = None
+        try:
+            doc = word.Documents.Open(input_abs, ReadOnly=True, AddToRecentFiles=False,
+                                      Visible=False)
+            doc.ExportAsFixedFormat(output_abs, WD_EXPORT_FORMAT_PDF)
+        except Exception as exc:
+            raise _office_error(exc, "Word")
+        finally:
+            if doc is not None:
+                try:
+                    doc.Close(False)
+                except Exception:
+                    pass
+
     if ctx:
         ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
+
 def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
-    """Convert PowerPoint to PDF using pywin32 (requires Microsoft PowerPoint)."""
-    try:
-        import win32com.client
-    except ImportError:
-        raise ImportError(
-            "pywin32 kutuphanesi bulunamadi.\n"
-            "Lutfen kurun: pip install pywin32\n"
-            "Not: Bu ozellik Microsoft PowerPoint gerektirir."
-        )
-    import os
-    
+    """Convert PowerPoint to PDF via COM (requires Microsoft PowerPoint)."""
+    input_abs = os.path.abspath(input_ppt)
+    output_abs = os.path.abspath(output_pdf)
+
     if ctx:
         ctx.check_cancelled()
         ctx.report_progress(0, 100, "PowerPoint PDF'e dönüştürülüyor...")
-    
-    powerpoint = win32com.client.Dispatch("Powerpoint.Application")
-    # Abs paths are specifically required for pywin32 Office interop
-    input_ppt_abs = os.path.abspath(input_ppt)
-    output_pdf_abs = os.path.abspath(output_pdf)
-    try:
-        deck = powerpoint.Presentations.Open(input_ppt_abs, WithWindow=False)
-        deck.SaveAs(output_pdf_abs, 32) # ppSaveAsPDF = 32
-        deck.Close()
-    finally:
-        powerpoint.Quit()
-    
+
+    # PowerPoint is single-instance: quitting it would close the user's decks.
+    with _office_app("PowerPoint.Application", "PowerPoint", single_instance=True) as powerpoint:
+        deck = None
+        try:
+            deck = powerpoint.Presentations.Open(input_abs, ReadOnly=True, WithWindow=False)
+            deck.SaveAs(output_abs, PP_SAVE_AS_PDF)
+        except Exception as exc:
+            raise _office_error(exc, "PowerPoint")
+        finally:
+            if deck is not None:
+                try:
+                    deck.Close()
+                except Exception:
+                    pass
+
     if ctx:
         ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
 
+
 def excel_to_pdf(input_excel, output_pdf, ctx=None):
-    """Convert Excel to PDF using pywin32 (requires Microsoft Excel)."""
-    try:
-        import win32com.client
-    except ImportError:
-        raise ImportError(
-            "pywin32 kutuphanesi bulunamadi.\n"
-            "Lutfen kurun: pip install pywin32\n"
-            "Not: Bu ozellik Microsoft Excel gerektirir."
-        )
-    import os
-    
+    """Convert Excel to PDF via COM (requires Microsoft Excel)."""
+    input_abs = os.path.abspath(input_excel)
+    output_abs = os.path.abspath(output_pdf)
+
     if ctx:
         ctx.check_cancelled()
         ctx.report_progress(0, 100, "Excel PDF'e dönüştürülüyor...")
-    
-    excel = win32com.client.Dispatch("Excel.Application")
-    excel.Visible = False
-    excel.Interactive = False
-    input_excel_abs = os.path.abspath(input_excel)
-    output_pdf_abs = os.path.abspath(output_pdf)
-    wb = None
-    try:
-        wb = excel.Workbooks.Open(input_excel_abs)
-        # xlTypePDF = 0
-        wb.ExportAsFixedFormat(0, output_pdf_abs)
-    finally:
-        if wb:
-            wb.Close(False)
-        excel.Quit()
-    
+
+    with _office_app("Excel.Application", "Excel") as excel:
+        workbook = None
+        try:
+            # Our own instance stays hidden; the user's Excel is untouched.
+            excel.Visible = False
+            workbook = excel.Workbooks.Open(input_abs, ReadOnly=True, UpdateLinks=0,
+                                            AddToMru=False)
+            workbook.ExportAsFixedFormat(XL_TYPE_PDF, output_abs)
+        except Exception as exc:
+            raise _office_error(exc, "Excel")
+        finally:
+            if workbook is not None:
+                try:
+                    workbook.Close(False)
+                except Exception:
+                    pass
+
     if ctx:
         ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
+
 
 def pdf_to_txt(input_pdf, output_txt, ctx=None):
     """Convert PDF to Text natively using pypdf."""

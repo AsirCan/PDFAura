@@ -105,6 +105,9 @@ _STRINGS = {
         "err_ghostscript_failed":   "Ghostscript hatasi:",
         "err_ghostscript_unknown":  "Bilinmeyen Ghostscript hatasi.",
         "err_input_is_output":      "Girdi ve cikti dosyasi ayni olamaz. Farkli bir cikti yolu secin.",
+        "err_office_not_installed": "Microsoft {app} bu bilgisayarda kurulu degil. Bu donusum icin {app} gereklidir.",
+        "err_pywin32_missing":      "pywin32 kutuphanesi bulunamadi. Kurmak icin: pip install pywin32",
+        "err_office_failed":        "Microsoft {app} donusumu basarisiz oldu:",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "Bir PDF dosyasını pencereye sürükleyip bırakabilirsiniz.",
@@ -190,7 +193,7 @@ _STRINGS = {
         "convert_fail":             "Dönüştürme başarısız.",
         "convert_image_files":      "Resim Dosyaları",
         "convert_output_word":      "Çıktı Word (.docx)",
-        "convert_input_word":       "Girdi Word (.docx)",
+        "convert_input_word":       "Girdi Word (.doc, .docx)",
         "convert_input_ppt":        "Girdi PowerPoint (.ppt, .pptx)",
         "convert_input_excel":      "Girdi Excel (.xls, .xlsx)",
         "convert_output_txt":       "Çıktı Metin (.txt)",
@@ -198,6 +201,7 @@ _STRINGS = {
         "convert_original":         "Orijinal",
         "convert_images_label":     "Resimler",
         "convert_dialog_pdf":       "PDF seç",
+        "convert_dialog_word":      "Word dosyasi sec",
         "convert_dialog_folder":    "Çıktı klasörü seç",
         "convert_dialog_img":       "Resim seç",
         "convert_dialog_pdf_save":  "PDF kaydet",
@@ -556,6 +560,9 @@ _STRINGS = {
         "err_ghostscript_failed":   "Ghostscript error:",
         "err_ghostscript_unknown":  "Unknown Ghostscript error.",
         "err_input_is_output":      "The input and output file cannot be the same. Choose a different output path.",
+        "err_office_not_installed": "Microsoft {app} is not installed on this computer. This conversion requires {app}.",
+        "err_pywin32_missing":      "The pywin32 package was not found. Install it with: pip install pywin32",
+        "err_office_failed":        "Microsoft {app} conversion failed:",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "You can drag and drop a PDF file into the window.",
@@ -641,7 +648,7 @@ _STRINGS = {
         "convert_fail":             "Conversion failed.",
         "convert_image_files":      "Image Files",
         "convert_output_word":      "Output Word (.docx)",
-        "convert_input_word":       "Input Word (.docx)",
+        "convert_input_word":       "Input Word (.doc, .docx)",
         "convert_input_ppt":        "Input PowerPoint (.ppt, .pptx)",
         "convert_input_excel":      "Input Excel (.xls, .xlsx)",
         "convert_output_txt":       "Output Text (.txt)",
@@ -649,6 +656,7 @@ _STRINGS = {
         "convert_original":         "Original",
         "convert_images_label":     "Images",
         "convert_dialog_pdf":       "Select PDF",
+        "convert_dialog_word":      "Select Word file",
         "convert_dialog_folder":    "Select output folder",
         "convert_dialog_img":       "Select images",
         "convert_dialog_pdf_save":  "Save PDF",

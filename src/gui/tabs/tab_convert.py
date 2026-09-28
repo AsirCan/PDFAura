@@ -243,7 +243,7 @@ class ConvertTab:
             self.p2w_output_var.set(selected)
 
     def choose_w2p_input(self):
-        selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("Word", "*.docx")])
+        selected = filedialog.askopenfilename(title=_("convert_dialog_word"), filetypes=[("Word", "*.doc *.docx")])
         if selected:
             self.w2p_input_var.set(selected)
             self.w2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
@@ -299,7 +299,7 @@ class ConvertTab:
         elif mode == _("convert_pdf2word") and file_path.lower().endswith(".pdf"):
             self.p2w_input_var.set(file_path)
             self.p2w_output_var.set(f"{os.path.splitext(file_path)[0]}.docx")
-        elif mode == _("convert_word2pdf") and file_path.lower().endswith(".docx"):
+        elif mode == _("convert_word2pdf") and file_path.lower().endswith((".doc", ".docx")):
             self.w2p_input_var.set(file_path)
             self.w2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
         elif mode == _("convert_ppt2pdf") and file_path.lower().endswith((".ppt", ".pptx")):
