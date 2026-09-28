@@ -1256,12 +1256,67 @@ def _order_points(pts):
 #  Perspective Warp
 # ─────────────────────────────────────────────────────────────────────────────
 
-def perspective_warp(img_bgr, corners, output_w=A4_WIDTH_PX, output_h=A4_HEIGHT_PX):
+# How far from the A4 ratio a document may be and still be snapped to A4.
+A4_RATIO_TOLERANCE = 0.08
+A4_RATIO = A4_HEIGHT_PX / A4_WIDTH_PX      # 297 / 210
+LONG_EDGE_PX = A4_HEIGHT_PX                # 297 mm @ 300 dpi
+
+PAGE_SIZE_AUTO = "auto"
+PAGE_SIZE_A4_PORTRAIT = "a4_portrait"
+PAGE_SIZE_A4_LANDSCAPE = "a4_landscape"
+
+
+def _edge_length(a, b):
+    return float(np.hypot(b[0] - a[0], b[1] - a[1]))
+
+
+def target_size_from_corners(corners, page_size=PAGE_SIZE_AUTO):
+    """Output pixel size for a document bounded by *corners* (TL, TR, BR, BL).
+
+    Everything used to be stretched to A4 portrait, which turned landscape
+    documents, receipts and business cards into distorted versions of
+    themselves (a circle came out as a 1:2.63 ellipse). "auto" measures the
+    quadrilateral instead: close to the A4 ratio it snaps to A4 in the right
+    orientation, otherwise it keeps the document's own proportions.
+    """
+    if page_size == PAGE_SIZE_A4_PORTRAIT:
+        return A4_WIDTH_PX, A4_HEIGHT_PX
+    if page_size == PAGE_SIZE_A4_LANDSCAPE:
+        return A4_HEIGHT_PX, A4_WIDTH_PX
+
+    tl, tr, br, bl = corners[0], corners[1], corners[2], corners[3]
+    width = max(_edge_length(tl, tr), _edge_length(bl, br))
+    height = max(_edge_length(tl, bl), _edge_length(tr, br))
+    if width < 1 or height < 1:
+        return A4_WIDTH_PX, A4_HEIGHT_PX
+
+    ratio = height / width
+    if abs(ratio - A4_RATIO) <= A4_RATIO_TOLERANCE * A4_RATIO:
+        return A4_WIDTH_PX, A4_HEIGHT_PX
+    if abs((1 / ratio) - A4_RATIO) <= A4_RATIO_TOLERANCE * A4_RATIO:
+        return A4_HEIGHT_PX, A4_WIDTH_PX
+
+    # Keep the measured proportions, scaled so the long edge is 297 mm.
+    if height >= width:
+        out_h = LONG_EDGE_PX
+        out_w = max(1, int(round(LONG_EDGE_PX * width / height)))
+    else:
+        out_w = LONG_EDGE_PX
+        out_h = max(1, int(round(LONG_EDGE_PX * height / width)))
+    return out_w, out_h
+
+
+def perspective_warp(img_bgr, corners, output_w=None, output_h=None, page_size=PAGE_SIZE_AUTO):
     """
     Warp the region defined by *corners* into a rectangle of (output_w, output_h).
     *corners*: 4 (x,y) in order TL, TR, BR, BL.
+    With no explicit size, the output keeps the document's own proportions
+    (see target_size_from_corners).
     Returns the warped image (numpy BGR array).
     """
+    if output_w is None or output_h is None:
+        output_w, output_h = target_size_from_corners(corners, page_size)
+
     src = np.array(corners, dtype="float32")
     dst = np.array([
         [0, 0],
@@ -1408,39 +1463,63 @@ def scanned_image_to_pdf(img_bgr, output_pdf: str):
     pil_img.save(output_pdf, "PDF", resolution=max(dpi_x, dpi_y))
 
 
-def scanned_images_to_pdf(images_bgr: list, output_pdf: str, ctx=None):
-    """
-    Convert multiple processed BGR images to a multi-page PDF.
-    Each image becomes one page.
-    """
-    if not images_bgr:
-        raise ValueError("En az bir görüntü gerekli.")
+def _encode_page(img_bgr, mode=None):
+    """Encode one processed page for embedding in a PDF.
 
-    pil_pages = []
-    total = len(images_bgr)
-    for i, img_bgr in enumerate(images_bgr):
+    Black-and-white pages are stored as PNG: JPEG smears a two-tone image and
+    makes it bigger at the same time. Everything else is JPEG.
+    """
+    is_bw = mode == MODE_BW
+    if is_bw:
+        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY) if img_bgr.ndim == 3 else img_bgr
+        ok, buffer = cv2.imencode(".png", gray, [cv2.IMWRITE_PNG_COMPRESSION, 6])
+    else:
+        ok, buffer = cv2.imencode(".jpg", img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    if not ok:
+        raise RuntimeError("Sayfa görüntüsü kodlanamadı.")
+    return buffer.tobytes()
+
+
+def scanned_images_to_pdf(images_bgr, output_pdf: str, ctx=None, mode=None):
+    """Write processed BGR pages to a multi-page PDF, one page at a time.
+
+    *images_bgr* may be an iterable (a generator is fine); pages are encoded
+    and appended as they arrive and then released, so memory stays flat
+    instead of growing by ~50 MB per page -- 50 pages used to need ~2.4 GB.
+    """
+    import fitz
+
+    doc = fitz.open()
+    total = len(images_bgr) if hasattr(images_bgr, "__len__") else 0
+    count = 0
+    try:
+        for img_bgr in images_bgr:
+            if ctx:
+                ctx.check_cancelled()
+                ctx.report_progress(count, total or count + 1,
+                                    f"{count + 1}/{total or '?'} sayfa PDF'e ekleniyor...")
+
+            height, width = img_bgr.shape[:2]
+            # 300 dpi -> PDF points (72 per inch).
+            page_w, page_h = width * 72.0 / 300.0, height * 72.0 / 300.0
+            page = doc.new_page(width=page_w, height=page_h)
+            page.insert_image(fitz.Rect(0, 0, page_w, page_h),
+                              stream=_encode_page(img_bgr, mode))
+            count += 1
+            del img_bgr  # the caller's generator can now reuse the memory
+
+        if count == 0:
+            raise ValueError("En az bir görüntü gerekli.")
+
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total, f"{i+1}/{total} resim PDF için hazırlanıyor...")
+            ctx.report_progress(count, total or count, "PDF kaydediliyor...")
 
-        rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb)
-        if pil_img.mode != "RGB":
-            pil_img = pil_img.convert("RGB")
-        pil_pages.append(pil_img)
+        from src.core.output_paths import atomic_output
+        with atomic_output(output_pdf) as temp_path:
+            doc.save(temp_path, garbage=3, deflate=True)
+    finally:
+        doc.close()
 
-    if ctx:
-        ctx.check_cancelled()
-        ctx.report_progress(total, total, "PDF kaydediliyor...")
+    return count
 
-    w, h = pil_pages[0].size
-    dpi_x = w / (210 / 25.4)
-    dpi_y = h / (297 / 25.4)
-    dpi = max(dpi_x, dpi_y)
-
-    pil_pages[0].save(
-        output_pdf, "PDF",
-        save_all=True,
-        append_images=pil_pages[1:],
-        resolution=dpi,
-    )

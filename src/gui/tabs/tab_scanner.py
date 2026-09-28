@@ -37,6 +37,7 @@ from src.core.document_scanner import (
     apply_scan_mode,
     rotate_image, imread_unicode, imwrite_unicode,
     scanned_images_to_pdf,
+    target_size_from_corners,
 )
 from src.core.config_manager import cfg
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
@@ -120,6 +121,8 @@ class ScannerTab:
         self.dragging_corner = None
         self._task_ctx = None
         self._detecting_corners = False
+        # True while a PDF is being written; the page list must not change.
+        self._exporting = False
         self._detect_job_id = 0
         self._detect_controls = []
 
@@ -306,6 +309,10 @@ class ScannerTab:
         self.preview_canvas = tk.Canvas(right, bg=CANVAS_BG, width=260, height=370,
                                          highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.preview_canvas.pack(fill="x")
+        # Without this the preview kept its old size and sat off to one side
+        # when the panel was resized.
+        self.preview_canvas.bind(
+            "<Configure>", lambda e: self._debounce("preview", 80, self.update_preview))
 
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x", pady=(12, 0))
@@ -364,7 +371,7 @@ class ScannerTab:
         return self._default_corners_for_shape(h, w)
 
     def _add_image_pages(self, files):
-        if self._detecting_corners:
+        if self._pages_locked:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return 0
 
@@ -404,6 +411,16 @@ class ScannerTab:
         self._start_corner_detection(jobs)
         return len(jobs)
 
+    @property
+    def _pages_locked(self):
+        """True while background work depends on the page list staying put.
+
+        Exporting used to lock only the main button, so Remove / Rotate /
+        Reorder / Clear all and drag-and-drop stayed live and the PDF came
+        out with different pages than the screen showed.
+        """
+        return self._detecting_corners or self._exporting
+
     def _set_corner_detection_busy(self, busy, message=None):
         state = "disabled" if busy else "normal"
         for control in self._detect_controls:
@@ -431,7 +448,7 @@ class ScannerTab:
     def _start_corner_detection(self, jobs):
         if not jobs:
             return
-        if self._detecting_corners:
+        if self._pages_locked:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return
 
@@ -535,7 +552,7 @@ class ScannerTab:
 
     def clear_all_pages(self):
         """Drop every page and the saved session to start a new document."""
-        if not self.pages or self._detecting_corners:
+        if not self.pages or self._pages_locked:
             return
         if not messagebox.askyesno(tr("scanner_clear_all"), tr("scanner_clear_all_confirm"), parent=self.app_root):
             return
@@ -669,9 +686,21 @@ class ScannerTab:
         cached = self._thumb_cache.get(id(pg))
         if cached and cached[0] == key:
             return cached[1]
-        warped = perspective_warp(pg.display_image, pg.corners, thumb_w * 2, thumb_h * 2)
-        small = cv2.resize(warped, (thumb_w, thumb_h), interpolation=cv2.INTER_AREA)
-        photo = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB)))
+        # Warp at the page's real proportions, then letterbox into the cell:
+        # squeezing a landscape page into the A4-shaped thumbnail made the
+        # strip disagree with the exported PDF.
+        full_w, full_h = target_size_from_corners(pg.corners)
+        scale = min(thumb_w / full_w, thumb_h / full_h)
+        warp_w = max(1, int(round(full_w * scale)))
+        warp_h = max(1, int(round(full_h * scale)))
+        warped = perspective_warp(pg.display_image, pg.corners, warp_w * 2, warp_h * 2)
+        small = cv2.resize(warped, (warp_w, warp_h), interpolation=cv2.INTER_AREA)
+
+        canvas = np.full((thumb_h, thumb_w, 3), 255, dtype=np.uint8)
+        top = (thumb_h - warp_h) // 2
+        left = (thumb_w - warp_w) // 2
+        canvas[top:top + warp_h, left:left + warp_w] = small
+        photo = ImageTk.PhotoImage(Image.fromarray(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)))
         self._thumb_cache[id(pg)] = (key, photo)
         return photo
 
@@ -725,6 +754,8 @@ class ScannerTab:
     # ── drag to reorder ──────────────────────────────────────────────────
 
     def _on_strip_press(self, event):
+        if self._pages_locked:
+            return   # no reordering while a PDF is being written
         c = self.strip_canvas
         c.focus_set()
         self._finish_rename()
@@ -929,6 +960,8 @@ class ScannerTab:
         return "break"
 
     def _on_strip_menu(self, event):
+        if self._pages_locked:
+            return
         c = self.strip_canvas
         index = self._strip_index_at(c.canvasx(event.x), c.canvasy(event.y), self._strip_layout())
         if index is None:
@@ -946,7 +979,7 @@ class ScannerTab:
         menu.add_command(label=tr("scanner_page_to_end"), command=lambda: self._move_page_to(page, len(self.pages)))
         menu.add_separator()
         menu.add_command(label=tr("scanner_remove_photo"), command=lambda: self._remove_page(page),
-                         state="disabled" if self._detecting_corners else "normal")
+                         state="disabled" if self._pages_locked else "normal")
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -1102,7 +1135,7 @@ class ScannerTab:
         pg = self.current_page
         if pg is None:
             return
-        if self._detecting_corners:
+        if self._pages_locked:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return
 
@@ -1119,7 +1152,7 @@ class ScannerTab:
         pg = self.current_page
         if pg is None:
             return
-        if self._detecting_corners:
+        if self._pages_locked:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return
         pg.corners = self._default_corners_for_image(pg.display_image)
@@ -1197,7 +1230,7 @@ class ScannerTab:
         return (cx - ox) / self.canvas_scale, (cy - oy) / self.canvas_scale
 
     def _on_canvas_press(self, event):
-        if self._detecting_corners:
+        if self._pages_locked:
             return
         pg = self.current_page
         if pg is None:
@@ -1251,8 +1284,10 @@ class ScannerTab:
         if pg is None:
             return
         try:
+            # Preview at the page's real proportions, not a fixed A4 box.
+            full_w, full_h = target_size_from_corners(pg.corners)
             preview_w = 520
-            preview_h = int(preview_w * (A4_HEIGHT_PX / A4_WIDTH_PX))
+            preview_h = max(1, int(round(preview_w * full_h / full_w)))
             warped = perspective_warp(pg.display_image, pg.corners, preview_w, preview_h)
             result = apply_scan_mode(warped, self._get_selected_mode())
 
@@ -1490,7 +1525,7 @@ class ScannerTab:
     # ─────────────────────────────────────────────────────────────────────
 
     def start_scan(self):
-        if self._detecting_corners:
+        if self._pages_locked:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return
 
@@ -1508,40 +1543,62 @@ class ScannerTab:
         def _on_progress(current, total, message=""):
             self.app_root.after(0, self.footer.update_progress, current, total, message)
 
+        # Snapshot on the main thread: the worker must not read self.pages or
+        # a Tk variable while the user can still edit them.
+        snapshot = [(page.display_image, list(page.corners)) for page in self.pages]
+        mode = self._get_selected_mode()
+
         self._task_ctx = TaskContext(progress_callback=_on_progress)
         self._scan_start_rev = self._session_rev
+        self._exporting = True
+        self._set_page_controls_enabled(False)
         self.footer.start_busy(cancel_callback=self._cancel_task)
         self.feedback.set_busy(tr("scanner_running"))
         self.status_var.set(tr("scanner_running"))
 
-        threading.Thread(target=self._run_scan, args=(output,), daemon=True).start()
+        threading.Thread(target=self._run_scan, args=(output, snapshot, mode),
+                         daemon=True).start()
+
+    def _set_page_controls_enabled(self, enabled):
+        """Enable or disable every control that can change the page list."""
+        state = "normal" if enabled else "disabled"
+        for control in self._detect_controls:
+            try:
+                control.config(state=state)
+            except tk.TclError:
+                pass
+
+    def _export_finished(self):
+        self._exporting = False
+        self._set_page_controls_enabled(True)
 
     def _cancel_task(self):
         if self._task_ctx:
             self._task_ctx.cancel()
 
-    def _run_scan(self, output_pdf):
+    def _run_scan(self, output_pdf, snapshot, mode):
         try:
-            mode = self._get_selected_mode()
-            processed = []
-            
-            total = len(self.pages)
+            total = len(snapshot)
 
-            for i, pg in enumerate(self.pages):
-                if self._task_ctx:
-                    self._task_ctx.check_cancelled()
-                    self._task_ctx.report_progress(i, total, f"{i+1}/{total} resim işleniyor...")
-                warped = perspective_warp(pg.display_image, pg.corners, A4_WIDTH_PX, A4_HEIGHT_PX)
-                result = apply_scan_mode(warped, mode)
-                processed.append(result)
+            def pages():
+                """Warp and filter one page at a time.
+
+                Yielding rather than building a list keeps memory flat: the
+                old code held every processed page (~50 MB each) at once.
+                """
+                for i, (image, corners) in enumerate(snapshot):
+                    if self._task_ctx:
+                        self._task_ctx.check_cancelled()
+                        self._task_ctx.report_progress(i, total, f"{i+1}/{total} resim işleniyor...")
+                    # No explicit size: the page keeps its own proportions.
+                    yield apply_scan_mode(perspective_warp(image, corners), mode)
 
             out_dir = os.path.dirname(output_pdf)
             if out_dir:
                 os.makedirs(out_dir, exist_ok=True)
 
-            scanned_images_to_pdf(processed, output_pdf, ctx=self._task_ctx)
+            count = scanned_images_to_pdf(pages(), output_pdf, ctx=self._task_ctx, mode=mode)
 
-            count = len(processed)
             if count == 1:
                 msg = tr("scanner_result").format(output=output_pdf)
             else:
@@ -1575,17 +1632,27 @@ class ScannerTab:
                 self.status_var.set(tr("scanner_fail"))
                 self.feedback.set_error(tr("scanner_fail"), msg)
             self.app_root.after(0, _err)
+        finally:
+            # Always give the page controls back, on every exit path.
+            self.app_root.after(0, self._export_finished)
 
     # ─────────────────────────────────────────────────────────────────────
     #  Fullscreen Crop
     # ─────────────────────────────────────────────────────────────────────
 
     def open_fullscreen_crop(self):
-        if self._detecting_corners:
+        if self._pages_locked:
             self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_detect_busy"))
             return
         pg = self.current_page
         if pg is None:
+            return
+
+        # Only ever one crop window; a second would edit the same page.
+        existing = getattr(self, "fs_top", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            existing.focus_force()
             return
 
         self.fs_top = tk.Toplevel(self.app_root)
@@ -1616,13 +1683,28 @@ class ScannerTab:
         self.fs_canvas.bind("<B1-Motion>", self._fs_on_drag)
         self.fs_canvas.bind("<ButtonRelease-1>", self._fs_on_release)
         self.fs_canvas.bind("<Configure>", self._fs_on_resize)
-        
+
+        # Closing with the window's X must run our cleanup, not Tk's default
+        # destroy -- otherwise the main canvas and preview kept the old crop.
+        self.fs_top.protocol("WM_DELETE_WINDOW", self.close_fullscreen_crop)
+        self.fs_top.transient(self.app_root)
+        self.fs_top.grab_set()
+
         # Draw initially
         self._fs_redraw()
 
     def close_fullscreen_crop(self):
-        if hasattr(self, "fs_top") and self.fs_top:
-            self.fs_top.destroy()
+        window = getattr(self, "fs_top", None)
+        if window is not None:
+            try:
+                window.grab_release()
+            except tk.TclError:
+                pass
+            try:
+                window.destroy()
+            except tk.TclError:
+                pass
+        self.fs_top = None
         self._redraw_canvas()
         self.update_preview()
 
