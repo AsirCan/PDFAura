@@ -252,12 +252,31 @@ class AdvancedTab:
         self.feedback.set_busy(_("str_processing"))
         self.status_var.set(_("str_processing"))
 
+        # Every field is read here, on the main thread, and handed to the
+        # worker; workers must not touch Tk variables.
         if mode == _("adv_ocr"):
             threading.Thread(target=self._run_ocr, args=(inp, out), daemon=True).start()
         elif mode == _("adv_metadata"):
-            threading.Thread(target=self._run_meta, args=(inp, out), daemon=True).start()
+            clean = bool(self.meta_clean_var.get())
+            # Fields never loaded from this document must not overwrite it.
+            known = self._meta_loaded_for == inp
+            meta = {
+                "clean": clean,
+                "title": self.title_var.get() if not clean and known else None,
+                "author": self.author_var.get() if not clean and known else None,
+                "subject": self.subject_var.get() if not clean and known else None,
+                "creator": self.creator_var.get() if not clean and known else None,
+            }
+            threading.Thread(target=self._run_meta, args=(inp, out, meta), daemon=True).start()
         elif mode == _("adv_signature"):
-            threading.Thread(target=self._run_sig, args=(inp, out), daemon=True).start()
+            signature = {
+                "image": self.sig_image_var.get(),
+                "page": self.sig_page_var.get(),
+                "x": self.sig_x_var.get(),
+                "y": self.sig_y_var.get(),
+                "scale": self.sig_scale_var.get(),
+            }
+            threading.Thread(target=self._run_sig, args=(inp, out, signature), daemon=True).start()
 
     def _finish(self, title, message, output_path):
         def _do():
@@ -290,20 +309,16 @@ class AdvancedTab:
         except Exception as exc:
             self._fail(_("str_error"), exc)
 
-    def _run_meta(self, inp, out):
+    def _run_meta(self, inp, out, meta):
         try:
-            clean = bool(self.meta_clean_var.get())
-            # If the fields were never populated from this document, sending
-            # their empty values would wipe the existing metadata.
-            known = self._meta_loaded_for == inp
             update_metadata(
                 inp,
                 out,
-                title=self.title_var.get() if not clean and known else None,
-                author=self.author_var.get() if not clean and known else None,
-                subject=self.subject_var.get() if not clean and known else None,
-                creator=self.creator_var.get() if not clean and known else None,
-                clean=clean,
+                title=meta["title"],
+                author=meta["author"],
+                subject=meta["subject"],
+                creator=meta["creator"],
+                clean=meta["clean"],
             )
             self._finish(_("str_success"), _("adv_result_meta").format(output=out), out)
         except CancelledError:
@@ -311,17 +326,17 @@ class AdvancedTab:
         except Exception as exc:
             self._fail(_("str_error"), exc)
 
-    def _run_sig(self, inp, out):
+    def _run_sig(self, inp, out, signature):
         try:
             # The core parses the coordinates, so "100.5" and "100,5" work.
             stamp_visual_signature(
                 inp,
                 out,
-                self.sig_image_var.get(),
-                int(float(self.sig_page_var.get().strip().replace(",", "."))),
-                self.sig_x_var.get(),
-                self.sig_y_var.get(),
-                self.sig_scale_var.get(),
+                signature["image"],
+                int(float(signature["page"].strip().replace(",", "."))),
+                signature["x"],
+                signature["y"],
+                signature["scale"],
             )
             self._finish(_("str_success"), _("adv_result_sig").format(output=out), out)
         except CancelledError:

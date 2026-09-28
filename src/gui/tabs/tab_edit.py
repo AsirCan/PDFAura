@@ -164,18 +164,28 @@ class EditTab:
         def _on_progress(current, total, message=""):
             self.app_root.after(0, self.footer.update_progress, current, total, message)
 
+        # Read every field here, on the main thread; a worker must not touch
+        # Tk variables.
+        fields = {
+            "delete_pages": self.edit_delete_pages_var.get().strip(),
+            "rotate_pages": self.edit_rotate_pages_var.get().strip(),
+            "angle": self.edit_angle_var.get(),
+            "order": self.edit_order_var.get().strip(),
+        }
+
         self._task_ctx = TaskContext(progress_callback=_on_progress)
         busy_text = _("edit_running").format(mode=mode)
         self.footer.start_busy(cancel_callback=self._cancel_task)
         self.feedback.set_busy(busy_text)
         self.edit_status_var.set(busy_text)
-        threading.Thread(target=self._run_edit, args=(input_pdf, output_pdf, mode), daemon=True).start()
+        threading.Thread(target=self._run_edit, args=(input_pdf, output_pdf, mode, fields),
+                         daemon=True).start()
 
-    def _run_edit(self, input_pdf, output_pdf, mode):
+    def _run_edit(self, input_pdf, output_pdf, mode, fields):
         try:
             total = get_pdf_page_count(input_pdf)
             if mode == _("edit_mode_delete"):
-                pages_text = self.edit_delete_pages_var.get().strip()
+                pages_text = fields["delete_pages"]
                 if not pages_text:
                     raise ValueError(_("edit_err_enter_delete"))
                 pages = parse_page_numbers(pages_text, total)
@@ -183,13 +193,13 @@ class EditTab:
                 remaining = total - len(pages)
                 message = _("edit_result_delete").format(count=len(pages), remaining=remaining, output=output_pdf)
             elif mode == _("edit_mode_rotate"):
-                pages_text = self.edit_rotate_pages_var.get().strip()
-                angle = int(self.edit_angle_var.get())
+                pages_text = fields["rotate_pages"]
+                angle = int(fields["angle"])
                 pages = parse_page_numbers(pages_text, total) if pages_text else list(range(1, total + 1))
                 rotate_pages_in_pdf(input_pdf, output_pdf, pages, angle, ctx=self._task_ctx)
                 message = _("edit_result_rotate").format(count=len(pages), angle=angle, output=output_pdf)
             elif mode == _("edit_mode_reorder"):
-                order_text = self.edit_order_var.get().strip()
+                order_text = fields["order"]
                 if not order_text:
                     raise ValueError(_("edit_err_enter_order"))
                 new_order = parse_page_order(order_text, total)

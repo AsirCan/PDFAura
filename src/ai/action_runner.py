@@ -60,9 +60,6 @@ def execute_intent(intent: dict):
     current_input = found_path
     temp_files = []
 
-    # Sadece PDF üreten action var mı? (non-pdf hariç)
-    has_pdf_actions = any(a["action"] not in NON_PDF_ACTIONS for a in actions)
-
     try:
         for i, act in enumerate(actions):
             action_type = act.get("action")

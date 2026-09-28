@@ -166,16 +166,23 @@ class BatchTab:
         self._append_log(_("batch_log_started").format(path=inp))
 
         mode = self.action_var.get()
-        threading.Thread(target=self._run_job, args=(mode, inp, out), daemon=True).start()
+        # Read the settings here; a worker must not touch Tk variables.
+        options = {
+            "quality": self.compress_qual_var.get(),
+            "convert_mode": self.convert_mode_var.get(),
+            "rename_rule": self.rename_rule_var.get(),
+        }
+        threading.Thread(target=self._run_job, args=(mode, inp, out, options),
+                         daemon=True).start()
 
-    def _run_job(self, mode, inp, out):
+    def _run_job(self, mode, inp, out, options):
         try:
             if mode == _("batch_compress"):
-                succ, errs = batch_compress_dir(inp, out, self.compress_qual_var.get(), None, ctx=self._task_ctx)
+                succ, errs = batch_compress_dir(inp, out, options["quality"], None, ctx=self._task_ctx)
             elif mode == _("batch_convert"):
-                succ, errs = batch_convert_dir(inp, out, self.convert_mode_var.get(), None, ctx=self._task_ctx)
+                succ, errs = batch_convert_dir(inp, out, options["convert_mode"], None, ctx=self._task_ctx)
             else:
-                succ, errs = batch_rename_dir(inp, out, self.rename_rule_var.get(), None, ctx=self._task_ctx)
+                succ, errs = batch_rename_dir(inp, out, options["rename_rule"], None, ctx=self._task_ctx)
             self.app_root.after(0, self._finalize_job, succ, errs, out)
         except CancelledError:
             self.app_root.after(0, self._cancelled)

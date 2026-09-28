@@ -176,6 +176,10 @@ class SecurityTab:
         if not self._output_chosen and not confirm_overwrite(output_pdf, self.app_root):
             return
 
+        # Read the fields here; a worker must not touch Tk variables.
+        password = self.password_var.get()
+        watermark_text = self.watermark_text_var.get().strip()
+
         def _on_progress(current, total, message=""):
             self.app_root.after(0, self.footer.update_progress, current, total, message)
 
@@ -184,18 +188,20 @@ class SecurityTab:
         self.footer.start_busy(cancel_callback=self._cancel_task)
         self.feedback.set_busy(busy_text)
         self.status_var.set(busy_text)
-        threading.Thread(target=self._run_action, args=(input_pdf, output_pdf, mode), daemon=True).start()
+        threading.Thread(target=self._run_action,
+                         args=(input_pdf, output_pdf, mode, password, watermark_text),
+                         daemon=True).start()
 
-    def _run_action(self, input_pdf, output_pdf, mode):
+    def _run_action(self, input_pdf, output_pdf, mode, password, watermark_text):
         try:
             if mode == _("security_encrypt"):
-                encrypt_pdf(input_pdf, output_pdf, self.password_var.get(), ctx=self._task_ctx)
+                encrypt_pdf(input_pdf, output_pdf, password, ctx=self._task_ctx)
                 message = _("security_result_encrypt").format(output=output_pdf)
             elif mode == _("security_decrypt"):
-                decrypt_pdf(input_pdf, output_pdf, self.password_var.get(), ctx=self._task_ctx)
+                decrypt_pdf(input_pdf, output_pdf, password, ctx=self._task_ctx)
                 message = _("security_result_decrypt").format(output=output_pdf)
             elif mode == _("security_watermark"):
-                text = self.watermark_text_var.get().strip()
+                text = watermark_text
                 if not text:
                     raise ValueError(_("err_watermark_empty"))
                 add_watermark_to_pdf(input_pdf, output_pdf, text, ctx=self._task_ctx)

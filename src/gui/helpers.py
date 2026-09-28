@@ -102,17 +102,6 @@ def move_listbox_item(listbox, items, step):
     listbox.see(target)
 
 
-def build_file_picker_row(parent, label_text, variable, button_text, command):
-    ttk.Label(parent, text=label_text, style="Field.TLabel").pack(anchor="w")
-    row = ttk.Frame(parent, style="Surface.TFrame")
-    row.pack(fill="x", pady=(8, 0))
-    entry = ttk.Entry(row, textvariable=variable, style="Dark.TEntry")
-    entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-    button = ttk.Button(row, text=button_text, command=command, style="Secondary.TButton")
-    button.pack(side="right")
-    return entry, button
-
-
 class ProgressFooter(ttk.Frame):
     """
     İlerleme yüzdesi gösterimi ve iptal butonu içeren footer bileşeni.
@@ -304,15 +293,6 @@ def set_busy(button, progress_bar, is_busy, feedback=None, busy_message=None):
         button.config(state="normal")
         if progress_bar:
             progress_bar.stop()
-
-
-def operation_done(button, progress_bar, status_var, status_text, success_msg=None, error_msg=None, feedback=None, output_path=None):
-    set_busy(button, progress_bar, False)
-    status_var.set(status_text)
-    if success_msg and feedback:
-        feedback.set_success(status_text, success_msg, output_path)
-    elif error_msg and feedback:
-        feedback.set_error(status_text, error_msg)
 
 
 def confirm_overwrite(path, parent=None):
