@@ -13,7 +13,7 @@ def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total, f"Sayfa {i}/{total} işleniyor...")
+            ctx.report_progress(i, total, _("progress_page_of").format(current=i, total=total))
         if i not in delete_set:
             writer.add_page(page)
     
@@ -34,7 +34,7 @@ def rotate_pages_in_pdf(input_pdf, output_pdf, pages_to_rotate, angle, ctx=None)
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total, f"Sayfa {i}/{total} döndürülüyor...")
+            ctx.report_progress(i, total, _("progress_page_of").format(current=i, total=total))
         if i in rotate_set:
             page.rotate(angle)
         writer.add_page(page)
@@ -69,7 +69,7 @@ def reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=None):
     for idx, page_num in enumerate(new_order, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(idx, total, f"Sayfa {idx}/{total} yeniden sıralanıyor...")
+            ctx.report_progress(idx, total, _("progress_page_of").format(current=idx, total=total))
         if page_num < 1 or page_num > page_count:
             raise ValueError(_("err_order_out_of_range").format(
                 pages=page_num, total=page_count))

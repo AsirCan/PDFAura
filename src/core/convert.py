@@ -16,7 +16,7 @@ def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None)
 
     if ctx:
         ctx.check_cancelled()
-        ctx.report_progress(0, 100, "PDF resme dönüştürülüyor...")
+        ctx.report_progress(0, 100, _("progress_converting"))
 
     doc = fitz.open(input_pdf)
     try:
@@ -37,12 +37,12 @@ def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None)
                 pixmap.save(target)
             written += 1
             if ctx:
-                ctx.report_progress(written, total, f"{written}/{total} sayfa dönüştürüldü...")
+                ctx.report_progress(written, total, _("progress_page_of").format(current=written, total=total))
     finally:
         doc.close()
 
     if ctx:
-        ctx.report_progress(total, total, f"{written} sayfa dönüştürüldü.")
+        ctx.report_progress(total, total, _("progress_pages_done").format(count=written))
 
     return written
 
@@ -112,7 +112,7 @@ def images_to_pdf(image_paths, output_pdf, page_size="Orijinal", ctx=None):
         for idx, img_path in enumerate(image_paths):
             if ctx:
                 ctx.check_cancelled()
-                ctx.report_progress(idx + 1, total, f"Resim {idx + 1}/{total} işleniyor...")
+                ctx.report_progress(idx + 1, total, _("progress_image_of").format(current=idx + 1, total=total))
 
             for image, dpi in _load_image_frames(img_path):
                 if target:
@@ -146,7 +146,7 @@ def images_to_pdf(image_paths, output_pdf, page_size="Orijinal", ctx=None):
         doc.close()
 
     if ctx:
-        ctx.report_progress(total, total, "PDF oluşturuldu.")
+        ctx.report_progress(total, total, _("progress_finished"))
 
 
 def _encode_image(image):
@@ -166,14 +166,14 @@ def pdf_to_word(input_pdf, output_docx, ctx=None):
     
     if ctx:
         ctx.check_cancelled()
-        ctx.report_progress(0, 100, "PDF Word'e dönüştürülüyor...")
+        ctx.report_progress(0, 100, _("progress_converting"))
     
     cv = Converter(input_pdf)
     cv.convert(output_docx, start=0, end=None)
     cv.close()
     
     if ctx:
-        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
+        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 # ── Microsoft Office interop ───────────────────────────────────────────────
@@ -262,7 +262,7 @@ def word_to_pdf(input_docx, output_pdf, ctx=None):
 
     if ctx:
         ctx.check_cancelled()
-        ctx.report_progress(0, 100, "Word PDF'e dönüştürülüyor...")
+        ctx.report_progress(0, 100, _("progress_converting"))
 
     with _office_app("Word.Application", "Word") as word:
         doc = None
@@ -280,7 +280,7 @@ def word_to_pdf(input_docx, output_pdf, ctx=None):
                     pass
 
     if ctx:
-        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
+        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
@@ -290,7 +290,7 @@ def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
 
     if ctx:
         ctx.check_cancelled()
-        ctx.report_progress(0, 100, "PowerPoint PDF'e dönüştürülüyor...")
+        ctx.report_progress(0, 100, _("progress_converting"))
 
     # PowerPoint is single-instance: quitting it would close the user's decks.
     with _office_app("PowerPoint.Application", "PowerPoint", single_instance=True) as powerpoint:
@@ -308,7 +308,7 @@ def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
                     pass
 
     if ctx:
-        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
+        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 def excel_to_pdf(input_excel, output_pdf, ctx=None):
@@ -318,7 +318,7 @@ def excel_to_pdf(input_excel, output_pdf, ctx=None):
 
     if ctx:
         ctx.check_cancelled()
-        ctx.report_progress(0, 100, "Excel PDF'e dönüştürülüyor...")
+        ctx.report_progress(0, 100, _("progress_converting"))
 
     with _office_app("Excel.Application", "Excel") as excel:
         workbook = None
@@ -338,7 +338,7 @@ def excel_to_pdf(input_excel, output_pdf, ctx=None):
                     pass
 
     if ctx:
-        ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
+        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 def pdf_to_txt(input_pdf, output_txt, ctx=None):
@@ -352,7 +352,7 @@ def pdf_to_txt(input_pdf, output_txt, ctx=None):
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total, f"Sayfa {i}/{total} okunuyor...")
+            ctx.report_progress(i, total, _("progress_page_of").format(current=i, total=total))
         page_text = page.extract_text()
         if page_text:
             text.append(page_text)
@@ -361,4 +361,4 @@ def pdf_to_txt(input_pdf, output_txt, ctx=None):
         f.write("\n\n--- Sayfa Sonu ---\n\n".join(text))
     
     if ctx:
-        ctx.report_progress(total, total, "Metin çıkarma tamamlandı.")
+        ctx.report_progress(total, total, _("progress_finished"))

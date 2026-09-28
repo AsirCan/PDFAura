@@ -77,10 +77,10 @@ class AdvancedTab:
         self.dyn_frame.pack(fill="both", expand=True, pady=(18, 0))
 
         self.f_preview = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
-        ttk.Label(self.f_preview, text=_("adv_preview_hint"), style="Hint.TLabel", wraplength=620, justify="left").pack(anchor="w")
+        ttk.Label(self.f_preview, text=_("adv_preview_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w")
 
         self.f_ocr = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
-        ttk.Label(self.f_ocr, text=_("adv_ocr_hint"), style="Hint.TLabel", wraplength=620, justify="left").pack(anchor="w")
+        ttk.Label(self.f_ocr, text=_("adv_ocr_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w")
         self.tess_warn_label = ttk.Label(self.f_ocr, text="", style="Section.TLabel")
         self.tess_warn_label.pack(anchor="w", pady=(12, 0))
         self.tess_install_btn = ttk.Button(self.f_ocr, text=_("adv_tess_install_btn"), command=self.trigger_tesseract_install, style="Secondary.TButton")
@@ -122,7 +122,7 @@ class AdvancedTab:
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("adv_operation"), _("adv_preview_hint"))

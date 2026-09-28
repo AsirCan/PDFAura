@@ -56,6 +56,33 @@ class PDFViewerWindow(tk.Toplevel):
         # Binding mouse wheel
         self.canvas.bind("<MouseWheel>", self._on_mousewheel)
 
+        # Keyboard shortcuts: the viewer had none at all.
+        self.bind("<Left>", lambda e: self.prev_page())
+        self.bind("<Right>", lambda e: self.next_page())
+        self.bind("<Prior>", lambda e: self.prev_page())      # PageUp
+        self.bind("<Next>", lambda e: self.next_page())       # PageDown
+        self.bind("<Home>", lambda e: self.show_page(0))
+        self.bind("<End>", lambda e: self.show_page(self.total_pages - 1))
+        self.bind("<plus>", lambda e: self.zoom_in())
+        self.bind("<KP_Add>", lambda e: self.zoom_in())
+        self.bind("<minus>", lambda e: self.zoom_out())
+        self.bind("<KP_Subtract>", lambda e: self.zoom_out())
+        self.bind("<Escape>", lambda e: self.destroy())
+        self.focus_set()
+
+        # The document was never closed, so the file stayed locked.
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+
+    def destroy(self):
+        doc = getattr(self, "doc", None)
+        if doc is not None:
+            try:
+                doc.close()
+            except Exception:
+                pass
+            self.doc = None
+        super().destroy()
+
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 

@@ -33,6 +33,10 @@ try:
 except ImportError:
     DND_FILES = "DND_Files"
 
+PREVIEW_WIDTH = 340
+# The grid column also has to hold the 18 px gutter before the panel.
+PREVIEW_COLUMN_WIDTH = PREVIEW_WIDTH + 18
+
 PAGE_META_KEYS = {
     "compress": ("page_meta_compress_eyebrow", "page_meta_compress_title", "page_meta_compress_body"),
     "organize": ("page_meta_organize_eyebrow", "page_meta_organize_title", "page_meta_organize_body"),
@@ -185,7 +189,7 @@ class MainWindow:
         title_stack.pack(side="left", fill="x", expand=True)
         ttk.Label(title_stack, textvariable=self.page_badge_var, style="PageEyebrow.TLabel").pack(anchor="w")
         ttk.Label(title_stack, textvariable=self.page_title_var, style="PageTitle.TLabel").pack(anchor="w", pady=(4, 0))
-        ttk.Label(title_stack, textvariable=self.page_body_var, style="PageBody.TLabel", wraplength=820, justify="left").pack(anchor="w", pady=(8, 0))
+        ttk.Label(title_stack, textvariable=self.page_body_var, style="PageBody.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
 
         header_actions = ttk.Frame(header, style="App.TFrame")
         header_actions.pack(side="right")
@@ -217,17 +221,29 @@ class MainWindow:
         self.assistant_reply_var = tk.StringVar()
         self.assistant_reply = ttk.Label(
             main, textvariable=self.assistant_reply_var, style="Hint.TLabel",
-            wraplength=900, justify="left")
+            wraplength=380, justify="left")
 
         body = ttk.Frame(main, style="App.TFrame")
         body.pack(fill="both", expand=True, pady=(18, 0))
 
-        self.content = ttk.Frame(body, style="App.TFrame")
-        self.content.pack(side="left", fill="both", expand=True)
+        # grid, not pack: pack shrinks both children proportionally when the
+        # window is narrow, which squeezed the preview down to "Ön", "Seçi",
+        # "bel". A grid column with a minsize keeps the preview intact and
+        # takes the space out of the content column instead.
+        body.columnconfigure(0, weight=1, minsize=520)
+        body.columnconfigure(1, weight=0, minsize=PREVIEW_COLUMN_WIDTH)
+        body.rowconfigure(0, weight=1)
 
-        self.preview_host = ttk.Frame(body, width=340, style="App.TFrame")
-        self.preview_host.pack(side="left", fill="y", padx=(18, 0))
+        self.content = ttk.Frame(body, style="App.TFrame")
+        self.content.grid(row=0, column=0, sticky="nsew")
+
+        self.preview_host = ttk.Frame(body, width=PREVIEW_WIDTH, style="App.TFrame")
+        self.preview_host.grid(row=0, column=1, sticky="ns", padx=(18, 0))
+        # The panel inside is pack-managed, so pack_propagate is the one that
+        # stops it from resizing the host; grid_propagate covers the rest.
         self.preview_host.pack_propagate(False)
+        self.preview_host.grid_propagate(False)
+
         self.preview_panel = PreviewPanel(self.preview_host, self.root)
         self.preview_panel.pack(fill="both", expand=True)
 
@@ -293,9 +309,12 @@ class MainWindow:
         self.current_page = key
         workspace = self.workspaces[key]
         if workspace.show_preview:
-            self.preview_host.pack(side="left", fill="y", padx=(18, 0))
+            self.preview_host.grid(row=0, column=1, sticky="ns", padx=(18, 0))
+            self.preview_host.master.columnconfigure(1, minsize=PREVIEW_COLUMN_WIDTH)
         else:
-            self.preview_host.pack_forget()
+            # The scanner has its own preview; give the column back.
+            self.preview_host.grid_remove()
+            self.preview_host.master.columnconfigure(1, minsize=0)
         workspace.frame.pack(fill="both", expand=True)
         self.nav_buttons[key].configure(style="NavSelected.TButton")
 

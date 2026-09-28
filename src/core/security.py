@@ -25,7 +25,7 @@ def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total + 1, f"Sayfa {i}/{total} şifreleniyor...")
+            ctx.report_progress(i, total + 1, _("progress_page_of").format(current=i, total=total))
         writer.add_page(page)
 
     writer.encrypt(user_password=password, algorithm="AES-256")
@@ -34,7 +34,7 @@ def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
         writer.write(f)
 
     if ctx:
-        ctx.report_progress(total + 1, total + 1, "Şifreleme tamamlandı.")
+        ctx.report_progress(total + 1, total + 1, _("progress_finished"))
 
 def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     """Decrypt a PDF using the given password."""
@@ -44,21 +44,21 @@ def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     reader = open_pdf_reader(input_pdf, password)
 
     if ctx:
-        ctx.report_progress(1, 3, "Şifre çözülüyor...")
+        ctx.report_progress(1, 3, _("progress_starting"))
 
     writer = PdfWriter()
     total = len(reader.pages)
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total + 1, f"Sayfa {i}/{total} çözülüyor...")
+            ctx.report_progress(i, total + 1, _("progress_page_of").format(current=i, total=total))
         writer.add_page(page)
 
     with open(output_pdf, "wb") as f:
         writer.write(f)
 
     if ctx:
-        ctx.report_progress(total + 1, total + 1, "Şifre çözme tamamlandı.")
+        ctx.report_progress(total + 1, total + 1, _("progress_finished"))
 
 # Fonts to try for the watermark, best first. Helvetica is WinAnsi-only, so
 # İ, Ş, Ğ, ı, ş and ğ came out as black boxes; these are Unicode TTFs.
@@ -170,7 +170,7 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
         raise ValueError(_("err_watermark_font_missing"))
 
     if ctx:
-        ctx.report_progress(1, 10, "Filigran oluşturuluyor...")
+        ctx.report_progress(1, 10, _("progress_starting"))
 
     reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
@@ -180,7 +180,7 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(i, total, f"Sayfa {i}/{total} filigranlaniyor...")
+            ctx.report_progress(i, total, _("progress_page_of").format(current=i, total=total))
 
         width, height, x0, y0, rotation = _page_geometry(page)
         key = (round(width, 2), round(height, 2), rotation)
@@ -198,4 +198,4 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
         writer.write(f)
 
     if ctx:
-        ctx.report_progress(total, total, "Filigran ekleme tamamlandı.")
+        ctx.report_progress(total, total, _("progress_finished"))

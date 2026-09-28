@@ -21,7 +21,7 @@ class CompressTab:
         self.output_var = tk.StringVar()
         # A suggested path follows the input; one the user picked does not.
         self._output_chosen = False
-        self.quality_var = tk.StringVar(value="ebook")
+        self.quality_var = tk.StringVar(value=_("quality_ebook"))
         self.status_var = tk.StringVar(value=_("str_ready"))
 
         bind_preview(self.app_root, self.input_var)
@@ -60,15 +60,20 @@ class CompressTab:
         settings.pack(fill="x", pady=(22, 0))
         ttk.Label(settings, text=_("compress_settings"), style="Section.TLabel").pack(anchor="w")
         ttk.Label(settings, text=_("compress_quality"), style="Field.TLabel").pack(anchor="w", pady=(14, 0))
-        self.quality_combo = ttk.Combobox(settings, textvariable=self.quality_var, values=VALID_QUALITIES, state="readonly", width=18, style="Dark.TCombobox")
+        # Bare "screen/ebook/printer/prepress" said nothing about what they do.
+        self._quality_labels = {q: _(f"quality_{q}") for q in VALID_QUALITIES}
+        self._quality_by_label = {v: k for k, v in self._quality_labels.items()}
+        self.quality_combo = ttk.Combobox(settings, textvariable=self.quality_var,
+                                          values=list(self._quality_labels.values()),
+                                          state="readonly", width=42, style="Dark.TCombobox")
         self.quality_combo.pack(anchor="w", pady=(8, 0))
-        ttk.Label(settings, text=_("compress_quality_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(10, 0))
+        ttk.Label(settings, text=_("compress_quality_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(10, 0))
 
         self.footer = ProgressFooter(left, _("compress_btn"), self.start_compression, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("compress_settings"), _("compress_quality_hint"))
@@ -116,7 +121,9 @@ class CompressTab:
     def start_compression(self):
         input_pdf = self.input_var.get().strip()
         output_pdf = self.output_var.get().strip()
-        quality = self.quality_var.get().strip().lower()
+        # The combo shows a descriptive label; map it back to the gs preset.
+        quality = self._quality_by_label.get(self.quality_var.get().strip(),
+                                             self.quality_var.get().strip().lower())
 
         if quality not in VALID_QUALITIES:
             quick_error(f"{_('err_select_quality')}{', '.join(VALID_QUALITIES)}", self.footer.action_button, None, self.status_var, self.feedback)

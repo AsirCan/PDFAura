@@ -53,7 +53,17 @@ def build_hint_strip(parent, text):
     frame = ttk.Frame(parent, style="Hint.TFrame", padding=(14, 9))
     frame.pack(fill="x", pady=(0, 14))
     ttk.Label(frame, text="ⓘ", style="HintIcon.TLabel").pack(side="left", anchor="n")
-    ttk.Label(frame, text=text, style="HintStrip.TLabel", wraplength=820, justify="left").pack(side="left", padx=(10, 0), pady=(2, 0))
+    label = ttk.Label(frame, text=text, style="HintStrip.TLabel", wraplength=820, justify="left")
+    label.pack(side="left", padx=(10, 0), pady=(2, 0))
+
+    # A fixed wraplength asks for that width no matter how narrow the window
+    # is, which pushed the preview panel off the right edge. Follow the strip.
+    def _rewrap(event):
+        width = max(200, event.width - 60)
+        if abs(int(label.cget("wraplength")) - width) > 8:
+            label.configure(wraplength=width)
+
+    frame.bind("<Configure>", _rewrap)
     return frame
 
 

@@ -746,10 +746,15 @@ class ScannerTab:
         elif self.pages and 0 <= self.current_index < len(self.pages) and total_h > 0:
             # keep the selected page in view
             view_h = max(1, c.winfo_height())
-            _x, top = self._cell_xy(self.current_index, layout)
-            first, last = c.yview()
-            if top < first * total_h or top + cell_h > last * total_h:
-                c.yview_moveto(max(0.0, (top - (view_h - cell_h) / 2) / total_h))
+            if total_h <= view_h:
+                # Everything already fits; scrolling anyway pushed the first
+                # thumbnail up so only its bottom edge showed.
+                c.yview_moveto(0.0)
+            else:
+                _x, top = self._cell_xy(self.current_index, layout)
+                first, last = c.yview()
+                if top < first * total_h or top + cell_h > last * total_h:
+                    c.yview_moveto(max(0.0, (top - (view_h - cell_h) / 2) / total_h))
 
     # ── drag to reorder ──────────────────────────────────────────────────
 
@@ -1589,7 +1594,7 @@ class ScannerTab:
                 for i, (image, corners) in enumerate(snapshot):
                     if self._task_ctx:
                         self._task_ctx.check_cancelled()
-                        self._task_ctx.report_progress(i, total, f"{i+1}/{total} resim işleniyor...")
+                        self._task_ctx.report_progress(i, total, tr("progress_image_of").format(current=i + 1, total=total))
                     # No explicit size: the page keeps its own proportions.
                     yield apply_scan_mode(perspective_warp(image, corners), mode)
 

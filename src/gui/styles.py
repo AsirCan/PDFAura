@@ -78,6 +78,10 @@ def setup_styles():
     style.configure("Feedback.TFrame", background=SURFACE_ALT, borderwidth=1, relief="solid", bordercolor=BORDER_COLOR)
     style.configure("FeedbackRow.TFrame", background=SURFACE_ALT, borderwidth=0, relief="flat")
     style.configure("Hint.TFrame", background=HINT_BG, borderwidth=1, relief="solid", bordercolor=HINT_BORDER)
+    # Hero.TFrame was used but never defined, so the frame fell back to the
+    # app background while its labels kept HINT_BG: coloured boxes behind the
+    # text. The frame and its labels now share one background.
+    style.configure("Hero.TFrame", background=HINT_BG, borderwidth=1, relief="solid", bordercolor=HINT_BORDER)
     style.configure("Preview.TFrame", background=PREVIEW_BG, borderwidth=1, relief="solid", bordercolor="#d3dfeb")
 
     style.configure("SidebarBrand.TLabel", background=SIDEBAR_BG, foreground="#f8fbff", font=("Bahnschrift SemiBold", 18))

@@ -61,7 +61,7 @@ class SplitTab:
             left,
             text=_("output_action_hint").format(action=_("split_btn")),
             style="Hint.TLabel",
-            wraplength=640,
+            wraplength=380,
             justify="left",
         ).pack(anchor="w", pady=(8, 0))
 
@@ -77,13 +77,13 @@ class SplitTab:
         ttk.Label(grid, text="-", style="CardTitle.TLabel").grid(row=1, column=1, padx=12, pady=(8, 0))
         self.split_end_spin = ttk.Spinbox(grid, from_=1, to=99999, textvariable=self.split_end_var, width=10, style="Dark.TSpinbox", command=self.update_split_output_name)
         self.split_end_spin.grid(row=1, column=2, sticky="w", padx=(20, 0), pady=(8, 0))
-        ttk.Label(range_card, text=_("split_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(12, 0))
+        ttk.Label(range_card, text=_("split_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(12, 0))
 
         self.footer = ProgressFooter(left, _("split_btn"), self.start_split, button_style="Split.TButton", progress_style="Split.Horizontal.TProgressbar")
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("split_page_range"), _("output_action_hint").format(action=_("split_btn")))

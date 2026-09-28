@@ -99,7 +99,7 @@ class SecurityTab:
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("security_op_type"), _("security_watermark_text"))

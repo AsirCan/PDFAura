@@ -32,7 +32,7 @@ class SettingsPanel(ttk.Frame):
             hero,
             text=_("settings_intro"),
             style="HeroBody.TLabel",
-            wraplength=720,
+            wraplength=380,
             justify="left",
         ).pack(anchor="w", pady=(8, 0))
 
@@ -51,7 +51,7 @@ class SettingsPanel(ttk.Frame):
         self._build_ai_settings(ai_tab)
 
         right = ttk.Frame(body, style="PanelCard.TFrame", padding=18)
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         # set_info, not set_success: nothing has been saved yet, and the
@@ -98,7 +98,7 @@ class SettingsPanel(ttk.Frame):
             parent,
             text=_("settings_local_ai_desc"),
             style="Hint.TLabel",
-            wraplength=720,
+            wraplength=380,
             justify="left",
         ).pack(anchor="w", pady=(8, 0))
 
@@ -150,7 +150,7 @@ class SettingsPanel(ttk.Frame):
             parent,
             textvariable=self.ai_detail_var,
             style="Hint.TLabel",
-            wraplength=740,
+            wraplength=380,
             justify="left",
         ).pack(anchor="w", pady=(12, 0))
 

@@ -20,11 +20,11 @@ def split_pdf(input_pdf, output_pdf, start_page, end_page, ctx=None):
     for idx, i in enumerate(range(start_page - 1, end_page)):
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(idx + 1, page_count, f"Sayfa {i + 1} işleniyor...")
+            ctx.report_progress(idx + 1, page_count, _("progress_page_of").format(current=i + 1, total=total_pages))
         writer.add_page(reader.pages[i])
     
     with open(output_pdf, "wb") as f:
         writer.write(f)
     
     if ctx:
-        ctx.report_progress(page_count, page_count, "Bölme tamamlandı.")
+        ctx.report_progress(page_count, page_count, _("progress_finished"))

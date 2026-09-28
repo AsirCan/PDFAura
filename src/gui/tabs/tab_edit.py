@@ -69,7 +69,7 @@ class EditTab:
         self.edit_delete_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_delete_frame, text=_("edit_pages_to_delete"), style="Field.TLabel").pack(anchor="w")
         ttk.Entry(self.edit_delete_frame, textvariable=self.edit_delete_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
-        ttk.Label(self.edit_delete_frame, text=_("edit_delete_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(8, 0))
+        ttk.Label(self.edit_delete_frame, text=_("edit_delete_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
 
         self.edit_rotate_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_rotate_frame, text=_("edit_pages_to_rotate"), style="Field.TLabel").pack(anchor="w")
@@ -84,7 +84,7 @@ class EditTab:
         self.edit_reorder_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_reorder_frame, text=_("edit_new_order"), style="Field.TLabel").pack(anchor="w")
         ttk.Entry(self.edit_reorder_frame, textvariable=self.edit_order_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
-        ttk.Label(self.edit_reorder_frame, text=_("edit_order_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(8, 0))
+        ttk.Label(self.edit_reorder_frame, text=_("edit_order_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
 
         self.edit_frames = {
             _("edit_mode_delete"): self.edit_delete_frame,
@@ -105,7 +105,7 @@ class EditTab:
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("edit_operation"), _("edit_delete_hint"))

@@ -34,7 +34,7 @@ def compress_pdf(input_pdf, output_pdf, quality, ctx=None):
 
     if ctx:
         ctx.check_cancelled()
-        ctx.report_progress(0, 100, "Sıkıştırma başlatılıyor...")
+        ctx.report_progress(0, 100, _("progress_starting"))
 
     try:
         on_tick = _progress_ticker(temp_output, input_pdf, ctx) if ctx else None
@@ -49,7 +49,7 @@ def compress_pdf(input_pdf, output_pdf, quality, ctx=None):
         raise
 
     if ctx:
-        ctx.report_progress(100, 100, "Sıkıştırma tamamlandı.")
+        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 def _progress_ticker(temp_output, input_pdf, ctx):
@@ -66,6 +66,6 @@ def _progress_ticker(temp_output, input_pdf, ctx):
         except OSError:
             return
         progress = min(int((current_size / target_size) * 90), 90)
-        ctx.report_progress(progress, 100, f"İşleniyor... ({progress}%)")
+        ctx.report_progress(progress, 100, _("progress_percent").format(pct=progress))
 
     return tick

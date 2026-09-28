@@ -68,7 +68,7 @@ class BatchTab:
         self.f_rename = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Label(self.f_rename, text=_("batch_rename_rule"), style="Field.TLabel").pack(anchor="w")
         ttk.Entry(self.f_rename, textvariable=self.rename_rule_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
-        ttk.Label(self.f_rename, text=_("batch_rename_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(10, 0))
+        ttk.Label(self.f_rename, text=_("batch_rename_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(10, 0))
 
         self.frames = {
             _("batch_compress"): self.f_compress,
@@ -89,11 +89,13 @@ class BatchTab:
         log_card = ttk.Frame(left, style="PanelCard.TFrame", padding=14)
         log_card.pack(fill="both", expand=True, pady=(18, 0))
         ttk.Label(log_card, text=_("batch_log_title"), style="Section.TLabel").pack(anchor="w")
-        self.log_text = tk.Text(log_card, height=10, bg="#fbfdff", fg="#18212b", bd=0, state="disabled", font=("Consolas", 9), wrap="word")
+        # width=1: a Text defaults to 80 columns, which demanded ~560 px and
+        # squeezed the preview panel off the right of the window.
+        self.log_text = tk.Text(log_card, height=10, width=1, bg="#fbfdff", fg="#18212b", bd=0, state="disabled", font=("Consolas", 9), wrap="word")
         self.log_text.pack(fill="both", expand=True, pady=(10, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("batch_main_type"), _("batch_rename_hint"))

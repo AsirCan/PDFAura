@@ -63,6 +63,7 @@ class PreviewPanel(ttk.Frame):
         self.open_button.state(["!disabled"])
         self.folder_button.state(["!disabled"])
 
+        doc = None
         try:
             doc = fitz.open(self.current_path)
             page = doc.load_page(0)
@@ -77,12 +78,18 @@ class PreviewPanel(ttk.Frame):
             self.name_var.set(os.path.basename(self.current_path))
             self.meta_var.set(_("preview_pages_mb").format(pages=len(doc), size=file_size))
             self.path_var.set(self.current_path)
-            doc.close()
         except Exception as exc:
             self.canvas.create_text(140, 180, text=_("preview_unavailable"), fill="#b42318", width=220, font=("Segoe UI Semibold", 11))
             self.name_var.set(os.path.basename(self.current_path))
             self.meta_var.set(str(exc))
             self.path_var.set(self.current_path)
+        finally:
+            # The error path left the document open, holding the file locked.
+            if doc is not None:
+                try:
+                    doc.close()
+                except Exception:
+                    pass
 
     def open_viewer(self):
         if self.current_path:

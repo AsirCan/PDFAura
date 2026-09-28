@@ -169,7 +169,7 @@ class ConvertTab:
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("convert_type"), _("convert_running").format(mode=self.convert_mode_var.get()))
@@ -312,6 +312,12 @@ class ConvertTab:
         elif mode == _("convert_pdf2txt") and file_path.lower().endswith(".pdf"):
             self.p2txt_input_var.set(file_path)
             self.p2txt_output_var.set(f"{os.path.splitext(file_path)[0]}.txt")
+        else:
+            # A file that does not suit the selected mode was dropped and
+            # silently ignored, which looked like the drop had not worked.
+            self.feedback.set_info(
+                _("convert_dialog_pdf"),
+                _("convert_drop_mismatch").format(name=os.path.basename(file_path)))
 
     def _cancel_task(self):
         if self._task_ctx:

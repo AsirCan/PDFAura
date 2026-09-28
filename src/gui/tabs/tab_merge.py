@@ -8,8 +8,8 @@ from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.merge import merge_pdfs
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, notify_preview, quick_error
-from src.gui.styles import FIELD_COLOR, MERGE_ACCENT, TEXT_COLOR
+from src.gui.helpers import (InlineFeedback, ProgressFooter, build_hint_strip,
+                             notify_preview, quick_error, style_listbox)
 from src.utils.file_helper import format_size_mb
 
 
@@ -28,11 +28,7 @@ class MergeTab:
         shell = ttk.Frame(self.parent, style="App.TFrame")
         shell.pack(fill="both", expand=True)
 
-        hero = ttk.Frame(shell, style="Hero.TFrame", padding=22)
-        hero.pack(fill="x", pady=(0, 18))
-        ttk.Label(hero, text=_("txt_merge"), style="HeroEyebrow.TLabel").pack(anchor="w")
-        ttk.Label(hero, text=_("merge_btn"), style="HeroTitle.TLabel").pack(anchor="w", pady=(6, 0))
-        ttk.Label(hero, text=_("merge_result").format(count=2, pages=12, size=1.4, output="...").split("\n")[0], style="HeroBody.TLabel", wraplength=780, justify="left").pack(anchor="w", pady=(8, 0))
+        build_hint_strip(shell, _("hint_merge"))
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill="both", expand=True)
@@ -44,19 +40,8 @@ class MergeTab:
         top_row = ttk.Frame(left, style="Surface.TFrame")
         top_row.pack(fill="both", expand=True, pady=(14, 0))
 
-        self.merge_listbox = tk.Listbox(
-            top_row,
-            bg=FIELD_COLOR,
-            fg=TEXT_COLOR,
-            selectbackground=MERGE_ACCENT,
-            selectforeground=TEXT_COLOR,
-            font=("Segoe UI", 10),
-            height=10,
-            borderwidth=1,
-            relief="solid",
-            highlightthickness=0,
-            activestyle="none",
-        )
+        self.merge_listbox = tk.Listbox(top_row, height=10)
+        style_listbox(self.merge_listbox)
         self.merge_listbox.pack(side="left", fill="both", expand=True)
         self.merge_listbox.bind("<<ListboxSelect>>", self.on_selection_changed)
 
@@ -83,7 +68,7 @@ class MergeTab:
         self.footer.pack(fill="x", pady=(22, 0))
 
         right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(18, 0))
+        right.pack(side="right", fill="y", padx=(18, 0))
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         self.feedback.set_info(_("merge_pdf_files"), _("str_drag_drop_hint"))

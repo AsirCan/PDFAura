@@ -1,3 +1,6 @@
+from src.core.lang_manager import _
+
+
 """
 Document Scanner Engine
 -----------------------
@@ -1497,7 +1500,7 @@ def scanned_images_to_pdf(images_bgr, output_pdf: str, ctx=None, mode=None):
             if ctx:
                 ctx.check_cancelled()
                 ctx.report_progress(count, total or count + 1,
-                                    f"{count + 1}/{total or '?'} sayfa PDF'e ekleniyor...")
+                                    _("progress_page_of").format(current=count + 1, total=total or count + 1))
 
             height, width = img_bgr.shape[:2]
             # 300 dpi -> PDF points (72 per inch).
@@ -1513,7 +1516,7 @@ def scanned_images_to_pdf(images_bgr, output_pdf: str, ctx=None, mode=None):
 
         if ctx:
             ctx.check_cancelled()
-            ctx.report_progress(count, total or count, "PDF kaydediliyor...")
+            ctx.report_progress(count, total or count, _("progress_saving"))
 
         from src.core.output_paths import atomic_output
         with atomic_output(output_pdf) as temp_path:

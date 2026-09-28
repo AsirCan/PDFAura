@@ -32,6 +32,7 @@ _STRINGS = {
         "hint_advanced":            "PDF'i seçin, ardından önizleme, OCR, metadata veya imza işlemlerinden birini seçin.",
         "hint_batch":               "Bir klasör seçin; içindeki tüm dosyalar seçtiğiniz işlemle tek seferde işlenir.",
         "hint_split":               "PDF'i seçin, almak istediğiniz sayfa aralığını girin ve PDF Kes'e basın.",
+        "hint_merge":               "PDF'leri ekleyin, Yukarı/Aşağı ile sırayı ayarlayın ve Birleştir'e basın.",
         "hint_edit":                "PDF'i seçin, işlemi seçin (sıralama, silme, döndürme) ve Uygula'ya basın.",
         "hint_scanner":             "Fotoğrafları ekleyin veya sürükleyin, kırmızı köşeleri kağıdın köşelerine oturtun, sırayı ayarlayın ve PDF oluşturun.",
         "scanner_pages":            "Sayfalar",
@@ -277,7 +278,7 @@ _STRINGS = {
         "convert_result_w2p":       "Word başarıyla PDF'e dönüştürüldü.\nKaydedildi:\n{output}",
         "convert_result_ppt2pdf":   "PowerPoint başarıyla PDF'e dönüştürüldü.\nKaydedildi:\n{output}",
         "convert_result_excel2pdf": "Excel başarıyla PDF'e dönüştürüldü.\nKaydedildi:\n{output}",
-        "convert_result_pdf2txt":   "PDF metin olarak dışa aktarıldü.\nKaydedildi:\n{output}",
+        "convert_result_pdf2txt":   "PDF metin olarak dışa aktarıldı.\nKaydedildi:\n{output}",
 
         # ── Güvenlik (Security) Sekmesi ──
         "security_op_type":         "İşlem Türü",
@@ -343,8 +344,13 @@ _STRINGS = {
         "viewer_prev":              "<< Önceki",
         "viewer_next":              "Sonraki >>",
         "viewer_page":              "Sayfa {current} / {total}",
-        "viewer_zoom_in":           "Zoom In (+)",
-        "viewer_zoom_out":          "Zoom Out (-)",
+        "viewer_zoom_in":           "Yakınlaştır (+)",
+        "viewer_zoom_out":          "Uzaklaştır (−)",
+        "quality_screen":           "screen — en küçük dosya (ekran, 72 dpi)",
+        "quality_ebook":            "ebook — dengeli (e-kitap, 150 dpi)",
+        "quality_printer":          "printer — yüksek kalite (baskı, 300 dpi)",
+        "quality_prepress":         "prepress — en yüksek kalite (matbaa, 300 dpi)",
+        "convert_drop_mismatch":    "Sürüklenen dosya seçili işlemle uyuşmuyor: {name}",
 
         # ── Toplu İşlemler (Batch) Sekmesi ──
         "batch_main_type":          "Ana İşlem Tipi",
@@ -543,6 +549,14 @@ _STRINGS = {
         "perf_cancelled":           "İptal Edildi",
         "perf_cancelled_msg":       "İşlem kullanıcı tarafından iptal edildi.",
         "perf_cancelled_badge":     "İPTAL",
+        "progress_starting":        "Başlatılıyor...",
+        "progress_finished":        "Tamamlandı.",
+        "progress_page_of":         "Sayfa {current}/{total} işleniyor...",
+        "progress_image_of":        "Resim {current}/{total} işleniyor...",
+        "progress_percent":         "İşleniyor... (%{pct})",
+        "progress_converting":      "Dönüştürülüyor...",
+        "progress_pages_done":      "{count} sayfa dönüştürüldü.",
+        "progress_saving":          "Kaydediliyor...",
     },
 
     "en": {
@@ -576,6 +590,7 @@ _STRINGS = {
         "hint_advanced":            "Pick a PDF, then choose preview, OCR, metadata or signature.",
         "hint_batch":               "Pick a folder; every file in it is processed with the chosen operation in one go.",
         "hint_split":               "Pick a PDF, enter the page range you want to keep and press Split PDF.",
+        "hint_merge":               "Add the PDFs, set the order with Up/Down and press Merge.",
         "hint_edit":                "Pick a PDF, choose an operation (reorder, delete, rotate) and press Apply.",
         "hint_scanner":             "Add or drop photos, drag the red corners onto the paper's corners, set the order and create the PDF.",
         "scanner_pages":            "Pages",
@@ -888,7 +903,12 @@ _STRINGS = {
         "viewer_next":              "Next >>",
         "viewer_page":              "Page {current} / {total}",
         "viewer_zoom_in":           "Zoom In (+)",
-        "viewer_zoom_out":          "Zoom Out (-)",
+        "viewer_zoom_out":          "Zoom Out (−)",
+        "quality_screen":           "screen — smallest file (screen, 72 dpi)",
+        "quality_ebook":            "ebook — balanced (e-book, 150 dpi)",
+        "quality_printer":          "printer — high quality (printing, 300 dpi)",
+        "quality_prepress":         "prepress — highest quality (press, 300 dpi)",
+        "convert_drop_mismatch":    "The dropped file does not match the selected operation: {name}",
 
         # ── Batch Tab ──
         "batch_main_type":          "Main Operation Type",
@@ -1087,6 +1107,14 @@ _STRINGS = {
         "perf_cancelled":           "Cancelled",
         "perf_cancelled_msg":       "Operation cancelled by user.",
         "perf_cancelled_badge":     "CANCELLED",
+        "progress_starting":        "Starting...",
+        "progress_finished":        "Finished.",
+        "progress_page_of":         "Processing page {current}/{total}...",
+        "progress_image_of":        "Processing image {current}/{total}...",
+        "progress_percent":         "Processing... ({pct}%)",
+        "progress_converting":      "Converting...",
+        "progress_pages_done":      "{count} page(s) converted.",
+        "progress_saving":          "Saving...",
     }
 }
 
