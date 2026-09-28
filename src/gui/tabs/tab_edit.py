@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.core.common import get_pdf_page_count, parse_page_numbers
+from src.core.common import get_pdf_page_count, parse_page_numbers, parse_page_order
 from src.core.edit import delete_pages_from_pdf, reorder_pages_in_pdf, rotate_pages_in_pdf
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
@@ -19,7 +19,8 @@ class EditTab:
         self.edit_input_var = tk.StringVar()
         self.edit_output_var = tk.StringVar()
         self.edit_mode_var = tk.StringVar(value=_("edit_mode_delete"))
-        self.edit_pages_var = tk.StringVar()
+        self.edit_delete_pages_var = tk.StringVar()
+        self.edit_rotate_pages_var = tk.StringVar()
         self.edit_angle_var = tk.StringVar(value="90")
         self.edit_order_var = tk.StringVar()
         self.edit_page_info_var = tk.StringVar(value="")
@@ -66,12 +67,12 @@ class EditTab:
 
         self.edit_delete_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_delete_frame, text=_("edit_pages_to_delete"), style="Field.TLabel").pack(anchor="w")
-        ttk.Entry(self.edit_delete_frame, textvariable=self.edit_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
+        ttk.Entry(self.edit_delete_frame, textvariable=self.edit_delete_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
         ttk.Label(self.edit_delete_frame, text=_("edit_delete_hint"), style="Hint.TLabel", wraplength=640, justify="left").pack(anchor="w", pady=(8, 0))
 
         self.edit_rotate_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_rotate_frame, text=_("edit_pages_to_rotate"), style="Field.TLabel").pack(anchor="w")
-        ttk.Entry(self.edit_rotate_frame, textvariable=self.edit_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
+        ttk.Entry(self.edit_rotate_frame, textvariable=self.edit_rotate_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
         ttk.Label(self.edit_rotate_frame, text=_("edit_rotate_hint"), style="Hint.TLabel").pack(anchor="w", pady=(8, 0))
         angle_row = ttk.Frame(self.edit_rotate_frame, style="Panel.TFrame")
         angle_row.pack(anchor="w", pady=(10, 0))
@@ -173,7 +174,7 @@ class EditTab:
         try:
             total = get_pdf_page_count(input_pdf)
             if mode == _("edit_mode_delete"):
-                pages_text = self.edit_pages_var.get().strip()
+                pages_text = self.edit_delete_pages_var.get().strip()
                 if not pages_text:
                     raise ValueError(_("edit_err_enter_delete"))
                 pages = parse_page_numbers(pages_text, total)
@@ -181,7 +182,7 @@ class EditTab:
                 remaining = total - len(pages)
                 message = _("edit_result_delete").format(count=len(pages), remaining=remaining, output=output_pdf)
             elif mode == _("edit_mode_rotate"):
-                pages_text = self.edit_pages_var.get().strip()
+                pages_text = self.edit_rotate_pages_var.get().strip()
                 angle = int(self.edit_angle_var.get())
                 pages = parse_page_numbers(pages_text, total) if pages_text else list(range(1, total + 1))
                 rotate_pages_in_pdf(input_pdf, output_pdf, pages, angle, ctx=self._task_ctx)
@@ -190,7 +191,7 @@ class EditTab:
                 order_text = self.edit_order_var.get().strip()
                 if not order_text:
                     raise ValueError(_("edit_err_enter_order"))
-                new_order = [int(chunk.strip()) for chunk in order_text.split(",")]
+                new_order = parse_page_order(order_text, total)
                 reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=self._task_ctx)
                 message = _("edit_result_reorder").format(count=len(new_order), output=output_pdf)
             else:

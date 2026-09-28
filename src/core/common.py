@@ -47,3 +47,54 @@ def parse_page_numbers(text, total_pages):
     if not pages:
         raise ValueError("En az bir sayfa numarasi girilmeli.")
     return sorted(pages)
+
+
+def parse_page_order(text, total_pages):
+    """Parse a page order like '3, 1, 2' or '5-1' into a list of page numbers.
+
+    Accepts ranges in either direction, stray whitespace and a trailing comma.
+    The result must be a full permutation of 1..total_pages: reordering is not
+    a way to drop or duplicate pages, and silently doing so lost real content.
+    Raises ValueError naming the missing or repeated pages.
+    """
+    order = []
+    for part in text.split(","):
+        part = part.strip()
+        if not part:
+            continue  # tolerate a trailing or doubled comma
+        if "-" in part.lstrip("-"):
+            start_text, _sep, end_text = part.partition("-")
+            try:
+                start, end = int(start_text.strip()), int(end_text.strip())
+            except ValueError:
+                raise ValueError(_("err_order_invalid_token").format(token=part))
+            step = 1 if end >= start else -1
+            order.extend(range(start, end + step, step))
+        else:
+            try:
+                order.append(int(part))
+            except ValueError:
+                raise ValueError(_("err_order_invalid_token").format(token=part))
+
+    if not order:
+        raise ValueError(_("err_order_empty"))
+
+    out_of_range = sorted({p for p in order if p < 1 or p > total_pages})
+    if out_of_range:
+        raise ValueError(_("err_order_out_of_range").format(
+            pages=", ".join(str(p) for p in out_of_range), total=total_pages))
+
+    missing = sorted(set(range(1, total_pages + 1)) - set(order))
+    duplicates = sorted({p for p in order if order.count(p) > 1})
+    if missing or duplicates:
+        problems = []
+        if missing:
+            problems.append(_("err_order_missing").format(
+                pages=", ".join(str(p) for p in missing)))
+        if duplicates:
+            problems.append(_("err_order_duplicate").format(
+                pages=", ".join(str(p) for p in duplicates)))
+        raise ValueError(_("err_order_not_permutation").format(
+            total=total_pages, problems=" ".join(problems)))
+
+    return order

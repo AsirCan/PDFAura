@@ -108,6 +108,13 @@ _STRINGS = {
         "err_office_not_installed": "Microsoft {app} bu bilgisayarda kurulu degil. Bu donusum icin {app} gereklidir.",
         "err_pywin32_missing":      "pywin32 kutuphanesi bulunamadi. Kurmak icin: pip install pywin32",
         "err_office_failed":        "Microsoft {app} donusumu basarisiz oldu:",
+        "err_order_invalid_token":  "Sayfa sirasinda anlasilamayan deger: {token}",
+        "err_order_empty":          "En az bir sayfa numarasi girin.",
+        "err_order_out_of_range":   "Belgede olmayan sayfa(lar): {pages}. Belge {total} sayfa.",
+        "err_order_missing":        "Eksik sayfa(lar): {pages}.",
+        "err_order_duplicate":      "Tekrarlanan sayfa(lar): {pages}.",
+        "err_order_not_permutation": "Sayfa sirasi {total} sayfanin tamamini bir kez icermeli. {problems}",
+        "err_metadata_read":        "Metadata okunamadi:",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "Bir PDF dosyasını pencereye sürükleyip bırakabilirsiniz.",
@@ -563,6 +570,13 @@ _STRINGS = {
         "err_office_not_installed": "Microsoft {app} is not installed on this computer. This conversion requires {app}.",
         "err_pywin32_missing":      "The pywin32 package was not found. Install it with: pip install pywin32",
         "err_office_failed":        "Microsoft {app} conversion failed:",
+        "err_order_invalid_token":  "Unrecognised value in the page order: {token}",
+        "err_order_empty":          "Enter at least one page number.",
+        "err_order_out_of_range":   "Page(s) not in the document: {pages}. The document has {total} pages.",
+        "err_order_missing":        "Missing page(s): {pages}.",
+        "err_order_duplicate":      "Repeated page(s): {pages}.",
+        "err_order_not_permutation": "The page order must list all {total} pages exactly once. {problems}",
+        "err_metadata_read":        "Could not read the metadata:",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "You can drag and drop a PDF file into the window.",

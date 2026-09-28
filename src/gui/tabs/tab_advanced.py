@@ -27,6 +27,9 @@ class AdvancedTab:
         self.author_var = tk.StringVar()
         self.subject_var = tk.StringVar()
         self.creator_var = tk.StringVar()
+        # False until the fields hold this document's metadata; until then an
+        # empty field means "leave alone", not "erase".
+        self._meta_loaded_for = None
         self.meta_clean_var = tk.BooleanVar(value=False)
 
         self.sig_image_var = tk.StringVar()
@@ -151,6 +154,7 @@ class AdvancedTab:
         selected = filedialog.askopenfilename(title=_("security_dialog_input"), filetypes=[("PDF", "*.pdf")])
         if selected:
             self.input_var.set(selected)
+            self.load_metadata(quiet=True)
 
     def choose_output(self):
         mode = self.action_var.get()
@@ -166,17 +170,32 @@ class AdvancedTab:
         if selected:
             self.sig_image_var.set(selected)
 
-    def load_metadata(self):
+    def load_metadata(self, quiet=False):
+        """Fill the metadata fields from the selected PDF.
+
+        quiet=True is the automatic load on file selection: a failure there
+        (an encrypted document, say) must not pop an error before the user
+        has asked for anything.
+        """
         inp = self.input_var.get().strip()
         if not inp or not os.path.isfile(inp):
-            self.feedback.set_error(_("str_error"), _("err_select_valid_file"))
+            if not quiet:
+                self.feedback.set_error(_("str_error"), _("err_select_valid_file"))
             return
-        meta = read_metadata(inp)
+        try:
+            meta = read_metadata(inp)
+        except Exception as exc:
+            self._meta_loaded_for = None
+            if not quiet:
+                self.feedback.set_error(_("str_error"), f"{_('err_metadata_read')} {exc}")
+            return
         self.title_var.set(meta.get("title", ""))
         self.author_var.set(meta.get("author", ""))
         self.subject_var.set(meta.get("subject", ""))
         self.creator_var.set(meta.get("creator", ""))
-        self.feedback.set_info(_("str_info"), _("adv_meta_read_ok"))
+        self._meta_loaded_for = inp
+        if not quiet:
+            self.feedback.set_info(_("str_info"), _("adv_meta_read_ok"))
 
     def trigger_tesseract_install(self):
         from src.core.install_tesseract import install_target_tesseract
@@ -196,6 +215,7 @@ class AdvancedTab:
     def handle_external_drop(self, file_path):
         if file_path.lower().endswith(".pdf"):
             self.input_var.set(file_path)
+            self.load_metadata(quiet=True)
 
     def _cancel_task(self):
         if self._task_ctx:
@@ -268,14 +288,18 @@ class AdvancedTab:
 
     def _run_meta(self, inp, out):
         try:
+            clean = bool(self.meta_clean_var.get())
+            # If the fields were never populated from this document, sending
+            # their empty values would wipe the existing metadata.
+            known = self._meta_loaded_for == inp
             update_metadata(
                 inp,
                 out,
-                title=self.title_var.get() if not self.meta_clean_var.get() else None,
-                author=self.author_var.get() if not self.meta_clean_var.get() else None,
-                subject=self.subject_var.get() if not self.meta_clean_var.get() else None,
-                creator=self.creator_var.get() if not self.meta_clean_var.get() else None,
-                clean=self.meta_clean_var.get(),
+                title=self.title_var.get() if not clean and known else None,
+                author=self.author_var.get() if not clean and known else None,
+                subject=self.subject_var.get() if not clean and known else None,
+                creator=self.creator_var.get() if not clean and known else None,
+                clean=clean,
             )
             self._finish(_("str_success"), _("adv_result_meta").format(output=out), out)
         except CancelledError:

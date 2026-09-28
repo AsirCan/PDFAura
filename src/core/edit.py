@@ -1,3 +1,6 @@
+from src.core.lang_manager import _
+
+
 def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
     """Delete specific pages from PDF. pages_to_delete is 1-indexed list."""
     from pypdf import PdfWriter
@@ -46,13 +49,30 @@ def reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=None):
     reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
     total = len(new_order)
-    
+    page_count = len(reader.pages)
+
+    # Reordering must not drop or duplicate pages: "2, 1" on a 5-page document
+    # used to write a 2-page file and report success.
+    missing = sorted(set(range(1, page_count + 1)) - set(new_order))
+    duplicates = sorted({p for p in new_order if new_order.count(p) > 1})
+    if missing or duplicates:
+        problems = []
+        if missing:
+            problems.append(_("err_order_missing").format(
+                pages=", ".join(str(p) for p in missing)))
+        if duplicates:
+            problems.append(_("err_order_duplicate").format(
+                pages=", ".join(str(p) for p in duplicates)))
+        raise ValueError(_("err_order_not_permutation").format(
+            total=page_count, problems=" ".join(problems)))
+
     for idx, page_num in enumerate(new_order, 1):
         if ctx:
             ctx.check_cancelled()
             ctx.report_progress(idx, total, f"Sayfa {idx}/{total} yeniden sıralanıyor...")
-        if page_num < 1 or page_num > len(reader.pages):
-            raise ValueError(f"Gecersiz sayfa numarasi: {page_num}")
+        if page_num < 1 or page_num > page_count:
+            raise ValueError(_("err_order_out_of_range").format(
+                pages=page_num, total=page_count))
         writer.add_page(reader.pages[page_num - 1])
     
     with open(output_pdf, "wb") as f:
