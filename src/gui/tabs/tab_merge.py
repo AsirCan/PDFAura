@@ -101,7 +101,7 @@ class MergeTab:
             notify_preview(self.app_root, file_path)
         if self.merge_file_list and not self.merge_output_var.get().strip():
             base = os.path.splitext(self.merge_file_list[0])[0]
-            self.merge_output_var.set(f"{base}_birleşik.pdf")
+            self.merge_output_var.set(f"{base}{_('suffix_merged')}.pdf")
 
     def merge_remove_selected(self):
         selected = self.merge_listbox.curselection()

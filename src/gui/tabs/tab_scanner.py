@@ -42,7 +42,7 @@ from src.core.config_manager import cfg
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
 from src.core.scanner_session import ScannerSessionStore, SESSION_VERSION
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, build_hint_strip, quick_error
+from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, build_hint_strip, quick_error
 from src.gui.styles import (
     SURFACE_COLOR, SURFACE_ALT, FIELD_COLOR, TEXT_COLOR, MUTED_TEXT,
     BORDER_COLOR, PRIMARY_ACCENT, CONVERT_ACCENT,
@@ -125,6 +125,9 @@ class ScannerTab:
 
         # ── tkinter vars ──
         self.output_var = tk.StringVar()
+        # A suggested path is replaced when a new document starts; a path the
+        # user picked in the save dialog is kept.
+        self._output_chosen = False
         self.status_var = tk.StringVar(value=tr("str_ready"))
         self.scan_mode_var = tk.StringVar(value=tr("scanner_mode_clean_doc"))
         self.page_label_var = tk.StringVar(value=tr("scanner_no_pages"))
@@ -390,7 +393,7 @@ class ScannerTab:
 
         if not self.output_var.get().strip() and self.pages:
             base = os.path.splitext(self.pages[0].path)[0]
-            self.output_var.set(f"{base}_tarandi.pdf")
+            self.output_var.set(f"{base}{_('suffix_scanned')}.pdf")
 
         self._show_current_page()
         self.feedback.set_info(
@@ -541,6 +544,8 @@ class ScannerTab:
         self.current_index = -1
         self.canvas.delete("all")
         self.preview_canvas.delete("all")
+        self.output_var.set("")
+        self._output_chosen = False
         self._show_current_page()
         self._clear_session()
         self.feedback.set_info(tr("scanner_crop_area"), tr("scanner_select_hint"))
@@ -1032,6 +1037,7 @@ class ScannerTab:
         )
         if selected:
             self.output_var.set(selected)
+            self._output_chosen = True
 
     def handle_external_drop(self, file_path):
         self.handle_external_drop_many([file_path])
@@ -1496,6 +1502,8 @@ class ScannerTab:
         if not output:
             quick_error(tr("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
             return
+        if not self._output_chosen and not confirm_overwrite(output, self.app_root):
+            return
 
         def _on_progress(current, total, message=""):
             self.app_root.after(0, self.footer.update_progress, current, total, message)
@@ -1547,6 +1555,9 @@ class ScannerTab:
                 # being written; otherwise those edits are not in the PDF yet.
                 if self._session_rev == self._scan_start_rev:
                     self._clear_session()
+                    # The next document must not default to this PDF's path.
+                    self.output_var.set("")
+                    self._output_chosen = False
             self.app_root.after(0, _done)
 
         except CancelledError:

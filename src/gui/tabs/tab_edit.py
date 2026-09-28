@@ -127,7 +127,7 @@ class EditTab:
         except Exception as exc:
             self.edit_page_info_var.set(f"{_('str_error')}: {exc}")
         base, ext = os.path.splitext(selected)
-        self.edit_output_var.set(f"{base}_düzenlenmiş{ext}")
+        self.edit_output_var.set(f"{base}{_('suffix_edited')}{ext}")
 
     def choose_edit_output_pdf(self):
         selected = filedialog.asksaveasfilename(title=_("edit_dialog_output"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
@@ -143,7 +143,7 @@ class EditTab:
             except Exception as exc:
                 self.edit_page_info_var.set(f"{_('str_error')}: {exc}")
             base, ext = os.path.splitext(file_path)
-            self.edit_output_var.set(f"{base}_düzenlenmiş{ext}")
+            self.edit_output_var.set(f"{base}{_('suffix_edited')}{ext}")
 
     def _cancel_task(self):
         if self._task_ctx:

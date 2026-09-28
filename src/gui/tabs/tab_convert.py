@@ -204,7 +204,7 @@ class ConvertTab:
         if selected:
             self.p2i_input_var.set(selected)
             base = os.path.splitext(selected)[0]
-            self.p2i_folder_var.set(f"{base}_resimler")
+            self.p2i_folder_var.set(f"{base}{_('suffix_images')}")
 
     def choose_p2i_folder(self):
         selected = filedialog.askdirectory(title=_("convert_dialog_folder"))
@@ -218,7 +218,7 @@ class ConvertTab:
             self.i2p_listbox.insert(tk.END, os.path.basename(file_path))
         if self.i2p_file_list and not self.i2p_output_var.get().strip():
             base = os.path.splitext(self.i2p_file_list[0])[0]
-            self.i2p_output_var.set(f"{base}_birleşik.pdf")
+            self.i2p_output_var.set(f"{base}{_('suffix_merged')}.pdf")
 
     def i2p_remove_selected(self):
         selected = self.i2p_listbox.curselection()
@@ -290,12 +290,12 @@ class ConvertTab:
         mode = self.convert_mode_var.get()
         if mode == _("convert_pdf2img") and file_path.lower().endswith(".pdf"):
             self.p2i_input_var.set(file_path)
-            self.p2i_folder_var.set(f"{os.path.splitext(file_path)[0]}_resimler")
+            self.p2i_folder_var.set(f"{os.path.splitext(file_path)[0]}{_('suffix_images')}")
         elif mode == _("convert_img2pdf") and file_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif")):
             self.i2p_file_list.append(file_path)
             self.i2p_listbox.insert(tk.END, os.path.basename(file_path))
             if not self.i2p_output_var.get().strip():
-                self.i2p_output_var.set(f"{os.path.splitext(file_path)[0]}_birleşik.pdf")
+                self.i2p_output_var.set(f"{os.path.splitext(file_path)[0]}{_('suffix_merged')}.pdf")
         elif mode == _("convert_pdf2word") and file_path.lower().endswith(".pdf"):
             self.p2w_input_var.set(file_path)
             self.p2w_output_var.set(f"{os.path.splitext(file_path)[0]}.docx")

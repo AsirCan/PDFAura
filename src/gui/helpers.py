@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 from src.core.lang_manager import _
 from src.gui.styles import BORDER_COLOR, FIELD_COLOR, PRIMARY_ACCENT, TEXT_COLOR
@@ -294,6 +294,22 @@ def operation_done(button, progress_bar, status_var, status_text, success_msg=No
         feedback.set_success(status_text, success_msg, output_path)
     elif error_msg and feedback:
         feedback.set_error(status_text, error_msg)
+
+
+def confirm_overwrite(path, parent=None):
+    """Ask before replacing an existing file. True means go ahead.
+
+    Only for paths the app suggested: a path the user picked in a save
+    dialog was already confirmed there.
+    """
+    if not path or not os.path.isfile(path):
+        return True
+    return messagebox.askyesno(
+        _("overwrite_title"),
+        _("overwrite_body").format(path=path),
+        parent=parent,
+        icon="warning",
+    )
 
 
 def quick_error(msg, button, progress_bar, status_var, feedback=None):

@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, check_new_password, decrypt_pdf, encrypt_pdf
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 
 
 class SecurityTab:
@@ -17,6 +17,8 @@ class SecurityTab:
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
+        # Changing the operation used to overwrite a path the user picked.
+        self._output_chosen = False
         self.mode_var = tk.StringVar(value=_("security_encrypt"))
         self.password_var = tk.StringVar()
         self.confirm_var = tk.StringVar()
@@ -121,6 +123,8 @@ class SecurityTab:
 
     def _set_input(self, path):
         self.input_var.set(path)
+        if self._output_chosen:
+            return
         base, ext = os.path.splitext(path)
         current = self.mode_var.get()
         if current == _("security_encrypt"):
@@ -135,6 +139,7 @@ class SecurityTab:
         selected = filedialog.asksaveasfilename(title=_("security_dialog_output"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
         if selected:
             self.output_var.set(selected)
+            self._output_chosen = True
 
     def handle_external_drop(self, file_path):
         if file_path.lower().endswith(".pdf"):
@@ -165,6 +170,9 @@ class SecurityTab:
                 return
         elif mode == _("security_decrypt") and not self.password_var.get():
             quick_error(_("err_password_empty"), self.footer.action_button, None, self.status_var, self.feedback)
+            return
+
+        if not self._output_chosen and not confirm_overwrite(output_pdf, self.app_root):
             return
 
         def _on_progress(current, total, message=""):

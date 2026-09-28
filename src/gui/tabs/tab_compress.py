@@ -6,7 +6,7 @@ from tkinter import ttk, filedialog
 from src.core.compress import VALID_QUALITIES, compress_pdf
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
 from src.utils.file_helper import format_size_mb, suggest_output_path
 
 
@@ -18,6 +18,8 @@ class CompressTab:
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
+        # A suggested path follows the input; one the user picked does not.
+        self._output_chosen = False
         self.quality_var = tk.StringVar(value="ebook")
         self.status_var = tk.StringVar(value=_("str_ready"))
 
@@ -74,8 +76,7 @@ class CompressTab:
         selected = filedialog.askopenfilename(title=_("compress_dialog_input"), filetypes=[("PDF", "*.pdf")])
         if selected:
             self.input_var.set(selected)
-            if not self.output_var.get().strip():
-                self.output_var.set(suggest_output_path(selected))
+            self._refresh_suggestion(selected)
 
     def choose_output_pdf(self):
         init = ""
@@ -90,12 +91,22 @@ class CompressTab:
         )
         if selected:
             self.output_var.set(selected)
+            self._output_chosen = True
+
+    def _refresh_suggestion(self, input_path):
+        """Follow the input unless the user picked the output themselves.
+
+        The suggestion used to be set only when the box was empty, so
+        selecting a second file left the first file's output path in place
+        and the new result overwrote it.
+        """
+        if not self._output_chosen:
+            self.output_var.set(suggest_output_path(input_path))
 
     def handle_external_drop(self, file_path):
         if file_path.lower().endswith(".pdf"):
             self.input_var.set(file_path)
-            if not self.output_var.get().strip():
-                self.output_var.set(suggest_output_path(file_path))
+            self._refresh_suggestion(file_path)
 
     def _cancel_task(self):
         if self._task_ctx:
@@ -114,6 +125,9 @@ class CompressTab:
             return
         if not output_pdf:
             quick_error(_("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
+            return
+        # Only a suggested path needs asking; a dialog choice was confirmed there.
+        if not self._output_chosen and not confirm_overwrite(output_pdf, self.app_root):
             return
 
         def _on_progress(current, total, message=""):
