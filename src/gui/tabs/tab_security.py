@@ -3,6 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, check_new_password, decrypt_pdf, encrypt_pdf
 from src.core.task_manager import TaskContext, CancelledError
@@ -206,7 +207,7 @@ class SecurityTab:
         except CancelledError:
             self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(0, self._on_error, str(exc))
+            self.app_root.after(0, self._on_error, friendly_error(exc))
 
     def _on_done(self, message, output_pdf):
         self.footer.finish_success()

@@ -3,6 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.metainfo import read_metadata, update_metadata
 from src.core.ocr import check_tesseract_availability, perform_ocr_to_text
@@ -243,7 +244,11 @@ class AdvancedTab:
             self.app_root.after(0, self.footer.update_progress, current, total, message)
 
         self._task_ctx = TaskContext(progress_callback=_on_progress)
-        self.footer.start_busy(cancel_callback=self._cancel_task)
+        # Only OCR can actually be cancelled; showing Cancel for metadata and
+        # signature meant pressing it said "Cancelling..." and then
+        # "Succeeded" anyway.
+        cancellable = mode == _("adv_ocr")
+        self.footer.start_busy(cancel_callback=self._cancel_task if cancellable else None)
         self.feedback.set_busy(_("str_processing"))
         self.status_var.set(_("str_processing"))
 
@@ -262,10 +267,11 @@ class AdvancedTab:
         self.app_root.after(0, _do)
 
     def _fail(self, title, exc):
+        message = friendly_error(exc)
         def _do():
             self.footer.stop_busy()
             self.status_var.set(title)
-            self.feedback.set_error(title, str(exc))
+            self.feedback.set_error(title, message)
         self.app_root.after(0, _do)
 
     def _cancelled(self):
@@ -277,9 +283,7 @@ class AdvancedTab:
 
     def _run_ocr(self, inp, out):
         try:
-            # Note: OCR implementation in core doesn't support ctx yet, 
-            # but we run it via thread so app doesn't block
-            perform_ocr_to_text(inp, out)
+            perform_ocr_to_text(inp, out, ctx=self._task_ctx)
             self._finish(_("str_success"), _("adv_result_ocr").format(output=out), out)
         except CancelledError:
             self._cancelled()

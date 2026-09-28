@@ -18,7 +18,7 @@ def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
             writer.add_page(page)
     
     if len(writer.pages) == 0:
-        raise ValueError("Tum sayfalar silinemez.")
+        raise ValueError(_("err_delete_all_pages"))
     with open(output_pdf, "wb") as f:
         writer.write(f)
 

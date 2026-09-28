@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 from src.core.compress import VALID_QUALITIES, compress_pdf
+from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
@@ -156,7 +157,7 @@ class CompressTab:
         except CancelledError:
             self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(0, self._on_error, str(exc))
+            self.app_root.after(0, self._on_error, friendly_error(exc))
 
     def _on_done(self, message, output_pdf):
         self.footer.finish_success()

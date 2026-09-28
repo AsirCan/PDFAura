@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 from src.core.common import get_pdf_page_count
+from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.split import split_pdf
 from src.core.task_manager import TaskContext, CancelledError
@@ -184,7 +185,7 @@ class SplitTab:
         except CancelledError:
             self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(0, self._on_error, str(exc))
+            self.app_root.after(0, self._on_error, friendly_error(exc))
 
     def _on_done(self, message, output_pdf):
         self.footer.finish_success()

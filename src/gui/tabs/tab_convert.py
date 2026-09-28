@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 from src.core.convert import excel_to_pdf, images_to_pdf, pdf_to_images, pdf_to_txt, pdf_to_word, ppt_to_pdf, word_to_pdf
+from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.helpers import (
@@ -324,7 +325,12 @@ class ConvertTab:
             self.app_root.after(0, self.footer.update_progress, current, total, message)
 
         self._task_ctx = TaskContext(progress_callback=_on_progress)
-        self.footer.start_busy(cancel_callback=self._cancel_task)
+        # Office conversions and PDF→Word run inside libraries that offer no
+        # cancellation point, so do not offer a Cancel button that would say
+        # "Cancelling..." and then finish successfully anyway.
+        cancellable = mode not in (_("convert_word2pdf"), _("convert_ppt2pdf"),
+                                   _("convert_excel2pdf"), _("convert_pdf2word"))
+        self.footer.start_busy(cancel_callback=self._cancel_task if cancellable else None)
         self.feedback.set_busy(busy_text)
         self.convert_status_var.set(busy_text)
 
@@ -420,10 +426,11 @@ class ConvertTab:
         self.app_root.after(0, _do)
 
     def _fail(self, title, exc):
+        message = friendly_error(exc)
         def _do():
             self.footer.stop_busy()
             self.convert_status_var.set(title)
-            self.feedback.set_error(title, str(exc))
+            self.feedback.set_error(title, message)
         self.app_root.after(0, _do)
 
     def _cancelled(self):

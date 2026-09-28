@@ -34,18 +34,25 @@ def parse_page_numbers(text, total_pages):
         if not part:
             continue
         if '-' in part:
-            start, end = part.split('-', 1)
-            start, end = int(start.strip()), int(end.strip())
+            start_text, end_text = part.split('-', 1)
+            try:
+                start, end = int(start_text.strip()), int(end_text.strip())
+            except ValueError:
+                # Without this the user saw "invalid literal for int()".
+                raise ValueError(_("err_invalid_range").format(part=part))
             if start < 1 or end > total_pages or start > end:
-                raise ValueError(f"Gecersiz aralik: {part}")
+                raise ValueError(_("err_invalid_range").format(part=part))
             pages.update(range(start, end + 1))
         else:
-            p = int(part)
-            if p < 1 or p > total_pages:
-                raise ValueError(f"Gecersiz sayfa: {p}")
-            pages.add(p)
+            try:
+                page = int(part)
+            except ValueError:
+                raise ValueError(_("err_invalid_page").format(page=part))
+            if page < 1 or page > total_pages:
+                raise ValueError(_("err_invalid_page").format(page=page))
+            pages.add(page)
     if not pages:
-        raise ValueError("En az bir sayfa numarasi girilmeli.")
+        raise ValueError(_("err_need_one_page"))
     return sorted(pages)
 
 

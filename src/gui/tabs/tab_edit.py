@@ -5,6 +5,7 @@ from tkinter import ttk, filedialog
 
 from src.core.common import get_pdf_page_count, parse_page_numbers, parse_page_order
 from src.core.edit import delete_pages_from_pdf, reorder_pages_in_pdf, rotate_pages_in_pdf
+from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
@@ -201,7 +202,7 @@ class EditTab:
         except CancelledError:
             self.app_root.after(0, self._on_cancelled)
         except Exception as exc:
-            self.app_root.after(0, self._on_error, str(exc))
+            self.app_root.after(0, self._on_error, friendly_error(exc))
 
     def _on_done(self, message, output_pdf):
         self.footer.finish_success()
