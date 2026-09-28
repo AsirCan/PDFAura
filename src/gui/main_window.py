@@ -245,17 +245,34 @@ class MainWindow:
             pass
             
         self.tray_icon = None
-        if cfg.get("close_to_tray", True) and getattr(self, "icon_path", None) and os.path.exists(self.icon_path):
-            self._start_tray_icon()
+        if cfg.get("close_to_tray", True):
+            self._ensure_tray_icon()
 
-    def _start_tray_icon(self):
-        image = Image.open(self.icon_path)
-        menu = pystray.Menu(
-            pystray.MenuItem(_("tray_open"), self.show_window),
-            pystray.MenuItem(_("tray_quit"), self.quit_window),
-        )
-        self.tray_icon = pystray.Icon("pdfaura", image, "PDF Aura", menu)
-        threading.Thread(target=self.tray_icon.run, daemon=True).start()
+    def _ensure_tray_icon(self):
+        """Start the tray icon if it is not running. True if one is available.
+
+        The icon is only created at startup when the setting is already on,
+        so turning the setting on later left no icon; closing then hid the
+        window with no way to get it back. on_closing() calls this first.
+        """
+        if getattr(self, "tray_icon", None):
+            return True
+        icon_path = getattr(self, "icon_path", None)
+        if not icon_path or not os.path.exists(icon_path):
+            return False
+        try:
+            image = Image.open(icon_path)
+            menu = pystray.Menu(
+                pystray.MenuItem(_("tray_open"), self.show_window),
+                pystray.MenuItem(_("tray_quit"), self.quit_window),
+            )
+            self.tray_icon = pystray.Icon("pdfaura", image, "PDF Aura", menu)
+            threading.Thread(target=self.tray_icon.run, daemon=True).start()
+            return True
+        except Exception as exc:
+            print(f"[Tray] icon could not be started: {exc}")
+            self.tray_icon = None
+            return False
 
     def show_page(self, key):
         if self.current_page:
@@ -302,7 +319,9 @@ class MainWindow:
         return workspace.instance if workspace else None
 
     def on_closing(self):
-        if cfg.get("close_to_tray", True) and self.icon_path:
+        # Hide only if there really is a tray icon to get the window back
+        # from; otherwise quit, rather than run on invisibly.
+        if cfg.get("close_to_tray", True) and self._ensure_tray_icon():
             scanner = self._scanner_tab()
             if scanner:
                 scanner.save_session_now()
