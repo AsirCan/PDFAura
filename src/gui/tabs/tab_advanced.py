@@ -309,14 +309,15 @@ class AdvancedTab:
 
     def _run_sig(self, inp, out):
         try:
+            # The core parses the coordinates, so "100.5" and "100,5" work.
             stamp_visual_signature(
                 inp,
                 out,
                 self.sig_image_var.get(),
-                int(self.sig_page_var.get()),
-                int(self.sig_x_var.get()),
-                int(self.sig_y_var.get()),
-                float(self.sig_scale_var.get()),
+                int(float(self.sig_page_var.get().strip().replace(",", "."))),
+                self.sig_x_var.get(),
+                self.sig_y_var.get(),
+                self.sig_scale_var.get(),
             )
             self._finish(_("str_success"), _("adv_result_sig").format(output=out), out)
         except CancelledError:
