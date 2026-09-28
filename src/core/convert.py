@@ -47,42 +47,115 @@ def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None)
     return written
 
 
+# Page sizes in PDF points (1/72 inch).
+PAGE_SIZES_PT = {"A4": (595.276, 841.890), "Letter": (612.0, 792.0)}
+
+# Assumed resolution when an image carries no DPI of its own.
+DEFAULT_IMAGE_DPI = 96.0
+
+
+def _load_image_frames(img_path):
+    """Yield every frame of an image as a flattened RGB PIL image.
+
+    Flattens all alpha modes onto white (only RGBA was handled, so
+    transparent GIF/PNG in LA or P mode came out black), applies the EXIF
+    orientation phone photos carry, and walks multi-page TIFFs instead of
+    taking only the first frame.
+    """
+    from PIL import Image, ImageOps, ImageSequence
+
+    with Image.open(img_path) as opened:
+        for frame in ImageSequence.Iterator(opened):
+            image = ImageOps.exif_transpose(frame)
+            dpi = image.info.get("dpi")
+
+            if image.mode in ("RGBA", "LA") or (
+                    image.mode == "P" and "transparency" in image.info):
+                image = image.convert("RGBA")
+                background = Image.new("RGB", image.size, (255, 255, 255))
+                background.paste(image, mask=image.split()[3])
+                image = background
+            elif image.mode != "RGB":
+                image = image.convert("RGB")
+
+            yield image, dpi
+
+
+def _natural_size_pt(image, dpi):
+    """The image's own size in points, from its DPI (96 dpi if unknown)."""
+    dpi_x, dpi_y = (dpi if dpi else (DEFAULT_IMAGE_DPI, DEFAULT_IMAGE_DPI))
+    dpi_x = float(dpi_x) or DEFAULT_IMAGE_DPI
+    dpi_y = float(dpi_y) or DEFAULT_IMAGE_DPI
+    width, height = image.size
+    return width * 72.0 / dpi_x, height * 72.0 / dpi_y
+
+
 def images_to_pdf(image_paths, output_pdf, page_size="Orijinal", ctx=None):
-    """Convert images to PDF using Pillow."""
-    try:
-        from PIL import Image
-    except ImportError:
-        raise ImportError("Pillow kutuphanesi bulunamadi.\nLutfen kurun: pip install Pillow")
+    """Convert images to PDF, embedding each at its full resolution.
+
+    The old code resized every image to the page's *point* count treated as
+    pixels -- "A4" produced a 428 x 571 pt page holding a 595 px wide image,
+    so the page was the wrong size and the picture was badly downscaled.
+    Pages are now exactly A4/Letter in points and the image goes in at its
+    original pixel size, centred and proportional.
+    """
+    import fitz
+
     if not image_paths:
         raise ValueError("En az bir resim secilmeli.")
-    PAGE_SIZES = {"A4": (595, 842), "Letter": (612, 792)}
-    pdf_images = []
+
+    target = PAGE_SIZES_PT.get(page_size)
+    doc = fitz.open()
     total = len(image_paths)
-    
-    for idx, img_path in enumerate(image_paths):
-        if ctx:
-            ctx.check_cancelled()
-            ctx.report_progress(idx + 1, total, f"Resim {idx + 1}/{total} işleniyor...")
-        
-        img = Image.open(img_path)
-        if img.mode == "RGBA":
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=img.split()[3])
-            img = bg
-        elif img.mode != "RGB":
-            img = img.convert("RGB")
-        if page_size in PAGE_SIZES:
-            target_w, target_h = PAGE_SIZES[page_size]
-            img_w, img_h = img.size
-            ratio = min(target_w / img_w, target_h / img_h)
-            new_w, new_h = int(img_w * ratio), int(img_h * ratio)
-            img = img.resize((new_w, new_h), Image.LANCZOS)
-        pdf_images.append(img)
-    
-    pdf_images[0].save(output_pdf, "PDF", save_all=True, append_images=pdf_images[1:], resolution=100.0)
-    
+
+    try:
+        for idx, img_path in enumerate(image_paths):
+            if ctx:
+                ctx.check_cancelled()
+                ctx.report_progress(idx + 1, total, f"Resim {idx + 1}/{total} işleniyor...")
+
+            for image, dpi in _load_image_frames(img_path):
+                if target:
+                    page_w, page_h = target
+                    # A landscape picture gets a landscape page.
+                    if image.size[0] > image.size[1] and page_w < page_h:
+                        page_w, page_h = page_h, page_w
+                    # Fit the image inside the page, keeping its proportions.
+                    scale = min(page_w / image.size[0], page_h / image.size[1])
+                    draw_w, draw_h = image.size[0] * scale, image.size[1] * scale
+                else:
+                    page_w, page_h = _natural_size_pt(image, dpi)
+                    draw_w, draw_h = page_w, page_h
+
+                left = (page_w - draw_w) / 2
+                top = (page_h - draw_h) / 2
+
+                page = doc.new_page(width=page_w, height=page_h)
+                page.insert_image(
+                    fitz.Rect(left, top, left + draw_w, top + draw_h),
+                    stream=_encode_image(image),
+                )
+
+        if doc.page_count == 0:
+            raise ValueError("En az bir resim secilmeli.")
+
+        from src.core.output_paths import atomic_output
+        with atomic_output(output_pdf) as temp_path:
+            doc.save(temp_path, garbage=3, deflate=True)
+    finally:
+        doc.close()
+
     if ctx:
         ctx.report_progress(total, total, "PDF oluşturuldu.")
+
+
+def _encode_image(image):
+    """Encode a PIL image for embedding, at its full pixel size."""
+    import io as _io
+    buffer = _io.BytesIO()
+    image.save(buffer, format="JPEG", quality=92, optimize=True)
+    return buffer.getvalue()
+
 
 def pdf_to_word(input_pdf, output_docx, ctx=None):
     """Convert PDF to Word using pdf2docx."""
@@ -101,6 +174,7 @@ def pdf_to_word(input_pdf, output_docx, ctx=None):
     
     if ctx:
         ctx.report_progress(100, 100, "Dönüştürme tamamlandı.")
+
 
 # ── Microsoft Office interop ───────────────────────────────────────────────
 #
