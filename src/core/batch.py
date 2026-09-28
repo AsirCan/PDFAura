@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -6,21 +7,44 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.core.compress import compress_pdf
 from src.core.convert import images_to_pdf, pdf_to_images
 from src.core.common import get_pdf_page_count
+from src.core.output_paths import is_inside, mirrored_output, unique_path
 from src.utils.file_helper import format_size_mb
 from src.core.lang_manager import _
 
-def get_files_in_dir(directory, exts=[".pdf"]):
-    """Returns a list of absolute paths pointing to files matching the extensions in the given directory."""
+
+# Naming-rule tokens. Each canonical token carries every spelling shown in
+# the UI hints: the Turkish hint uses the dotted "İ" while the code used to
+# expect "I", so [TARİH] was copied into the filename verbatim.
+RENAME_TOKENS = {
+    "original_name": ["ORIJINAL_AD", "ORİJİNAL_AD", "ORIGINAL_NAME"],
+    "page_count":    ["SAYFA_SAYISI", "PAGE_COUNT"],
+    "size":          ["BOYUT", "SIZE"],
+    "order":         ["SIRA", "ORDER"],
+    "date":          ["TARIH", "TARİH", "DATE"],
+}
+
+
+def get_files_in_dir(directory, exts=[".pdf"], exclude_dir=None):
+    """Absolute paths of matching files under *directory*.
+
+    *exclude_dir* keeps the output folder out of the scan; without it, an
+    output folder inside the input folder meant a second run reprocessed its
+    own results into compressed_compressed_rapor.pdf.
+    """
     matched = []
     if not os.path.isdir(directory):
         return matched
-        
-    for root, _, files in os.walk(directory):
+
+    for root, dirs, files in os.walk(directory):
+        if exclude_dir:
+            dirs[:] = [d for d in dirs if not is_inside(os.path.join(root, d), exclude_dir)]
+            if is_inside(root, exclude_dir):
+                continue
         for f in files:
             for ext in exts:
                 if f.lower().endswith(ext.lower()):
                     matched.append(os.path.join(root, f))
-    return matched
+    return sorted(matched)
 
 def batch_compress_dir(input_dir, output_dir, quality="screen", progress_callback=None, ctx=None):
     """
@@ -28,14 +52,15 @@ def batch_compress_dir(input_dir, output_dir, quality="screen", progress_callbac
     Çoklu çekirdek desteği ile paralel çalışır.
     Returns (success_count, error_list)
     """
-    pdfs = get_files_in_dir(input_dir, [".pdf"])
+    os.makedirs(output_dir, exist_ok=True)
+    pdfs = get_files_in_dir(input_dir, [".pdf"], exclude_dir=output_dir)
     if not pdfs:
         return 0, [_("batch_no_pdf_found")]
-        
-    os.makedirs(output_dir, exist_ok=True)
+
     success = 0
     errors = []
     total = len(pdfs)
+    taken = set()
     
     # Çoklu çekirdek: paralel sıkıştırma
     max_workers = min(os.cpu_count() or 4, total, 4)
@@ -47,9 +72,10 @@ def batch_compress_dir(input_dir, output_dir, quality="screen", progress_callbac
             for pdf in pdfs:
                 if ctx and ctx.is_cancelled:
                     break
-                base = os.path.basename(pdf)
-                out_path = os.path.join(output_dir, f"compressed_{base}")
-                future = executor.submit(compress_pdf, pdf, out_path, quality)
+                base = os.path.relpath(pdf, input_dir)
+                out_path = mirrored_output(pdf, input_dir, output_dir, prefix="compressed_", taken=taken)
+                future = executor.submit(compress_pdf, pdf, out_path, quality,
+                                         ctx.child() if ctx else None)
                 future_to_pdf[future] = (pdf, base, out_path)
             
             for future in as_completed(future_to_pdf):
@@ -75,8 +101,8 @@ def batch_compress_dir(input_dir, output_dir, quality="screen", progress_callbac
         for idx, pdf in enumerate(pdfs):
             if ctx:
                 ctx.check_cancelled()
-            base = os.path.basename(pdf)
-            out_path = os.path.join(output_dir, f"compressed_{base}")
+            base = os.path.relpath(pdf, input_dir)
+            out_path = mirrored_output(pdf, input_dir, output_dir, prefix="compressed_", taken=taken)
             try:
                 compress_pdf(pdf, out_path, quality)
                 success += 1
@@ -100,17 +126,18 @@ def batch_convert_dir(input_dir, output_dir, mode="img2pdf", progress_callback=N
     os.makedirs(output_dir, exist_ok=True)
     success = 0
     errors = []
+    taken = set()
     
     if mode == "pdf2img":
-        files = get_files_in_dir(input_dir, [".pdf"])
+        files = get_files_in_dir(input_dir, [".pdf"], exclude_dir=output_dir)
         total = len(files)
         for idx, f in enumerate(files):
             if ctx:
                 ctx.check_cancelled()
-            base = os.path.basename(f)
-            name_no_ext = os.path.splitext(base)[0]
-            # Create a separate subfolder for each PDF's images
-            pdf_out_dir = os.path.join(output_dir, name_no_ext)
+            base = os.path.relpath(f, input_dir)
+            # A separate subfolder per PDF, mirroring the input tree so that
+            # rapor.pdf and alt/rapor.pdf do not share one image folder.
+            pdf_out_dir = mirrored_output(f, input_dir, output_dir, ext="", taken=taken)
             try:
                 pdf_to_images(f, pdf_out_dir, img_format="png", dpi=200)
                 success += 1
@@ -123,7 +150,7 @@ def batch_convert_dir(input_dir, output_dir, mode="img2pdf", progress_callback=N
                     progress_callback(idx + 1, total, err)
                     
     elif mode == "img2pdf":
-        files = get_files_in_dir(input_dir, [".png", ".jpg", ".jpeg"])
+        files = get_files_in_dir(input_dir, [".png", ".jpg", ".jpeg"], exclude_dir=output_dir)
         total = len(files)
         
         # Çoklu çekirdek: paralel dönüştürme
@@ -136,9 +163,8 @@ def batch_convert_dir(input_dir, output_dir, mode="img2pdf", progress_callback=N
                 for img in files:
                     if ctx and ctx.is_cancelled:
                         break
-                    base = os.path.basename(img)
-                    name_no_ext = os.path.splitext(base)[0]
-                    out_pdf = os.path.join(output_dir, f"{name_no_ext}.pdf")
+                    base = os.path.relpath(img, input_dir)
+                    out_pdf = mirrored_output(img, input_dir, output_dir, ext=".pdf", taken=taken)
                     future = executor.submit(images_to_pdf, [img], out_pdf)
                     future_to_img[future] = (img, base)
                 
@@ -164,9 +190,8 @@ def batch_convert_dir(input_dir, output_dir, mode="img2pdf", progress_callback=N
             for idx, img in enumerate(files):
                 if ctx:
                     ctx.check_cancelled()
-                base = os.path.basename(img)
-                name_no_ext = os.path.splitext(base)[0]
-                out_pdf = os.path.join(output_dir, f"{name_no_ext}.pdf")
+                base = os.path.relpath(img, input_dir)
+                out_pdf = mirrored_output(img, input_dir, output_dir, ext=".pdf", taken=taken)
                 try:
                     images_to_pdf([img], out_pdf)
                     success += 1
@@ -178,6 +203,9 @@ def batch_convert_dir(input_dir, output_dir, mode="img2pdf", progress_callback=N
                     if progress_callback:
                         progress_callback(idx + 1, total, err)
                     
+    if not files:
+        return 0, [_("batch_no_file_found")]
+
     _write_report(output_dir, f"Batch_Convert_Report_{mode}", len(files), success, errors)
     return success, errors
 
@@ -189,14 +217,15 @@ def batch_rename_dir(input_dir, output_dir, naming_rule, progress_callback=None,
     Example: Fatura_[ORIJINAL_AD]_[SIRA]
     The files are effectively COPIED and Renamed into the output_dir.
     """
-    pdfs = get_files_in_dir(input_dir, [".pdf"])
+    os.makedirs(output_dir, exist_ok=True)
+    pdfs = get_files_in_dir(input_dir, [".pdf"], exclude_dir=output_dir)
     if not pdfs:
         return 0, [_("batch_no_pdf_found")]
-        
-    os.makedirs(output_dir, exist_ok=True)
+
     success = 0
     errors = []
     total = len(pdfs)
+    taken = set()
     now_str = datetime.now().strftime("%Y-%m-%d")
     
     for idx, pdf in enumerate(pdfs):
@@ -209,20 +238,22 @@ def batch_rename_dir(input_dir, output_dir, naming_rule, progress_callback=None,
             pages = str(get_pdf_page_count(pdf))
             seq = f"{(idx + 1):03d}"  # 001, 002...
             
-            new_name = naming_rule
-            new_name = new_name.replace("[ORIJINAL_AD]", name_only)
-            new_name = new_name.replace("[SAYFA_SAYISI]", pages + "pp")
-            new_name = new_name.replace("[BOYUT]", size_mb)
-            new_name = new_name.replace("[SIRA]", seq)
-            new_name = new_name.replace("[TARIH]", now_str)
-            
+            values = {
+                "original_name": name_only,
+                "page_count": pages + "pp",
+                "size": size_mb,
+                "order": seq,
+                "date": now_str,
+            }
+            new_name = _apply_rename_tokens(naming_rule, values)
+
             # Sanitize new_name to ensure it's a valid path avoiding illegal chars
-            invalid_chars = '<>:"/\\|?*'
+            invalid_chars = r'<>:"/\|?*'
             for char in invalid_chars:
                 new_name = new_name.replace(char, "_")
-            
-            out_pdf = os.path.join(output_dir, f"{new_name}.pdf")
-            
+
+            out_pdf = unique_path(os.path.join(output_dir, f"{new_name}.pdf"), taken, check_disk=False)
+
             # Simple copy operation for rename mapping
             shutil.copy2(pdf, out_pdf)
             success += 1
@@ -237,6 +268,22 @@ def batch_rename_dir(input_dir, output_dir, naming_rule, progress_callback=None,
                 
     _write_report(output_dir, "Batch_Rename_Report", total, success, errors)
     return success, errors
+
+def _apply_rename_tokens(rule, values):
+    """Replace every spelling of every naming token in *rule*.
+
+    Tokens are matched case-insensitively and across the Turkish dotted-I
+    spellings, so the [ORİJİNAL_AD] and [TARİH] shown in the Turkish hint
+    work as well as the [ORIGINAL_NAME] and [DATE] in the English one.
+    """
+    result = rule
+    for canonical, aliases in RENAME_TOKENS.items():
+        replacement = values[canonical]
+        for alias in aliases:
+            pattern = re.compile(r"\[" + re.escape(alias) + r"\]", re.IGNORECASE)
+            result = pattern.sub(lambda _m: replacement, result)
+    return result
+
 
 def _write_report(output_dir, report_name, total, success, errors):
     """Dumps the log internally so the user doesn't lose it if they close the app."""

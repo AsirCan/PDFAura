@@ -241,6 +241,12 @@ _STRINGS = {
         "security_suffix_encrypted":  "_sifreli",
         "security_suffix_decrypted":  "_sifresiz",
         "security_suffix_watermarked": "_filigranli",
+        "suffix_merged":            "_birlesik",
+        "suffix_edited":            "_duzenlenmis",
+        "suffix_compressed":        "_sikistirilmis",
+        "suffix_images":            "_resimler",
+        "suffix_scanned":           "_tarandi",
+        "suffix_split":             "_kesilmis",
 
         # ── Gelişmiş (Advanced) Sekmesi ──
         "adv_operation":            "Gelişmiş İşlem",
@@ -295,6 +301,7 @@ _STRINGS = {
         "batch_radio_img2pdf":      "Resimler → Toplu Tekil PDF'lere dönüştür",
         "batch_rename_rule":        "Adlandırma Kuralı:",
         "batch_rename_hint":        "Tavsiye Edilen Parametreler:\n[ORİJİNAL_AD] [SAYFA_SAYISI] [BOYUT] [SIRA] [TARİH]",
+        "batch_rename_default":     "[TARIH]_[ORIJINAL_AD]_[SIRA]",
         "batch_start_btn":          "Başlat / İşlemi Başlat",
         "batch_dialog_input":       "Kaynak Klasör Seç",
         "batch_dialog_output":      "Çıktı Klasör Seç",
@@ -309,6 +316,9 @@ _STRINGS = {
 
         # ── Batch Core (Rapor & Log) ──
         "batch_no_pdf_found":       "Kaynak klasörde geçerli PDF bulunamadı.",
+        "batch_no_file_found":      "Secilen klasorde islenecek dosya bulunamadi.",
+        "batch_result_partial":     "{succ} dosya islendi, {errs} dosyada hata olustu.",
+        "batch_result_all_failed":  "Hicbir dosya islenemedi ({errs} hata).",
         "batch_log_compressed":     "Sıkıştırıldı",
         "batch_log_pages_extracted": "Sayfalara ayrıldı",
         "batch_log_pdf_created":    "PDF Üretildi",
@@ -392,6 +402,7 @@ _STRINGS = {
         "feedback_done_badge": "TAMAMLANDI",
         "feedback_error_badge": "HATA",
         "feedback_info_badge": "BİLGİ",
+        "feedback_warning_badge": "KISMEN TAMAMLANDI",
         "feedback_open_output": "Çıktıyı Aç",
         "feedback_open_folder": "Klasörü Aç",
         "preview_title": "Önizleme",
@@ -706,6 +717,12 @@ _STRINGS = {
         "security_suffix_encrypted":  "_encrypted",
         "security_suffix_decrypted":  "_decrypted",
         "security_suffix_watermarked": "_watermarked",
+        "suffix_merged":            "_merged",
+        "suffix_edited":            "_edited",
+        "suffix_compressed":        "_compressed",
+        "suffix_images":            "_images",
+        "suffix_scanned":           "_scanned",
+        "suffix_split":             "_split",
 
         # ── Advanced Tab ──
         "adv_operation":            "Advanced Operation",
@@ -760,6 +777,7 @@ _STRINGS = {
         "batch_radio_img2pdf":      "Images → Convert to Individual PDFs",
         "batch_rename_rule":        "Naming Rule:",
         "batch_rename_hint":        "Suggested Parameters:\n[ORIGINAL_NAME] [PAGE_COUNT] [SIZE] [ORDER] [DATE]",
+        "batch_rename_default":     "[DATE]_[ORIGINAL_NAME]_[ORDER]",
         "batch_start_btn":          "Start / Begin Process",
         "batch_dialog_input":       "Select Source Folder",
         "batch_dialog_output":      "Select Output Folder",
@@ -774,6 +792,9 @@ _STRINGS = {
 
         # ── Batch Core (Report & Log) ──
         "batch_no_pdf_found":       "No valid PDF files found in source folder.",
+        "batch_no_file_found":      "No files to process were found in the selected folder.",
+        "batch_result_partial":     "{succ} file(s) processed, {errs} failed.",
+        "batch_result_all_failed":  "No files could be processed ({errs} errors).",
         "batch_log_compressed":     "Compressed",
         "batch_log_pages_extracted": "Extracted to pages",
         "batch_log_pdf_created":    "PDF Created",
@@ -857,6 +878,7 @@ _STRINGS = {
         "feedback_done_badge": "DONE",
         "feedback_error_badge": "ERROR",
         "feedback_info_badge": "INFO",
+        "feedback_warning_badge": "PARTIALLY DONE",
         "feedback_open_output": "Open Output",
         "feedback_open_folder": "Open Folder",
         "preview_title": "Preview",

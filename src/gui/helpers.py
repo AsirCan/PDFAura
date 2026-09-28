@@ -246,6 +246,13 @@ class InlineFeedback(ttk.Frame):
         self.message_var.set(message)
         self.clear_actions()
 
+    def set_warning(self, title, message, output_path=None):
+        """Partial success: some items worked, some did not."""
+        self._set_badge(_("feedback_warning_badge"), "#fff8e8", "#b45309")
+        self.title_var.set(title)
+        self.message_var.set(message)
+        self._set_actions(output_path)
+
     def set_info(self, title, message):
         self._set_badge(_("feedback_info_badge"), "#fff8e8", "#b45309")
         self.title_var.set(title)

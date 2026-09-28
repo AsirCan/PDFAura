@@ -21,7 +21,7 @@ class BatchTab:
         self.status_var = tk.StringVar(value=_("str_ready"))
         self.compress_qual_var = tk.StringVar(value="screen")
         self.convert_mode_var = tk.StringVar(value="pdf2img")
-        self.rename_rule_var = tk.StringVar(value="[TARIH]_[ORIJINAL_AD]_Sayfa[SAYFA_SAYISI]")
+        self.rename_rule_var = tk.StringVar(value=_("batch_rename_default"))
         self.build_ui()
 
     def build_ui(self):
@@ -191,12 +191,26 @@ class BatchTab:
         self._append_log("\n--- " + _("perf_cancelled") + " ---")
 
     def _finalize_job(self, succ, errs, out):
+        """Report what actually happened: a run where every file failed used
+        to show the green DONE badge."""
         self.footer.finish_success()
-        self.status_var.set(_("batch_done"))
         self._append_log(_("batch_log_ended"))
         self._append_log(_("batch_success_count").format(succ=succ, errs=len(errs)))
 
         message = _("batch_result").format(succ=succ, errs=len(errs))
         if errs:
             message += _("batch_result_errors").format(dir=out)
-        self.feedback.set_success(_("batch_result_title"), message, out)
+
+        if succ == 0 and errs:
+            self.status_var.set(_("str_failed"))
+            self.feedback.set_error(_("batch_result_title"),
+                                    _("batch_result_all_failed").format(errs=len(errs)))
+        elif errs:
+            self.status_var.set(_("batch_done"))
+            self.feedback.set_warning(_("batch_result_title"), message, out)
+        elif succ == 0:
+            self.status_var.set(_("str_ready"))
+            self.feedback.set_info(_("batch_result_title"), _("batch_no_file_found"))
+        else:
+            self.status_var.set(_("batch_done"))
+            self.feedback.set_success(_("batch_result_title"), message, out)
