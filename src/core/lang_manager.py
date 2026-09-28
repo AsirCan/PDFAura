@@ -115,6 +115,9 @@ _STRINGS = {
         "err_order_duplicate":      "Tekrarlanan sayfa(lar): {pages}.",
         "err_order_not_permutation": "Sayfa sirasi {total} sayfanin tamamini bir kez icermeli. {problems}",
         "err_metadata_read":        "Metadata okunamadi:",
+        "assist_need_password":     "Sifreleme icin bir parola soylemeniz gerekiyor. Ornegin: rapor.pdf dosyasini abc123 ile sifrele.",
+        "assist_merge_needs_two":   "Birlestirmek icin en az iki dosya adi soyleyin. Ornegin: a.pdf ve b.pdf dosyalarini birlestir.",
+        "assist_merge_name":        "Birlestirme",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "Bir PDF dosyasını pencereye sürükleyip bırakabilirsiniz.",
@@ -577,6 +580,9 @@ _STRINGS = {
         "err_order_duplicate":      "Repeated page(s): {pages}.",
         "err_order_not_permutation": "The page order must list all {total} pages exactly once. {problems}",
         "err_metadata_read":        "Could not read the metadata:",
+        "assist_need_password":     "Encryption needs a password. For example: encrypt report.pdf with abc123.",
+        "assist_merge_needs_two":   "Merging needs at least two file names. For example: merge a.pdf and b.pdf.",
+        "assist_merge_name":        "Merge",
 
         # ── Drag & Drop ──
         "str_drag_drop_hint": "You can drag and drop a PDF file into the window.",

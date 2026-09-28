@@ -4,6 +4,8 @@ import tempfile
 from pathlib import Path
 
 from src.core.split import split_pdf
+from src.core.merge import merge_pdfs
+from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, encrypt_pdf
 from src.core.compress import compress_pdf
 from src.core.edit import delete_pages_from_pdf, rotate_pages_in_pdf
@@ -32,6 +34,15 @@ def execute_intent(intent: dict):
     if not found_path:
         speak(f"Belirttiğiniz {input_file} dosyasını masaüstünde, belgelerimde veya indirilenler klasöründe bulamadım.")
         return
+
+    # Any further files named in the same command (for merge).
+    extra_paths = []
+    for name in intent.get("input_files", [])[1:]:
+        path = _find_file(name)
+        if not path:
+            speak(f"Belirttiğiniz {name} dosyasını masaüstünde, belgelerimde veya indirilenler klasöründe bulamadım.")
+            return
+        extra_paths.append(path)
 
     actions = intent.get("action_chain", [])
     if not actions:
@@ -76,7 +87,19 @@ def execute_intent(intent: dict):
             elif action_type == "compress":
                 compress_pdf(current_input, current_output, kwargs.get("quality", "ebook"))
             elif action_type == "encrypt":
-                encrypt_pdf(current_input, current_output, kwargs.get("password", "123456"))
+                password = kwargs.get("password")
+                if not password:
+                    # There is no safe default here: the old code used
+                    # "123456" without telling anyone.
+                    speak(_("assist_need_password"))
+                    return
+                encrypt_pdf(current_input, current_output, password)
+            elif action_type == "merge":
+                extra = extra_paths
+                if not extra:
+                    speak(_("assist_merge_needs_two"))
+                    return
+                merge_pdfs([current_input] + extra, current_output)
             elif action_type == "delete_pages":
                 delete_pages_from_pdf(current_input, current_output, kwargs.get("pages", []))
             elif action_type == "rotate":
@@ -192,6 +215,7 @@ def _get_action_name(action: str) -> str:
         "encrypt": "Şifreleme",
         "delete_pages": "Sayfa silme",
         "rotate": "Döndürme",
+        "merge": _("assist_merge_name"),
         "ocr": "OCR",
         "pdf_to_image": "Resme dönüştürme",
         "pdf_to_word": "Word'e dönüştürme",

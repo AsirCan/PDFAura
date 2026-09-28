@@ -1,3 +1,11 @@
+"""Turn a spoken or typed command into an action chain for the ActionRunner.
+
+The order of work matters and is the fix for most of issue #9: file names are
+extracted *first* and then removed from the text, so keyword and number
+matching never sees them. Otherwise "herkes.pdf" matched "kes" (split),
+"rapor_5.pdf" contributed page 5 to a delete, and "bir.pdf" was rewritten to
+"1.pdf" by the Turkish number normaliser.
+"""
 import os
 import re
 
@@ -10,20 +18,62 @@ TURKISH_NUMBERS = {
     "yüz": 100,
 }
 
+# Folders we are willing to look in for a name given without an extension.
+SEARCH_FOLDERS = ("Desktop", "Documents", "Downloads")
+
+_TR_CHARS = "a-zA-ZçğıöşüÇĞİÖŞÜ"
+
+# Keywords are matched at a word start (\b...) so "herkes" does not contain
+# "kes", and "silme" does not fire on an unrelated "sil".
+KEYWORDS = {
+    "split":        [r"\bkes", r"\bböl", r"\bayır", r"\bayir", r"\bsplit\b", r"\bextract\b"],
+    "merge":        [r"\bbirleştir", r"\bbirlestir", r"\bmerge\b", r"\bcombine\b"],
+    "compress":     [r"\bsıkıştır", r"\bsikistir", r"\bküçült", r"\bkucult", r"\bkompres",
+                     r"\bcompress\b", r"\bshrink\b"],
+    "encrypt":      [r"\bşifrele", r"\bsifrele", r"\bparola", r"\bşifre ekle",
+                     r"\bencrypt\b", r"\bpassword\b", r"\bprotect\b"],
+    "watermark":    [r"\bfiligran", r"\bwatermark\b"],
+    "delete_pages": [r"\bsil\b", r"\bsilme\b", r"\bsil[a-zçğıöşü]*", r"\bdelete\b", r"\bremove\b"],
+    "rotate":       [r"\bdöndür", r"\bdondur", r"\bçevir.*\bderece", r"\brotate\b"],
+    "ocr":          [r"\bocr\b", r"\bojr\b", r"\bosr\b", r"\bogr\b", r"\bo\.c\.r\b",
+                     r"\bmetin tanı", r"\bkarakter tanı", r"\byazı çıkar"],
+}
+
+# A conversion is "convert/çevir/dönüştür" plus a target format.
+CONVERT_TARGETS = {
+    "pdf_to_word":  [r"\bword\b", r"\bdocx?\b", r"\bkelime\b"],
+    "pdf_to_image": [r"\bresim", r"\bresme\b", r"\bgörsel", r"\bgorsel", r"\bfotoğraf",
+                     r"\bfotograf", r"\bpng\b", r"\bjpe?g\b", r"\bimage\b", r"\bpicture\b"],
+    "pdf_to_text":  [r"\bmetin", r"\bmetne\b", r"\btxt\b", r"\byazıya\b", r"\btext\b"],
+}
+
+CONVERT_VERBS = [r"\bçevir", r"\bcevir", r"\bdönüştür", r"\bdonustur", r"\bconvert\b",
+                 r"\bturn into\b", r"\bexport\b"]
+
+# Rotation direction words that make a bare "çevir" a rotation rather than a
+# conversion.
+ROTATE_HINTS = [r"\bderece\b", r"\bsağa\b", r"\bsaga\b", r"\bsola\b", r"\bsaat yönü",
+                r"\bdegree", r"\bclockwise\b", r"\bright\b", r"\bleft\b"]
+
+
+def _matches(patterns, text):
+    return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
 
 def _normalize_text(text: str) -> str:
     """Whisper çıktısındaki yaygın hataları düzeltir."""
-    # "nokta pdf" veya "nokta PDF" -> ".pdf"
     text = re.sub(r'\s*nokta\s*(pdf|PDF)\s*', '.pdf', text)
-    # "alt çizgi" -> "_"
     text = re.sub(r'\s*alt\s*çizgi\s*', '_', text)
     return text
 
 
 def _turkish_word_to_number(text: str) -> str:
-    """Metin içindeki Türkçe yazılmış rakamları sayıya çevirir. Örn: 'ilk beş' -> 'ilk 5'"""
+    """Metin içindeki Türkçe yazılmış rakamları sayıya çevirir. Örn: 'ilk beş' -> 'ilk 5'
+
+    Only ever applied to the text with file names already removed -- otherwise
+    "bir.pdf" becomes "1.pdf".
+    """
     for word, num in TURKISH_NUMBERS.items():
-        # Kelime sınırlarına dikkat ederek değiştir
         text = re.sub(rf'\b{word}\b', str(num), text, flags=re.IGNORECASE)
     return text
 
@@ -33,12 +83,10 @@ def parse_target_folder(text: str) -> str:
     text_lower = text.lower()
     user_home = os.path.expanduser("~")
 
-    # Whisper bazen "masaüstü"yü "masa üstü" olarak ayırıyor
-    if "masaüstü" in text_lower or "masa üstü" in text_lower or "desktop" in text_lower:
+    if re.search(r'masa\s*üstü(?:ne|ndeki|nde)?\s+(?:kaydet|yükle|at|koy)', text_lower) or \
+       re.search(r'\bdesktop\b.*\bsave\b', text_lower):
         return os.path.join(user_home, "Desktop")
 
-    # "belge" kelimesi dosya adında geçiyorsa (ör: belge.pdf) false positive olmasın
-    # Sadece "belgelerime kaydet", "belgelere kaydet" gibi kalıplarda hedef olsun
     if re.search(r'belge(ler)?(?:im)?(?:e|ye|\'?e)\s+(?:kaydet|yükle|at|koy)', text_lower):
         return os.path.join(user_home, "Documents")
 
@@ -48,138 +96,227 @@ def parse_target_folder(text: str) -> str:
     return None
 
 
-def parse_input_file(text: str) -> str:
-    """Metinde geçen .pdf uzantılı dosyayı veya 'X dosyası' kalıbını bulur."""
-    result = ""
+def _candidate_paths(stem):
+    """Files in the search folders whose stem matches *stem* case-insensitively."""
+    matches = []
+    home = os.path.expanduser("~")
+    for folder in SEARCH_FOLDERS:
+        directory = os.path.join(home, folder)
+        if not os.path.isdir(directory):
+            continue
+        try:
+            entries = os.listdir(directory)
+        except OSError:
+            continue
+        for name in entries:
+            if not name.lower().endswith(".pdf"):
+                continue
+            if os.path.splitext(name)[0].lower() == stem.lower():
+                matches.append(os.path.join(directory, name))
+    return matches
 
-    # 1. "finansal_rapor.pdf" gibi açık uzantılar
-    match = re.search(r'([\w_-]+\.pdf)', text, re.IGNORECASE)
+
+def _strip_turkish_suffix(word):
+    """Drop a trailing Turkish case suffix: 'sözleşmeyi' -> 'sözleşme'."""
+    for suffix in ("sini", "sını", "yi", "yı", "yu", "yü", "ni", "nı", "nu", "nü",
+                   "i", "ı", "u", "ü", "e", "a"):
+        if len(word) > len(suffix) + 2 and word.lower().endswith(suffix):
+            return word[: -len(suffix)]
+    return word
+
+
+def _file_mentions(text: str):
+    r"""Find every file mentioned as (file_name, exact_text_that_named_it).
+
+    Keeping the matched substring is what lets _strip_file_names remove
+    precisely what named the file. Stripping the bare stem instead would eat
+    real words: "a.pdf ve b.pdf birleştir" has stem "b", and removing "b\w*"
+    deletes "birleştir" along with it.
+    """
+    explicit = [(m.group(1), m.group(1))
+                for m in re.finditer(r'([\w_\-çğıöşüÇĞİÖŞÜ]+\.pdf)', text, re.IGNORECASE)]
+    if explicit:
+        return explicit
+
+    match = re.search(rf'([{_TR_CHARS}0-9_-]+)\s+dosya', text, re.IGNORECASE)
     if match:
-        result = match.group(1).strip()
+        return [(match.group(1).strip() + ".pdf", match.group(1))]
 
-    # 2. "test dosyasını", "rapor dosyasını" vb.
-    if not result:
-        match = re.search(r'([a-zA-ZçğıöşüÇĞİÖŞÜ0-9_-]+)\s+dosya', text, re.IGNORECASE)
-        if match:
-            result = match.group(1).strip() + ".pdf"
+    match = re.search(rf'([{_TR_CHARS}0-9_-]+)\s+p\s*d\s*f', text, re.IGNORECASE)
+    if match:
+        return [(match.group(1).strip() + ".pdf", match.group(0))]
 
-    # 3. "sunum p d f ini" vb.
-    if not result:
-        match = re.search(r'([a-zA-ZçğıöşüÇĞİÖŞÜ0-9_-]+)\s+p\s*d\s*f', text, re.IGNORECASE)
-        if match:
-            result = match.group(1).strip() + ".pdf"
-
-    if not result:
-        return ""
-
-    # Whisper bazen konumları da dosya adının parçası olarak verir
-    # "Masa üstündeki test.pdf" -> "test.pdf"
-    location_prefixes = [
-        r'masa\s*üstündeki\s*', r'masaüstündeki\s*',
-        r'belgelerim(?:deki)?\s*', r'belgelerdeki\s*',
-        r'indirilenler(?:deki)?\s*', r'desktop(?:teki)?\s*',
-    ]
-    for prefix in location_prefixes:
-        result = re.sub(prefix, '', result, flags=re.IGNORECASE).strip()
-
-    return result
+    # "Masaüstündeki sözleşmeyi sıkıştır" -- no extension, no "dosya".
+    skip = {"masaüstündeki", "masaüstünde", "masaüstü", "belgelerimdeki", "belgelerdeki",
+            "indirilenlerdeki", "klasöründeki", "klasördeki", "dosyayı", "dosyasını",
+            "the", "file", "my", "in", "on", "desktop", "documents", "downloads"}
+    for word in re.findall(rf'[{_TR_CHARS}0-9_-]{{3,}}', text):
+        if word.lower() in skip:
+            continue
+        for candidate in (word, _strip_turkish_suffix(word)):
+            if _candidate_paths(candidate):
+                return [(candidate + ".pdf", word)]
+    return []
 
 
-def parse_actions(text: str) -> list:
-    """Komutta hangi PDF işlemlerinin istendiğini belirleyip zincir olarak döner."""
-    text_lower = text.lower()
+def parse_input_files(text: str):
+    """Return every file name mentioned, in the order they appear."""
+    return [name for name, _mention in _file_mentions(text)]
+
+
+def parse_input_file(text: str) -> str:
+    """First file mentioned, or "" -- kept for callers that want a single file."""
+    names = parse_input_files(text)
+    return names[0] if names else ""
+
+
+def _strip_file_names(text, mentions):
+    """Remove exactly the text that named each file.
+
+    Everything downstream -- keywords, page numbers, the number normaliser --
+    then works on a string that cannot contain a file name.
+    """
+    stripped = text
+    for _name, mention in mentions:
+        stripped = re.sub(re.escape(mention), " ", stripped, flags=re.IGNORECASE)
+    return stripped
+
+
+def _parse_pages(text):
+    """Page numbers mentioned in *text* (which must already be name-free)."""
+    pages = []
+    # "3-5 arası", "3 ile 7 arası"
+    for match in re.finditer(r'(\d+)\s*(?:ile|ve|-|–|to)\s*(\d+)', text, re.IGNORECASE):
+        start, end = int(match.group(1)), int(match.group(2))
+        step = 1 if end >= start else -1
+        pages.extend(range(start, end + step, step))
+    if pages:
+        return sorted(set(pages))
+    return [int(x) for x in re.findall(r'\d+', text) if 0 < int(x) < 10000]
+
+
+def _parse_split_range(text):
+    match = re.search(r'(?:ilk|first)\s+(\d+)', text, re.IGNORECASE)
+    if match:
+        return {"start": 1, "end": int(match.group(1))}
+
+    match = re.search(r'(?:son|last)\s+(\d+)', text, re.IGNORECASE)
+    if match:
+        return {"last": int(match.group(1))}
+
+    match = re.search(r'(\d+)\s*(?:ile|ve|-|–|to)\s*(\d+)', text, re.IGNORECASE)
+    if match:
+        start, end = int(match.group(1)), int(match.group(2))
+        return {"start": min(start, end), "end": max(start, end)}
+
+    match = re.search(r'(\d+)\.?\s*(?:sayfa|page)', text, re.IGNORECASE)
+    if match:
+        page = int(match.group(1))
+        return {"start": page, "end": page}
+
+    return None
+
+
+def parse_actions(text: str, clean_text: str = None) -> list:
+    """Work out which operations were asked for.
+
+    *clean_text* is the command with file names removed; when it is not given
+    the text is used as-is (callers inside this module always pass it).
+    """
+    haystack = clean_text if clean_text is not None else text
+    lowered = haystack.lower()
     actions = []
 
-    # 1. Kesme / Bölme
-    if "kes" in text_lower or "böl" in text_lower:
-        match = re.search(r'ilk\s+(\d+)', text_lower)
-        if match:
-            end = int(match.group(1))
-            actions.append({"action": "split", "kwargs": {"start": 1, "end": end}})
-        else:
-            # "3 ile 7 arası", "3-7", "3 ve 7 arası" kalıpları
-            match = re.search(r'(\d+)\s*(?:ile|ve|[-–])\s*(\d+)', text_lower)
-            if match:
-                actions.append({"action": "split", "kwargs": {"start": int(match.group(1)), "end": int(match.group(2))}})
-            else:
-                # Tek sayfa: "5. sayfayı kes"
-                match = re.search(r'(\d+)\.?\s*sayfa', text_lower)
-                if match:
-                    page = int(match.group(1))
-                    actions.append({"action": "split", "kwargs": {"start": page, "end": page}})
-                else:
-                    actions.append({"action": "split", "kwargs": {"start": 1, "end": 1}})
+    # ── Conversions: a convert verb plus an explicit target format ──
+    converted = False
+    if _matches(CONVERT_VERBS, lowered):
+        for action, patterns in CONVERT_TARGETS.items():
+            if _matches(patterns, lowered):
+                kwargs = {}
+                if action == "pdf_to_image":
+                    kwargs["format"] = "jpg" if re.search(r'\bjpe?g\b', lowered) else "png"
+                actions.append({"action": action, "kwargs": kwargs})
+                converted = True
+                break
 
-    # 2. Filigran
-    if "filigran" in text_lower:
-        match = re.search(r'([a-zA-ZçğıöşüÇĞİÖŞÜ0-9]+)\s+yazılı', text, re.IGNORECASE)
-        w_text = match.group(1).upper() if match else "GİZLİ"
-        actions.append({"action": "watermark", "kwargs": {"text": w_text}})
+    # ── Split ──
+    if _matches(KEYWORDS["split"], lowered):
+        span = _parse_split_range(lowered)
+        actions.append({"action": "split", "kwargs": span if span else {"start": 1, "end": 1}})
 
-    # 3. Sıkıştırma
-    if "sıkıştır" in text_lower or "küçült" in text_lower or "kompres" in text_lower:
+    # ── Merge ──
+    if _matches(KEYWORDS["merge"], lowered):
+        actions.append({"action": "merge", "kwargs": {}})
+
+    # ── Watermark ──
+    if _matches(KEYWORDS["watermark"], lowered):
+        match = re.search(rf'([{_TR_CHARS}0-9]+)\s+yazılı', haystack, re.IGNORECASE)
+        actions.append({"action": "watermark",
+                        "kwargs": {"text": match.group(1).upper() if match else "GİZLİ"}})
+
+    # ── Compress ──
+    if _matches(KEYWORDS["compress"], lowered):
         actions.append({"action": "compress", "kwargs": {"quality": "ebook"}})
 
-    # 4. Şifreleme
-    if "şifrele" in text_lower or "parola" in text_lower or "şifre ekle" in text_lower:
-        match = re.search(r'([a-zA-Z0-9]+)\s+(ile|şifresiyle|diye)\s+şifre', text_lower)
-        pwd = match.group(1) if match else "123456"
-        actions.append({"action": "encrypt", "kwargs": {"password": pwd}})
+    # ── Encrypt ──
+    if _matches(KEYWORDS["encrypt"], lowered):
+        match = re.search(r'([a-zA-Z0-9]+)\s+(?:ile|şifresiyle|diye|with)\s+şifre', lowered) or \
+                re.search(r'(?:şifre|parola|password)\s*[:=]?\s*([a-zA-Z0-9]{3,})', lowered)
+        password = match.group(1) if match else None
+        # No default password, ever: "123456" silently encrypted people's
+        # files with a password they were never told.
+        actions.append({"action": "encrypt",
+                        "kwargs": {"password": password} if password
+                        else {"needs_password": True}})
 
-    # 5. Sayfa Silme
-    if "sil" in text_lower and "sayfa" in text_lower:
-        pages = [int(x) for x in re.findall(r'(\d+)', text_lower) if 0 < int(x) < 10000]
+    # ── Delete pages ──
+    if _matches(KEYWORDS["delete_pages"], lowered) and re.search(r'sayfa|page', lowered):
+        pages = _parse_pages(lowered)
         if pages:
             actions.append({"action": "delete_pages", "kwargs": {"pages": pages}})
 
-    # 6. Sayfa Döndürme
-    if "döndür" in text_lower or ("çevir" in text_lower and "dönüştür" not in text_lower):
-        match = re.search(r'(\d+)\s*derece', text_lower)
+    # ── Rotate: only on an explicit rotate word, or "çevir" with a direction ──
+    rotate = _matches([r"\bdöndür", r"\bdondur", r"\brotate\b"], lowered)
+    if not rotate and not converted and _matches(CONVERT_VERBS, lowered) and _matches(ROTATE_HINTS, lowered):
+        rotate = True
+    if rotate:
+        match = re.search(r'(\d+)\s*(?:derece|degree)', lowered)
         angle = int(match.group(1)) if match else 90
-        # Geçerli açılarla sınırla
         if angle not in (90, 180, 270):
             angle = 90
+        if re.search(r'\bsola\b|\bleft\b|\bsaat yönünün tersi', lowered):
+            angle = 360 - angle if angle != 180 else 180
         actions.append({"action": "rotate", "kwargs": {"angle": angle}})
 
-    # 7. OCR (Whisper bazen OCR'ı OJR, OSR, OGR gibi yanlış duyabiliyor)
-    ocr_keywords = ["ocr", "ojr", "osr", "ogr", "o.c.r", "metin tanı", "karakter tanı", "yazı çıkar"]
-    if any(kw in text_lower for kw in ocr_keywords):
+    # ── OCR ──
+    if _matches(KEYWORDS["ocr"], lowered):
         actions.append({"action": "ocr", "kwargs": {}})
 
-    # 8. PDF'den resme dönüştürme
-    img_keywords = ["resim", "resme", "görsel", "görsele", "png", "jpg", "fotoğraf"]
-    if any(kw in text_lower for kw in img_keywords) and "dönüştür" in text_lower:
-        fmt = "jpg" if "jpg" in text_lower or "jpeg" in text_lower else "png"
-        actions.append({"action": "pdf_to_image", "kwargs": {"format": fmt}})
-
-    # 9. PDF'den Word'e dönüştürme
-    if ("word" in text_lower or "docx" in text_lower or "kelime" in text_lower) and "dönüştür" in text_lower:
-        actions.append({"action": "pdf_to_word", "kwargs": {}})
-
-    # 10. PDF'den metin çıkarma
-    if "metin" in text_lower and ("çıkar" in text_lower or "dönüştür" in text_lower):
-        # OCR zaten eklenmişse tekrar ekleme
-        if not any(a["action"] == "ocr" for a in actions):
-            actions.append({"action": "pdf_to_text", "kwargs": {}})
+    # ── Bare "metni çıkar" without a convert verb ──
+    if not converted and re.search(r'metin|metni|text', lowered) and \
+            re.search(r'çıkar|cikar|extract', lowered) and \
+            not any(a["action"] == "ocr" for a in actions):
+        actions.append({"action": "pdf_to_text", "kwargs": {}})
 
     return actions
 
 
 def parse_intent(text: str) -> dict:
-    """
-    Sesten dönüşen metni alıp ActionRunner için anlamlı JSON (sözlük) formatına çevirir.
-    """
+    """Turn recognised speech (or typed text) into an ActionRunner intent."""
     if not text:
         return {}
 
-    # Ön işleme: Whisper hatalarını düzelt ve yazılı rakamları çevir
     text = _normalize_text(text)
-    text = _turkish_word_to_number(text)
 
-    intent = {
-        "input_file": parse_input_file(text),
-        "output_target": parse_target_folder(text),
-        "action_chain": parse_actions(text),
-        "raw_text": text
+    # File names first, then keyword matching on what is left of the command.
+    mentions = _file_mentions(text)
+    input_files = [name for name, _mention in mentions]
+    command_text = _turkish_word_to_number(_strip_file_names(text, mentions))
+
+    return {
+        "input_file": input_files[0] if input_files else "",
+        "input_files": input_files,
+        "output_target": parse_target_folder(command_text),
+        "action_chain": parse_actions(text, command_text),
+        "raw_text": text,
     }
-    return intent
