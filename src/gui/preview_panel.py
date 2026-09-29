@@ -52,6 +52,9 @@ class PreviewPanel(ttk.Frame):
                                         image=styles.icon_states(Icons.FOLDER, 13, P.text_secondary),
                                         compound="left")
         self.folder_button.pack(side="left", padx=(6, 0))
+        # The panel is narrow; in longer languages ("Ordner öffnen") the two
+        # buttons do not fit side by side, so the second one moves below.
+        actions.bind("<Configure>", self._fit_actions, add="+")
 
         self.name_var = tk.StringVar()
         self.meta_var = tk.StringVar()
@@ -176,6 +179,19 @@ class PreviewPanel(ttk.Frame):
                       font=styles.font("small"), width=w - 60, justify="center", anchor="n")
 
     # ── Actions ───────────────────────────────────────────────────────────
+
+    def _fit_actions(self, event):
+        needed = self.open_button.winfo_reqwidth() + 6 + self.folder_button.winfo_reqwidth()
+        stacked = needed > event.width
+        if stacked == getattr(self, "_actions_stacked", False):
+            return
+        self._actions_stacked = stacked
+        if stacked:
+            self.folder_button.pack_configure(side="top", anchor="w", padx=0, pady=(6, 0))
+            self.open_button.pack_configure(side="top", anchor="w")
+        else:
+            self.open_button.pack_configure(side="left", anchor="center")
+            self.folder_button.pack_configure(side="left", anchor="center", padx=(6, 0), pady=0)
 
     def open_viewer(self):
         if self.current_path:

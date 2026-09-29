@@ -6,27 +6,33 @@ import shutil
 import tempfile
 
 
+# Windows primary language IDs (LANGID & 0x3FF) for the UI languages.
+_WINDOWS_LANGUAGE_IDS = {
+    0x1F: "tr", 0x09: "en", 0x04: "zh", 0x39: "hi", 0x0A: "es", 0x01: "ar",
+    0x0C: "fr", 0x45: "bn", 0x16: "pt", 0x19: "ru", 0x20: "ur", 0x21: "id",
+    0x07: "de", 0x11: "ja",
+}
+
+
 def detect_default_language():
     """Pick the starting language from the Windows UI language.
 
     The stored default was "en" while get_text() fell back to "tr", so a
-    fresh install disagreed with itself. Turkish is the fallback because the
-    app and its assistant are Turkish-first.
+    fresh install disagreed with itself. A Windows language the app does not
+    speak gets English.
     """
     try:
         import ctypes
         language_id = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-        # 0x1F is LANG_TURKISH.
-        if (language_id & 0x3FF) == 0x1F:
-            return "tr"
-        return "en"
+        return _WINDOWS_LANGUAGE_IDS.get(language_id & 0x3FF, "en")
     except Exception:
         pass
     try:
         code = (locale.getdefaultlocale()[0] or "")
     except Exception:
         code = ""
-    return "tr" if code.lower().startswith("tr") else "en"
+    code = code.lower()[:2]
+    return code if code in _WINDOWS_LANGUAGE_IDS.values() else "en"
 
 
 class ConfigManager:

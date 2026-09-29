@@ -344,14 +344,33 @@ def follow_system_theme(root, interval_ms=2000):
 
 # ── Setup ───────────────────────────────────────────────────────────────────
 
+# UI fonts for scripts Segoe UI Variable lacks, as Windows itself uses them:
+# (regular, strong). Without them Tk draws each run of missing glyphs in a
+# fallback font as a separate piece, which also breaks right-to-left order.
+SCRIPT_FONTS = {
+    "ar": ("Segoe UI", "Segoe UI Semibold"),
+    "ur": ("Segoe UI", "Segoe UI Semibold"),
+    "hi": ("Nirmala UI", "Nirmala UI"),
+    "bn": ("Nirmala UI", "Nirmala UI"),
+    "ja": ("Yu Gothic UI", "Yu Gothic UI Semibold"),
+    "zh": ("Microsoft YaHei UI", "Microsoft YaHei UI"),
+}
+_STRONG_ROLES = {"display", "title", "heading", "body_strong", "label", "small_strong", "micro"}
+
+
 def _resolve_fonts(root):
     global _icon_family
+    from src.core.config_manager import cfg
     installed = set(tkfont.families(root))
     typo = THEME.typography
+    script = SCRIPT_FONTS.get(cfg.get("language", "tr"))
     for role in ("display", "title", "heading", "body", "body_strong", "label",
                  "small", "small_strong", "micro", "mono"):
         type_role = getattr(typo, role)
-        family = next((f for f in type_role.families if f in installed), type_role.fallback)
+        families = type_role.families
+        if script and role != "mono":
+            families = (script[role in _STRONG_ROLES],) + tuple(families)
+        family = next((f for f in families if f in installed), type_role.fallback)
         _fonts[role] = (family, type_role.size)
     _icon_family = next((f for f in typo.icon_families if f in installed), None)
 

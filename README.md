@@ -202,7 +202,8 @@ Tespit edilen dörtgenler 4 farklı metriğe göre ağırlıklandırılarak değ
 - [x] Yerel Faster-Whisper sesli komut asistanı
 - [x] Windows Sistem Tepsisi (Tray Icon) entegrasyonu
 - [ ] Windows Gezgini sağ tık menü entegrasyonu (*"PDF Aura ile Sıkıştır / Dönüştür"*)
-- [ ] Çoklu dil desteği genişletmesi (İngilizce / Almanca / İspanyolca)
+- [x] Açık / koyu tema (Windows ayarını izleyen *Sistem* seçeneğiyle)
+- [x] 14 arayüz dili: Türkçe, English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, اردو, Bahasa Indonesia, Deutsch, 日本語
 - [ ] İsteğe bağlı yerel açık kaynak LLM entegrasyonu (Ollama / Llama.cpp ile doküman özeti çıkarma)
 
 ---

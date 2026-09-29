@@ -10,7 +10,7 @@ from src.core.ocr import check_tesseract_availability, perform_ocr_to_text
 from src.core.signature import stamp_visual_signature
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.widgets import SegmentedControl
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, follow_width, quick_error
 from src.gui.pdf_viewer import PDFViewerWindow
 
 
@@ -65,10 +65,14 @@ class AdvancedTab:
         self.dyn_frame.pack(fill="x", pady=(18, 0))
 
         self.f_preview = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
-        ttk.Label(self.f_preview, text=_("adv_preview_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w")
+        preview_hint = ttk.Label(self.f_preview, text=_("adv_preview_hint"), style="Hint.TLabel", justify="left")
+        preview_hint.pack(anchor="w")
+        follow_width(preview_hint, self.dyn_frame, 32)
 
         self.f_ocr = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
-        ttk.Label(self.f_ocr, text=_("adv_ocr_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w")
+        ocr_hint = ttk.Label(self.f_ocr, text=_("adv_ocr_hint"), style="Hint.TLabel", justify="left")
+        ocr_hint.pack(anchor="w")
+        follow_width(ocr_hint, self.dyn_frame, 32)
         self.tess_warn_label = ttk.Label(self.f_ocr, text="", style="Section.TLabel")
         self.tess_warn_label.pack(anchor="w", pady=(12, 0))
         self.tess_install_btn = ttk.Button(self.f_ocr, text=_("adv_tess_install_btn"), command=self.trigger_tesseract_install, style="Secondary.TButton")

@@ -13,7 +13,23 @@ except ImportError:
 _VOICE_HINTS = {
     "tr": ("turkish", "türk", "tolga", "-tr", "_tr", "tr-tr"),
     "en": ("english", "zira", "david", "hazel", "-en", "_en", "en-us", "en-gb"),
+    "zh": ("chinese", "huihui", "yaoyao", "kangkang", "zh-cn", "zh-tw"),
+    "hi": ("hindi", "hemant", "kalpana", "hi-in"),
+    "es": ("spanish", "español", "helena", "laura", "pablo", "sabina", "es-es", "es-mx"),
+    "ar": ("arabic", "hoda", "naayf", "ar-sa", "ar-eg"),
+    "fr": ("french", "français", "hortense", "julie", "paul", "fr-fr", "fr-ca"),
+    "bn": ("bengali", "bangla", "bn-in", "bn-bd"),
+    "pt": ("portuguese", "português", "maria", "daniel", "helia", "pt-br", "pt-pt"),
+    "ru": ("russian", "irina", "pavel", "ru-ru"),
+    "ur": ("urdu", "ur-pk", "ur-in"),
+    "id": ("indonesian", "andika", "id-id"),
+    "de": ("german", "deutsch", "hedda", "katja", "stefan", "de-de"),
+    "ja": ("japanese", "haruka", "ayumi", "ichiro", "sayaka", "ja-jp"),
 }
+
+# Direction marks lang_manager wraps Arabic and Urdu lines in; they mean
+# nothing to a voice.
+_BIDI_MARKS = str.maketrans("", "", "\u202b\u202c")
 
 
 class TextSpeaker:
@@ -89,7 +105,7 @@ class TextSpeaker:
             self.queue.task_done()
 
     def speak(self, text: str):
-        self.queue.put(text)
+        self.queue.put(text.translate(_BIDI_MARKS))
 
 
 speaker = TextSpeaker()

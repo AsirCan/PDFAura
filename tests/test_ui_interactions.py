@@ -823,7 +823,8 @@ def test_language_picker_shows_names_and_saves_the_code(settings_panel, monkeypa
     nothing because the window only hides to the tray on close."""
     from src.core.config_manager import cfg
     combo = _language_combo(settings_panel)
-    assert tuple(combo.cget("values")) == ("Türkçe", "English")
+    from src.core.lang_manager import LANGUAGES
+    assert tuple(combo.cget("values")) == tuple(LANGUAGES.values())
     assert combo.get() == "Türkçe"
 
     monkeypatch.setattr("tkinter.messagebox.askyesno", lambda *a, **k: False)
@@ -831,6 +832,10 @@ def test_language_picker_shows_names_and_saves_the_code(settings_panel, monkeypa
     settings_panel.save_settings()
     assert cfg.get("language") == "en"
     assert settings_panel.feedback.message_var.get() == _("settings_saved_restart_later")
+
+    combo.set("日本語")
+    settings_panel.save_settings()
+    assert cfg.get("language") == "ja"
 
 
 def test_confirmed_language_change_restarts_the_app(settings_panel, monkeypatch, tk_root):

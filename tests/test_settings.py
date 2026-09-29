@@ -55,7 +55,8 @@ def test_valid_config_is_preserved(tmp_path, monkeypatch):
 
 def test_default_language_is_a_supported_one():
     """The stored default was "en" while get_text() fell back to "tr"."""
-    assert detect_default_language() in ("tr", "en")
+    from src.core.lang_manager import LANGUAGES
+    assert detect_default_language() in LANGUAGES
 
 
 # ── Recent files (#18.1) ──────────────────────────────────────────────────

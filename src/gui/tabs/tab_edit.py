@@ -9,7 +9,7 @@ from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui.widgets import SegmentedControl
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, follow_width, quick_error
 
 
 class EditTab:
@@ -57,7 +57,9 @@ class EditTab:
         self.edit_delete_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_delete_frame, text=_("edit_pages_to_delete"), style="Field.TLabel").pack(anchor="w")
         ttk.Entry(self.edit_delete_frame, textvariable=self.edit_delete_pages_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
-        ttk.Label(self.edit_delete_frame, text=_("edit_delete_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
+        delete_hint = ttk.Label(self.edit_delete_frame, text=_("edit_delete_hint"), style="Hint.TLabel", justify="left")
+        delete_hint.pack(anchor="w", pady=(8, 0))
+        follow_width(delete_hint, self.edit_dynamic, 32)
 
         self.edit_rotate_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_rotate_frame, text=_("edit_pages_to_rotate"), style="Field.TLabel").pack(anchor="w")
@@ -72,7 +74,9 @@ class EditTab:
         self.edit_reorder_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_reorder_frame, text=_("edit_new_order"), style="Field.TLabel").pack(anchor="w")
         ttk.Entry(self.edit_reorder_frame, textvariable=self.edit_order_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
-        ttk.Label(self.edit_reorder_frame, text=_("edit_order_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
+        order_hint = ttk.Label(self.edit_reorder_frame, text=_("edit_order_hint"), style="Hint.TLabel", justify="left")
+        order_hint.pack(anchor="w", pady=(8, 0))
+        follow_width(order_hint, self.edit_dynamic, 32)
 
         self.edit_frames = {
             _("edit_mode_delete"): self.edit_delete_frame,

@@ -88,7 +88,7 @@ class SettingsPanel(ttk.Frame):
             textvariable=self.lang_var,
             values=list(LANGUAGES.values()),
             state="readonly",
-            width=14,
+            width=18,
             style="Input.TCombobox",
         ).pack(side="left", padx=(14, 0))
 

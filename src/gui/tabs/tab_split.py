@@ -8,7 +8,7 @@ from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.split import split_pdf
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, follow_width, quick_error
 from src.utils.file_helper import format_size_mb, suggest_split_output_path
 
 
@@ -49,13 +49,14 @@ class SplitTab:
         self.split_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.split_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_split_output_pdf, style="Secondary.TButton")
         self.split_output_button.pack(side="right")
-        ttk.Label(
+        action_hint = ttk.Label(
             left,
             text=_("output_action_hint").format(action=_("split_btn")),
             style="Hint.TLabel",
-            wraplength=380,
             justify="left",
-        ).pack(anchor="w", pady=(8, 0))
+        )
+        action_hint.pack(anchor="w", pady=(8, 0))
+        follow_width(action_hint, left)
 
         range_card = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         range_card.pack(fill="x", pady=(22, 0))
@@ -69,7 +70,9 @@ class SplitTab:
         ttk.Label(grid, text="-", style="CardTitle.TLabel").grid(row=1, column=1, padx=12, pady=(8, 0))
         self.split_end_spin = ttk.Spinbox(grid, from_=1, to=99999, textvariable=self.split_end_var, width=10, style="Input.TSpinbox", command=self.update_split_output_name)
         self.split_end_spin.grid(row=1, column=2, sticky="w", padx=(20, 0), pady=(8, 0))
-        ttk.Label(range_card, text=_("split_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(12, 0))
+        split_hint = ttk.Label(range_card, text=_("split_hint"), style="Hint.TLabel", justify="left")
+        split_hint.pack(anchor="w", pady=(12, 0))
+        follow_width(split_hint, range_card, 32)
 
         self.footer = ProgressFooter(left, _("split_btn"), self.start_split)
         self.footer.pack(fill="x", pady=(24, 0))

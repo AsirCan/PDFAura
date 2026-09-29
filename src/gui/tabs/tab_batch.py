@@ -9,7 +9,7 @@ from src.core.task_manager import TaskContext, CancelledError
 from src.gui import styles
 from src.gui.styles import P
 from src.gui.widgets import SegmentedControl
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, follow_width, quick_error
 
 
 class BatchTab:
@@ -58,7 +58,9 @@ class BatchTab:
         self.f_rename = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Label(self.f_rename, text=_("batch_rename_rule"), style="Field.TLabel").pack(anchor="w")
         ttk.Entry(self.f_rename, textvariable=self.rename_rule_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
-        ttk.Label(self.f_rename, text=_("batch_rename_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(10, 0))
+        rename_hint = ttk.Label(self.f_rename, text=_("batch_rename_hint"), style="Hint.TLabel", justify="left")
+        rename_hint.pack(anchor="w", pady=(10, 0))
+        follow_width(rename_hint, self.dyn_frame, 32)
 
         self.frames = {
             _("batch_compress"): self.f_compress,

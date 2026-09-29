@@ -82,6 +82,33 @@ def follow_width(label, container, margin=0, minimum=160):
     container.bind("<Configure>", _rewrap, add="+")
 
 
+def collapse_to_icons(row, buttons):
+    """Show *buttons* as bare icons while *row* is too narrow for their labels.
+
+    A row of labelled buttons does not wrap, so in longer languages (or a
+    narrow window) the last ones were cut off mid-word. The last buttons
+    collapse first; each should carry a Tooltip with its label.
+    """
+    def _width(widget):
+        padx = widget.pack_info().get("padx", 0)
+        # pack reports (left, right) for uneven padding, one number otherwise.
+        pad = sum(int(p) for p in padx) if isinstance(padx, tuple) else int(padx) * 2
+        return widget.winfo_reqwidth() + pad
+
+    def _refit(event):
+        for button in buttons:
+            button.configure(compound="left")
+        needed = sum(_width(child) for child in row.pack_slaves())
+        for button in reversed(buttons):
+            if needed <= event.width:
+                break
+            before = button.winfo_reqwidth()
+            button.configure(compound="image")
+            needed -= before - button.winfo_reqwidth()
+
+    row.bind("<Configure>", _refit, add="+")
+
+
 class ToolLayout:
     """The frame every tool page is built in: a hint strip above a scrolling
     column that holds one card. The card grows with the window, and scrolls

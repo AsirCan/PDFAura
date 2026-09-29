@@ -1144,21 +1144,86 @@ _STRINGS = {
     }
 }
 
+# The other languages live in src.core.locales, one module each. Any key a
+# language leaves out falls back to English (file-name suffixes and the batch
+# naming tokens are left out on purpose; see src.core.locales).
+from src.core.locales import ar, bn, de, es, fr, hi, id as id_, ja, pt, ru, ur, zh
+
+_STRINGS.update({
+    "zh": zh.STRINGS, "hi": hi.STRINGS, "es": es.STRINGS, "ar": ar.STRINGS,
+    "fr": fr.STRINGS, "bn": bn.STRINGS, "pt": pt.STRINGS, "ru": ru.STRINGS,
+    "ur": ur.STRINGS, "id": id_.STRINGS, "de": de.STRINGS, "ja": ja.STRINGS,
+})
+
 # Each language named in itself, the way language pickers show them.
-LANGUAGES = {"tr": "Türkçe", "en": "English"}
+# Turkish and English first, then by number of speakers.
+LANGUAGES = {
+    "tr": "Türkçe",
+    "en": "English",
+    "zh": "中文 (简体)",
+    "hi": "हिन्दी",
+    "es": "Español",
+    "ar": "العربية",
+    "fr": "Français",
+    "bn": "বাংলা",
+    "pt": "Português",
+    "ru": "Русский",
+    "ur": "اردو",
+    "id": "Bahasa Indonesia",
+    "de": "Deutsch",
+    "ja": "日本語",
+}
+
+# Written right to left. Tk lays text out left to right, so without an
+# explicit embedding a trailing ":" or "..." lands on the wrong side.
+RTL_LANGUAGES = {"ar", "ur"}
+_RLE, _PDF = "\u202b", "\u202c"
+
+
+# Tk on Windows draws a line in pieces of about 200 UTF-8 bytes, and each
+# piece is laid out on its own, so a longer right-to-left line comes out
+# with its pieces in the wrong order. Arabic letters take two bytes each.
+_RTL_LINE_BYTES = 180
+
+
+def _short_lines(line):
+    """Break *line* at spaces so no piece exceeds _RTL_LINE_BYTES."""
+    budget = _RTL_LINE_BYTES - len((_RLE + _PDF).encode("utf-8"))
+    pieces, current = [], ""
+    for word in line.split(" "):
+        candidate = f"{current} {word}" if current else word
+        if current and len(candidate.encode("utf-8")) > budget:
+            pieces.append(current)
+            current = word
+        else:
+            current = candidate
+    pieces.append(current)
+    return pieces
+
+
+def _right_to_left(text):
+    # A line break ends a bidi embedding, so every line is wrapped on its own.
+    lines = [piece for line in text.split("\n") for piece in _short_lines(line)]
+    return "\n".join(_RLE + line + _PDF if line else line for line in lines)
 
 
 def get_text(key):
     """
     Returns the mapped string depending on the active language from config.
-    Falls back to the key itself if no translation is found.
+    Falls back to English, then to the key itself, if no translation is found.
     """
     lang = cfg.get("language", "tr")
     if lang not in _STRINGS:
         lang = "en"
 
-    dic = _STRINGS.get(lang, {})
-    return dic.get(key, key)
+    text = _STRINGS[lang].get(key)
+    if text is None:
+        # English fallbacks are not wrapped: they include file-name suffixes,
+        # where an invisible direction mark would end up in the name.
+        return _STRINGS["en"].get(key, key)
+    if lang in RTL_LANGUAGES:
+        return _right_to_left(text)
+    return text
 
 def _(key):
     """Shorthand for get_text(key)"""

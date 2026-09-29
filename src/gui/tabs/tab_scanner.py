@@ -44,7 +44,8 @@ from src.core.lang_manager import _ as tr   # rename to avoid shadowing
 from src.core.scanner_session import ScannerSessionStore, SESSION_VERSION
 from src.core.task_manager import TaskContext, CancelledError
 from src.gui import styles
-from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, build_hint_strip, quick_error
+from src.gui.helpers import (confirm_overwrite, InlineFeedback, ProgressFooter, build_hint_strip,
+                             collapse_to_icons, quick_error)
 from src.gui.styles import P
 from src.gui.theme.images import Icons
 from src.gui.widgets import Tooltip
@@ -191,12 +192,15 @@ class ScannerTab:
         self.remove_photo_button = ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current,
                                               style="Ghost.TButton", image=icon(Icons.DELETE), compound="left")
         self.remove_photo_button.pack(side="left", padx=(0, 2))
-        ttk.Button(toolbar1, text=tr("scanner_clear_all"), command=self.clear_all_pages, style="Ghost.TButton",
-                   image=icon(Icons.CLEAR), compound="left").pack(side="left", padx=(0, 6))
+        clear_all = ttk.Button(toolbar1, text=tr("scanner_clear_all"), command=self.clear_all_pages,
+                               style="Ghost.TButton", image=icon(Icons.CLEAR), compound="left")
+        clear_all.pack(side="left", padx=(0, 6))
         fullscreen = ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop,
                                 style="Ghost.TButton", image=icon(Icons.FULLSCREEN), compound="left")
         fullscreen.pack(side="right")
-        Tooltip(fullscreen, tr("scanner_fullscreen_crop"))
+        for button in (self.remove_photo_button, clear_all, fullscreen):
+            Tooltip(button, button.cget("text"))
+        collapse_to_icons(toolbar1, [self.remove_photo_button, clear_all, fullscreen])
 
         # ── Toolbar row 2: per-page corrections ──
         toolbar2 = ttk.Frame(left, style="Surface.TFrame")
@@ -204,10 +208,15 @@ class ScannerTab:
         ttk.Button(toolbar2, text=tr("scanner_rotate_ccw"), command=self.rotate_ccw, style="Small.TButton").pack(side="left", padx=(0, 4))
         ttk.Button(toolbar2, text=tr("scanner_rotate_cw"), command=self.rotate_cw, style="Small.TButton").pack(side="left", padx=(0, 4))
         ttk.Frame(toolbar2, style="Divider.TFrame", width=1).pack(side="left", fill="y", padx=8, pady=4)
-        ttk.Button(toolbar2, text=tr("scanner_auto_detect"), command=self.auto_detect, style="Small.TButton",
-                   image=icon(Icons.SPARK), compound="left").pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar2, text=tr("scanner_reset_corners"), command=self.reset_corners, style="Small.TButton",
-                   image=icon(Icons.SYNC), compound="left").pack(side="left")
+        auto_detect = ttk.Button(toolbar2, text=tr("scanner_auto_detect"), command=self.auto_detect,
+                                 style="Small.TButton", image=icon(Icons.SPARK), compound="left")
+        auto_detect.pack(side="left", padx=(0, 4))
+        reset = ttk.Button(toolbar2, text=tr("scanner_reset_corners"), command=self.reset_corners,
+                           style="Small.TButton", image=icon(Icons.SYNC), compound="left")
+        reset.pack(side="left")
+        for button in (auto_detect, reset):
+            Tooltip(button, button.cget("text"))
+        collapse_to_icons(toolbar2, [auto_detect, reset])
 
         # ── Page strip (left) | sash | crop canvas (right) ──
         work = ttk.Frame(left, style="Surface.TFrame")

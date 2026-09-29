@@ -1,6 +1,7 @@
 """Issue #20: Turkish text in the English UI, and an undefined Hero style."""
 import os
 import re
+import string
 
 import pytest
 
@@ -42,6 +43,91 @@ def test_translated_keys_are_not_placeholders():
     """A key whose English value is the key itself was never translated."""
     offenders = [key for key, value in _STRINGS["en"].items() if value == key]
     assert offenders == []
+
+
+# ── The other languages ───────────────────────────────────────────────────
+
+from src.core.lang_manager import LANGUAGES, RTL_LANGUAGES, get_text  # noqa: E402
+
+EXTRA_LANGUAGES = sorted(set(LANGUAGES) - {"tr", "en"})
+
+# Left to English on purpose (see src/core/locales/__init__.py).
+ENGLISH_ONLY = {k for k in _STRINGS["en"] if k.startswith(("suffix_", "security_suffix_"))}
+ENGLISH_ONLY.add("batch_rename_default")
+
+
+def _fields(text):
+    return sorted(f[1] for f in string.Formatter().parse(text) if f[1] is not None)
+
+
+def test_every_listed_language_has_strings():
+    assert set(LANGUAGES) == set(_STRINGS)
+
+
+@pytest.mark.parametrize("language", EXTRA_LANGUAGES)
+def test_language_covers_every_key(language):
+    strings = _STRINGS[language]
+    english = set(_STRINGS["en"])
+    assert english - ENGLISH_ONLY - set(strings) == set(), "keys left untranslated"
+    assert set(strings) - english == set(), "keys English does not have"
+    assert set(strings) & ENGLISH_ONLY == set(), "file-name keys must stay English"
+
+
+@pytest.mark.parametrize("language", EXTRA_LANGUAGES)
+def test_language_keeps_the_placeholders(language):
+    """A renamed or dropped {field} raises KeyError when the string is formatted."""
+    english = _STRINGS["en"]
+    offenders = {
+        key: value for key, value in _STRINGS[language].items()
+        if _fields(value) != _fields(english[key])
+    }
+    assert offenders == {}
+
+
+@pytest.mark.parametrize("language", EXTRA_LANGUAGES)
+def test_batch_hint_shows_tokens_the_renamer_understands(language):
+    from src.core.batch import RENAME_TOKENS
+    known = {alias for aliases in RENAME_TOKENS.values() for alias in aliases}
+    shown = re.findall(r"\[([^\]]+)\]", _STRINGS[language]["batch_rename_hint"])
+    assert shown and set(shown) <= known
+
+
+def _in_language(language, key):
+    from src.core.config_manager import cfg
+    cfg.config["language"] = language
+    return get_text(key)
+
+
+def test_missing_key_falls_back_to_english():
+    assert _in_language("de", "suffix_compressed") == "_compressed"
+
+
+def test_right_to_left_text_is_embedded_line_by_line():
+    """Tk lays out left to right; without an RTL embedding the trailing
+    colon of "لغة التطبيق:" is drawn on the wrong side."""
+    assert RTL_LANGUAGES <= set(LANGUAGES)
+    text = _in_language("ar", "settings_restart_body")
+    for line in filter(None, text.split("\n")):
+        assert line.startswith("‫") and line.endswith("‬")
+
+
+@pytest.mark.parametrize("language", sorted(RTL_LANGUAGES))
+def test_right_to_left_lines_stay_short(language):
+    """Tk on Windows draws about 200 bytes at a time and lays each piece out
+    separately, which scrambled the word order of longer Urdu lines."""
+    from src.core.lang_manager import _RTL_LINE_BYTES
+    for key in _STRINGS[language]:
+        for line in _in_language(language, key).split("\n"):
+            assert len(line.encode("utf-8")) <= _RTL_LINE_BYTES, key
+
+
+def test_right_to_left_file_suffixes_stay_plain():
+    """English fallbacks are not wrapped: they end up inside file names."""
+    assert _in_language("ar", "suffix_merged") == "_merged"
+
+
+def test_left_to_right_text_is_not_wrapped():
+    assert "‫" not in _in_language("ja", "settings_lang")
 
 
 # ── No user-visible Turkish outside lang_manager ──────────────────────────
