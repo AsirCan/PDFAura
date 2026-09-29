@@ -30,7 +30,7 @@ class PDFViewerWindow(tk.Toplevel):
         self.show_page(0)
 
     def build_ui(self):
-        self.configure(bg=P.stage)
+        styles.themed(self, bg=P.stage)
         self.toolbar = ttk.Frame(self, style="Surface.TFrame", padding=(16, 8))
         self.toolbar.pack(side="top", fill="x")
         ttk.Frame(self, style="Divider.TFrame", height=1).pack(side="top", fill="x")
@@ -58,7 +58,7 @@ class PDFViewerWindow(tk.Toplevel):
         self.canvas_frame = ttk.Frame(self, style="Stage.TFrame")
         self.canvas_frame.pack(fill="both", expand=True)
 
-        self.canvas = tk.Canvas(self.canvas_frame, bg=P.stage, highlightthickness=0, bd=0)
+        self.canvas = styles.themed(tk.Canvas(self.canvas_frame, highlightthickness=0, bd=0), bg=P.stage)
         self.scroll_y = ttk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview,
                                       style="Stage.Vertical.TScrollbar")
         self.scroll_x = ttk.Scrollbar(self.canvas_frame, orient="horizontal", command=self.canvas.xview,

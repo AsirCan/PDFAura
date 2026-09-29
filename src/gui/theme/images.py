@@ -102,6 +102,52 @@ def chevron(width, height, color, direction="down", stroke=1.6):
     return sketch.image()
 
 
+def theme_preview(width, height, palette, split_with=None, radius=6):
+    """A miniature PDF Aura window in a theme's colours, for the theme
+    picker: sidebar, a card with text lines and an accent button. With
+    `split_with`, the right half is drawn in that second palette ("System"
+    shows both)."""
+
+    def draw(p):
+        s = _SS
+        sketch = _Sketch(width, height, p.canvas)
+        paint = sketch.paint
+        W, H = width * s, height * s
+        paint.rectangle((0, 0, W, H), fill=_rgb(p.canvas))
+        side = int(W * 0.26)
+        paint.rectangle((0, 0, side, H), fill=_rgb(p.sidebar))
+        for i in range(4):   # nav rows, the first one selected
+            y = int(H * (0.18 + i * 0.13))
+            fill = p.surface if i == 0 else p.border_subtle
+            paint.rounded_rectangle((int(W * 0.04), y, side - int(W * 0.04), y + int(H * 0.07)),
+                                    radius=2 * s, fill=_rgb(fill))
+        card = (side + int(W * 0.07), int(H * 0.16), W - int(W * 0.07), H - int(H * 0.14))
+        paint.rounded_rectangle(card, radius=4 * s, fill=_rgb(p.surface), outline=_rgb(p.border_subtle),
+                                width=s)
+        x0, x1 = card[0] + int(W * 0.06), card[2] - int(W * 0.06)
+        line = int(H * 0.055)
+        for y, colour, share in ((0.26, p.text, 0.55), (0.40, p.text_secondary, 0.9),
+                                 (0.51, p.text_secondary, 0.7)):
+            top = int(H * y)
+            paint.rounded_rectangle((x0, top, x0 + int((x1 - x0) * share), top + line),
+                                    radius=line // 2, fill=_rgb(colour))
+        button_top = int(H * 0.66)
+        paint.rounded_rectangle((x0, button_top, x0 + int((x1 - x0) * 0.42), button_top + int(H * 0.11)),
+                                radius=2 * s, fill=_rgb(p.accent))
+        paint.rounded_rectangle((0, 0, W - 1, H - 1), radius=radius * s, outline=_rgb(p.border), width=s)
+        return sketch
+
+    sketch = draw(palette)
+    if split_with is not None:
+        other = draw(split_with)
+        W, H = width * _SS, height * _SS
+        mask = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(mask).polygon([(W * 0.62, 0), (W, 0), (W, H), (W * 0.38, H)], fill=255)
+        sketch.rgb.paste(other.rgb, (0, 0), mask)
+    sketch.cover.rounded_rectangle((0, 0, width * _SS - 1, height * _SS - 1), radius=radius * _SS, fill=255)
+    return sketch.image()
+
+
 # ── Icons ───────────────────────────────────────────────────────────────────
 
 class Icons:
@@ -169,13 +215,18 @@ def icon_image(glyph, size, color, font_files, box=None):
 
 class ImageBank:
     """Keeps PhotoImages alive (Tk forgets an image once Python drops it)
-    and hands out one instance per distinct recipe."""
+    and hands out one instance per distinct recipe.
+
+    A `live` recipe reads its colours from the active theme; repaint()
+    redraws those into the same PhotoImage, so every widget showing one
+    follows a theme change without being told."""
 
     def __init__(self, master):
         self.master = master
         self._photos = {}
+        self._live = {}
 
-    def photo(self, key, factory):
+    def photo(self, key, factory, live=False):
         photo = self._photos.get(key)
         if photo is None:
             image = factory()
@@ -183,7 +234,25 @@ class ImageBank:
                 return None
             photo = ImageTk.PhotoImage(image, master=self.master)
             self._photos[key] = photo
+            if live:
+                self._live[key] = factory
         return photo
+
+    def repaint(self):
+        for key, factory in self._live.items():
+            image = factory()
+            if image is None:
+                continue
+            photo = self._photos[key]
+            # blank() first: paste() composites over the old pixels, and
+            # the antialiased edges would keep a fringe of the old colour.
+            photo._PhotoImage__photo.blank()
+            photo.paste(image)
+
+    def is_live(self, photo):
+        """True if `photo` (a PhotoImage or its Tk name) follows the theme."""
+        name = str(photo)
+        return any(str(self._photos[key]) == name for key in self._live)
 
     def __len__(self):
         return len(self._photos)

@@ -396,6 +396,29 @@ def test_settings_opens_with_ctrl_comma_and_closes_with_escape(app):
 
 # ── Keyboard focus ring ─────────────────────────────────────────────────────
 
+def test_settings_save_button_is_always_reachable(app):
+    """The theme cards made the General tab taller than the dialog and cut
+    the Save button off; the tab scrolls now instead."""
+    from src.gui.tabs.tab_settings import SettingsDialog
+    root, _window = app
+    dialog = SettingsDialog(root)
+    try:
+        for size in ("1060x760", "920x660"):
+            dialog.geometry(size)
+            pump(root, 0.4)
+            panel = next(w for w in _all_widgets(dialog) if hasattr(w, "general_scroll"))
+            area = panel.general_scroll
+            save = next(b for b in buttons_under(area.body) if b.cget("text") == _("settings_save_btn"))
+            bottom = save.winfo_rooty() + save.winfo_height()
+            visible_bottom = area.canvas.winfo_rooty() + area.canvas.winfo_height()
+            assert bottom <= visible_bottom or area.is_scrolling, size
+            area.see(save)
+            pump(root, 0.1)
+            assert save.winfo_rooty() + save.winfo_height() <= visible_bottom + 1, size
+    finally:
+        dialog.destroy()
+
+
 def test_focus_ring_only_for_keyboard_focus(app):
     root, window = app
     window.show_page("compress")
@@ -433,6 +456,210 @@ def test_button_corners_match_their_surface(app, page):
             if mine != under:
                 wrong.append(f"{button.cget('text')!r} ({button.cget('style')}): {mine} on {under}")
     assert wrong == []
+
+
+# ── Themes ──────────────────────────────────────────────────────────────────
+
+COLOUR_OPTIONS = ("background", "foreground", "highlightbackground", "highlightcolor",
+                  "selectbackground", "selectforeground", "insertbackground",
+                  "disabledforeground", "activebackground", "activeforeground")
+
+
+@pytest.fixture
+def restore_light_theme(tk_root):
+    yield
+    from src.gui import styles
+    styles.apply_theme("paper")
+    pump(tk_root)
+
+
+def _all_widgets(widget):
+    yield widget
+    for child in widget.winfo_children():
+        yield from _all_widgets(child)
+
+
+def _hex(pixel):
+    return "#%02X%02X%02X" % tuple(pixel[:3])
+
+
+def _stale_colours(root, old, new):
+    """Everything on screen still in a colour only the old theme uses:
+    classic widget options, canvas drawings and fixed-colour icons."""
+    from src.gui import styles
+    only_old = ({c.upper() for c in old.color_tokens().values()}
+                - {c.upper() for c in new.color_tokens().values()})
+    bank = styles.image_bank()
+    icons = {str(photo): key for key, photo in bank._photos.items() if key[0] == "icon"}
+    stale = []
+    for widget in _all_widgets(root):
+        if not isinstance(widget, ttk.Widget):
+            for option in COLOUR_OPTIONS:
+                try:
+                    value = str(widget.cget(option)).upper()
+                except (tk.TclError, ValueError):
+                    continue
+                if value in only_old:
+                    stale.append(f"{widget} -{option} {value}")
+        if isinstance(widget, tk.Canvas):
+            for item in widget.find_all():
+                for option in ("fill", "outline"):
+                    try:
+                        value = str(widget.itemcget(item, option)).upper()
+                    except tk.TclError:
+                        continue
+                    if value in only_old:
+                        stale.append(f"{widget} item {widget.type(item)} -{option} {value}")
+        try:
+            images = widget.cget("image")
+        except tk.TclError:
+            continue
+        for name in (images if isinstance(images, tuple) else (images,)):
+            key = icons.get(str(name))
+            if key and not bank.is_live(name) and str(key[3]).upper() in only_old:
+                stale.append(f"{widget} icon {key}")
+    return stale
+
+
+def test_switching_theme_repaints_every_screen_without_a_restart(app, restore_light_theme, tmp_path):
+    from src.gui import styles
+    from src.gui.tabs.tab_settings import SettingsDialog
+    from src.gui.theme import get_theme
+    root, window = app
+    paper, night = get_theme("paper"), get_theme("night")
+
+    # Draw every page, a PDF in the preview, and open the dialogs, so all of
+    # them have something on screen to repaint.
+    pdf = make_pdf(tmp_path / "theme.pdf", pages=2)
+    window.set_preview_file(pdf)
+    for page in PAGES:
+        window.show_page(page)
+        pump(root, 0.1)
+    window.show_page("compress")
+    window._show_assistant_reply("Merhaba")
+    before = set(root.winfo_children())
+    window.preview_panel.open_viewer()
+    dialog = SettingsDialog(root)
+    pump(root, 0.3)
+    viewer = next(w for w in root.winfo_children() if w not in before and w is not dialog)
+
+    assert styles.apply_theme("night") is True
+    pump(root, 0.2)
+    assert ttk.Style(root).theme_use() == "aura-night"
+    assert root.cget("bg").upper() == night.palette.canvas
+    assert dialog.cget("bg").upper() == night.palette.canvas
+    assert viewer.cget("bg").upper() == night.palette.stage
+    assert _stale_colours(root, paper, night) == []
+    # The preview stage is redrawn in the new well colour.
+    stage = window.preview_panel._stage_photo
+    assert _hex(stage._PhotoImage__photo.get(stage.width() // 2, 4)) == night.palette.sunken
+
+    assert styles.apply_theme("night") is False          # already there: nothing to do
+    assert styles.apply_theme("paper") is True
+    pump(root, 0.2)
+    assert ttk.Style(root).theme_use() == "aura-paper"
+    assert _stale_colours(root, night, paper) == []
+
+    viewer.destroy()
+    dialog.destroy()
+    window.hide_assistant_reply()
+    window.set_preview_file(None)
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_button_corners_match_their_surface_in_the_dark_theme(app, restore_light_theme, page):
+    from src.gui import styles
+    styles.apply_theme("night")
+    test_button_corners_match_their_surface(app, page)
+
+
+def test_icons_follow_the_theme_in_place(app, restore_light_theme):
+    """An icon drawn in P.text is the same PhotoImage after the switch, with
+    new pixels, so the buttons showing it need no update."""
+    from src.gui import styles
+    from src.gui.theme import get_theme
+    from src.gui.theme.images import Icons
+    photo = styles.icon(Icons.ADD, 16, styles.P.text)
+    tk_photo = photo._PhotoImage__photo
+
+    def solid_pixels():
+        return {_hex(tk_photo.get(x, y)) for x in range(photo.width()) for y in range(photo.height())
+                if not tk_photo.transparency_get(x, y)}
+
+    assert get_theme("paper").palette.text in solid_pixels()
+    styles.apply_theme("night")
+    assert styles.icon(Icons.ADD, 16, styles.P.text) is photo
+    after = solid_pixels()
+    assert get_theme("night").palette.text in after
+    assert get_theme("paper").palette.text not in after
+
+
+def test_new_windows_get_the_current_theme(app, restore_light_theme):
+    from src.gui import styles
+    from src.gui.theme import get_theme
+    from src.gui.tabs.tab_settings import SettingsDialog
+    root, _window = app
+    styles.apply_theme("night")
+    dialog = SettingsDialog(root)
+    pump(root, 0.2)
+    try:
+        assert dialog.cget("bg").upper() == get_theme("night").palette.canvas
+        assert _stale_colours(dialog, get_theme("paper"), get_theme("night")) == []
+    finally:
+        dialog.destroy()
+
+
+def test_theme_cards_apply_and_save_the_choice(settings_panel, restore_light_theme, monkeypatch):
+    from src.core.config_manager import cfg
+    from src.gui import styles
+    from src.gui import theme as theme_module
+    monkeypatch.setitem(cfg.config, "theme", "paper")
+    settings_panel._sync_theme_buttons()
+    cards = settings_panel.theme_buttons
+    assert list(cards) == ["paper", "night", "system"]
+    assert [k for k, b in cards.items() if b.instate(["selected"])] == ["paper"]
+    assert [b.cget("text") for b in cards.values()] == [_("settings_theme_light"), _("settings_theme_dark"),
+                                                         _("settings_theme_system")]
+
+    cards["night"].invoke()
+    assert cfg.get("theme") == "night"
+    assert styles.THEME.name == "night"
+    assert [k for k, b in cards.items() if b.instate(["selected"])] == ["night"]
+
+    # "System" follows Windows: light here, dark after Windows switches.
+    windows_dark = [False]
+    monkeypatch.setattr(theme_module, "system_prefers_dark", lambda: windows_dark[0])
+    cards["system"].invoke()
+    assert cfg.get("theme") == "system"
+    assert styles.THEME.name == "paper"
+    windows_dark[0] = True
+    assert styles.apply_preference() is True
+    assert styles.THEME.name == "night"
+
+
+def test_follow_system_theme_switches_when_windows_does(tk_root, restore_light_theme, monkeypatch):
+    from src.core.config_manager import cfg
+    from src.gui import styles
+    from src.gui import theme as theme_module
+    monkeypatch.setitem(cfg.config, "theme", "system")
+    monkeypatch.setattr(theme_module, "system_prefers_dark", lambda: True)
+    styles.follow_system_theme(tk_root, interval_ms=20)
+    assert wait_for(tk_root, lambda: styles.THEME.name == "night", timeout=2)
+    # A fixed choice is left alone even when Windows is dark.
+    monkeypatch.setitem(cfg.config, "theme", "paper")
+    styles.apply_theme("paper")
+    pump(tk_root, 0.1)
+    assert styles.THEME.name == "paper"
+
+
+def test_saving_settings_keeps_the_theme_choice(settings_panel, restore_light_theme, monkeypatch):
+    """The theme applies on click; Save must neither undo nor re-apply it."""
+    from src.core.config_manager import cfg
+    monkeypatch.setitem(cfg.config, "theme", "paper")
+    settings_panel.theme_buttons["night"].invoke()
+    monkeypatch.setattr("tkinter.messagebox.askyesno", lambda *a, **k: False)
+    settings_panel.save_settings()
+    assert cfg.get("theme") == "night"
 
 
 # ── Resizing ────────────────────────────────────────────────────────────────

@@ -10,8 +10,16 @@ from src.core.lang_manager import LANGUAGES, _
 from src.gui import styles
 from src.gui.helpers import InlineFeedback, follow_width
 from src.gui.styles import P
-from src.gui.theme.images import Icons
-from src.gui.widgets import Tooltip
+from src.gui.theme import DARK_THEME, LIGHT_THEME, SYSTEM, get_theme, theme_preference
+from src.gui.theme.images import Icons, theme_preview
+from src.gui.widgets import ScrollArea, Tooltip
+
+# Theme picker: (preference stored in the config, label key).
+THEME_CHOICES = (
+    (LIGHT_THEME, "settings_theme_light"),
+    (DARK_THEME, "settings_theme_dark"),
+    (SYSTEM, "settings_theme_system"),
+)
 
 
 class SettingsPanel(ttk.Frame):
@@ -45,7 +53,12 @@ class SettingsPanel(ttk.Frame):
         settings_tabs.add(general_tab, text=_("settings_general_tab"))
         settings_tabs.add(ai_tab, text=_("settings_local_ai_tab"))
 
-        self._build_general_settings(general_tab)
+        # Scrolls when the dialog is too short for the whole form, so the
+        # Save button can never end up below the edge of the card.
+        general_scroll = ScrollArea(general_tab, style="Surface.TFrame", background=P.surface)
+        general_scroll.pack(fill="both", expand=True)
+        self.general_scroll = general_scroll
+        self._build_general_settings(general_scroll.body)
         self._build_ai_settings(ai_tab)
 
         # Beside the notebook, level with its cards (below the tab row).
@@ -63,8 +76,12 @@ class SettingsPanel(ttk.Frame):
 
     def _build_general_settings(self, parent):
         ttk.Label(parent, text=_("settings_appearance"), style="Section.TLabel").pack(anchor="w")
+        ttk.Label(parent, text=_("settings_theme"), style="Field.TLabel").pack(anchor="w", pady=(14, 0))
+        self._build_theme_picker(parent)
+        ttk.Label(parent, text=_("settings_theme_hint"), style="Hint.TLabel").pack(anchor="w", pady=(8, 0))
+
         row = ttk.Frame(parent, style="Surface.TFrame")
-        row.pack(fill="x", pady=(14, 0))
+        row.pack(fill="x", pady=(18, 0))
         ttk.Label(row, text=_("settings_lang"), style="Field.TLabel").pack(side="left")
         ttk.Combobox(
             row,
@@ -92,6 +109,36 @@ class SettingsPanel(ttk.Frame):
         actions.pack(anchor="w", pady=(18, 0))
         ttk.Button(actions, text=_("settings_save_btn"), command=self.save_settings, style="Primary.TButton").pack(side="left")
         ttk.Button(actions, text=_("settings_clear_history"), command=self.clear_history, style="Secondary.TButton").pack(side="left", padx=(10, 0))
+
+    def _build_theme_picker(self, parent):
+        """Light / Dark / System as cards with a picture of each, applied the
+        moment one is clicked (and saved, like Windows' own setting)."""
+        row = ttk.Frame(parent, style="Surface.TFrame")
+        row.pack(anchor="w", pady=(8, 0))
+        light, dark = get_theme(LIGHT_THEME).palette, get_theme(DARK_THEME).palette
+        previews = {LIGHT_THEME: (light, None), DARK_THEME: (dark, None), SYSTEM: (light, dark)}
+        self.theme_buttons = {}
+        for index, (preference, label_key) in enumerate(THEME_CHOICES):
+            palette, other = previews[preference]
+            image = styles.image_bank().photo(
+                ("theme-preview", preference),
+                lambda palette=palette, other=other: theme_preview(112, 68, palette, other))
+            button = ttk.Button(row, text=_(label_key), image=image or "", compound="top",
+                                style="ThemeOption.TButton",
+                                command=lambda choice=preference: self.choose_theme(choice))
+            button.pack(side="left", padx=(0 if index == 0 else 10, 0))
+            self.theme_buttons[preference] = button
+        self._sync_theme_buttons()
+
+    def _sync_theme_buttons(self):
+        current = theme_preference()
+        for preference, button in self.theme_buttons.items():
+            button.state(["selected"] if preference == current else ["!selected"])
+
+    def choose_theme(self, preference):
+        cfg.set("theme", preference)
+        styles.apply_preference(preference)
+        self._sync_theme_buttons()
 
     def _build_ai_settings(self, parent):
         ttk.Label(parent, text=_("settings_local_ai_title"), style="Section.TLabel").pack(anchor="w")
@@ -361,7 +408,7 @@ class SettingsDialog(tk.Toplevel):
         self.transient(parent)
         self.geometry("1060x760")
         self.minsize(920, 660)
-        self.configure(bg=P.canvas)
+        styles.themed(self, bg=P.canvas)
 
         shell = ttk.Frame(self, style="App.TFrame", padding=24)
         shell.pack(fill="both", expand=True)

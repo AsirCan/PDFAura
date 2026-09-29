@@ -121,7 +121,7 @@ class MainWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("PDF Aura")
-        self.root.configure(bg=P.canvas)
+        styles.themed(self.root, bg=P.canvas)
         self.root.pdf_aura_set_preview = self.set_preview_file
         self.root.pdf_aura_refresh_recent = self.refresh_recent_files
         self.root.pdf_aura_restart = self.restart
@@ -158,6 +158,10 @@ class MainWindow:
         self.setup_ux_features()
         self.show_page("compress")
         self.fit_window_to_content()
+        # Title bar in the theme's colours, and "System" follows Windows live.
+        styles.style_title_bar(self.root)
+        self.root.after_idle(styles.style_title_bar, self.root)
+        styles.follow_system_theme(self.root)
 
         # The voice model is loaded on first use, not here: preloading cost
         # ~330 MB of RAM and ~4 s of CPU on every launch, and a ~460 MB

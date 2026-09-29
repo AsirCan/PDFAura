@@ -53,7 +53,8 @@ PAPER = Theme(
         warning_bg="#FCF4E4",
         warning_border="#EDD6A9",
         danger="#B02318",
-        danger_hover="#921C13",
+        danger_fill="#B02318",
+        danger_fill_hover="#921C13",
         danger_bg="#FCEEEC",
         danger_border="#F0C7C2",
 
@@ -63,6 +64,7 @@ PAPER = Theme(
         handle="#5A71EE",
         handle_active="#F0A03C",
         handle_line="#6E83F2",
+        handle_ring="#FFFFFF",
         magnifier_cross="#F0A03C",
     ),
     typography=Typography(

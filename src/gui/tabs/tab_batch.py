@@ -81,11 +81,12 @@ class BatchTab:
         ttk.Label(log_card, text=_("batch_log_title"), style="Section.TLabel").pack(anchor="w")
         # width=1: a Text defaults to 80 columns, which demanded ~560 px and
         # squeezed the preview panel off the right of the window.
-        self.log_text = tk.Text(log_card, height=10, width=1, bg=P.surface_subtle, fg=P.text, bd=0,
-                                state="disabled", font=styles.font("mono"), wrap="word",
-                                padx=10, pady=8, highlightthickness=1,
-                                highlightbackground=P.border_subtle, highlightcolor=P.border_subtle,
-                                selectbackground=P.accent_subtle_hover, selectforeground=P.text)
+        self.log_text = styles.themed(
+            tk.Text(log_card, height=10, width=1, bd=0, state="disabled", font=styles.font("mono"),
+                    wrap="word", padx=10, pady=8, highlightthickness=1),
+            bg=P.surface_subtle, fg=P.text, insertbackground=P.text,
+            highlightbackground=P.border_subtle, highlightcolor=P.border_subtle,
+            selectbackground=P.accent_subtle_hover, selectforeground=P.text)
         self.log_text.pack(fill="both", expand=True, pady=(10, 0))
 
         self.feedback = InlineFeedback(left)

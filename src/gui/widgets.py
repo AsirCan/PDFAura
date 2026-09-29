@@ -80,8 +80,10 @@ class Tooltip:
         tip = tk.Toplevel(self.widget)
         tip.wm_overrideredirect(True)
         tip.attributes("-topmost", True)
+        # On a dark theme the dark tip would melt into the window: outline it.
         tk.Label(tip, text=self.text, bg=P.stage, fg=P.stage_text, font=styles.font("small"),
-                 padx=8, pady=4, justify="left").pack()
+                 padx=8, pady=4, justify="left", highlightthickness=1 if styles.THEME.dark else 0,
+                 highlightbackground=P.border).pack()
         tip.update_idletasks()
         x = self.widget.winfo_rootx() + (self.widget.winfo_width() - tip.winfo_width()) // 2
         y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
@@ -188,10 +190,12 @@ class ScrollArea(ttk.Frame):
 
     def __init__(self, parent, style="App.TFrame", background=None):
         super().__init__(parent, style=style)
-        bg = background or P.canvas
-        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0, width=1, height=1)
+        self.canvas = styles.themed(tk.Canvas(self, highlightthickness=0, bd=0, width=1, height=1),
+                                    bg=background or P.canvas)
+        # On the canvas by default; inside a card (background=P.surface) the
+        # plain scrollbar, whose trough is the card's colour.
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview,
-                                       style="Canvas.Vertical.TScrollbar")
+                                       style="Vertical.TScrollbar" if background else "Canvas.Vertical.TScrollbar")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.canvas.pack(side="left", fill="both", expand=True)
         self.body = ttk.Frame(self.canvas, style=style)

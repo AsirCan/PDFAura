@@ -5,6 +5,18 @@ widget is built. It resolves the theme's fonts against what is installed,
 draws the rounded control images, and configures every named style the app
 uses. Nothing in here holds a literal colour: change the theme, not this file.
 
+Switching themes while the app runs (apply_theme) has four parts:
+  * each app theme is its own ttk theme ("aura-paper", "aura-night"), so
+    theme_use() restyles every ttk widget at once;
+  * P hands out Token strings that remember their palette name, so icons
+    drawn with icon(..., P.text) are repainted in place;
+  * classic Tk widgets (Canvas, Text, Listbox, tk.Label) get their colours
+    through themed(), which re-applies them by token name;
+  * canvases that draw with palette colours register a redraw with
+    on_theme_change().
+tests/test_ui_interactions.py switches themes and checks that no widget,
+canvas item or icon is left in the old theme's colours.
+
 Naming: a style's name says what it is for ("Primary.TButton",
 "Field.TLabel"). Rounded image elements show the style's `background` in
 their corners, so styles meant for a different surface get their own name
@@ -12,30 +24,60 @@ their corners, so styles meant for a different surface get their own name
 field). tests/test_ui_interactions.py checks that every button's corners
 match the surface it is placed on.
 """
+import logging
 import tkinter as tk
+import weakref
 from tkinter import font as tkfont
 from tkinter import ttk
 
 from PIL import Image, ImageDraw
 
-from src.gui.theme import active_theme
+from src.gui.theme import active_theme, resolve_theme_name, set_active_theme, theme_preference
 from src.gui.theme.images import (ImageBank, Icons, check_box, chevron, icon_image,
                                   radio_dot, rounded_box)
 
 THEME = active_theme()
-P = THEME.palette
 M = THEME.metrics
 
-# Status tones of the result panel: (text colour, icon glyph). The colour
-# is never the only signal; the badge always names the state too.
-TONES = {
-    "neutral": (P.text_secondary, Icons.INFO),
-    "info": (P.accent_text, Icons.INFO),
-    "busy": (P.accent_text, Icons.SYNC),
-    "success": (P.success, Icons.SUCCESS),
-    "warning": (P.warning, Icons.WARNING),
-    "danger": (P.danger, Icons.ERROR),
-}
+
+class Token(str):
+    """A palette colour that remembers its token name ("text_secondary"),
+    so whatever is drawn with it can be redrawn in the next theme."""
+
+    def __new__(cls, value, token):
+        obj = super().__new__(cls, value)
+        obj.token = token
+        return obj
+
+
+class _LivePalette:
+    """styles.P: the active theme's palette, read at the moment of use.
+    Modules import P once; it still answers with the current theme."""
+
+    def __getattr__(self, name):
+        return Token(getattr(THEME.palette, name), name)
+
+    def __dir__(self):
+        return list(THEME.color_tokens())
+
+
+P = _LivePalette()
+
+
+def _tones():
+    # Status tones of the result panel: (text colour, icon glyph). The colour
+    # is never the only signal; the badge always names the state too.
+    return {
+        "neutral": (P.text_secondary, Icons.INFO),
+        "info": (P.accent_text, Icons.INFO),
+        "busy": (P.accent_text, Icons.SYNC),
+        "success": (P.success, Icons.SUCCESS),
+        "warning": (P.warning, Icons.WARNING),
+        "danger": (P.danger, Icons.ERROR),
+    }
+
+
+TONES = _tones()
 
 _fonts = {}
 _bank = None
@@ -43,6 +85,19 @@ _bank = None
 # colour *around* it); widgets placed in the frame must match this one.
 INTERIOR = {}
 _icon_family = None
+# ttk theme name -> INTERIOR of that theme, for the themes built so far.
+_built = {}
+# str(widget) -> [weakref to widget, {option: token name}] (see themed()).
+_themed = {}
+# Redraw callbacks run after a theme change (see on_theme_change()).
+_hooks = []
+
+
+def color(value):
+    """The current colour for a Token (possibly from an older theme), or the
+    value itself for a plain colour."""
+    token = getattr(value, "token", None)
+    return getattr(THEME.palette, token) if token else value
 
 
 # ── Public accessors ────────────────────────────────────────────────────────
@@ -61,13 +116,20 @@ def icon_font(size=12):
 
 
 def icon(glyph, size=16, color=None, box=None):
-    """A PhotoImage of an Icons glyph (None when no icon font is installed)."""
+    """A PhotoImage of an Icons glyph (None when no icon font is installed).
+    Drawn in a palette token (P.text, ...), the icon follows theme changes."""
     if _bank is None:
         return None
     color = color or P.text_secondary
     box = box or size + 4
-    key = ("icon", glyph, size, color, box)
-    return _bank.photo(key, lambda: icon_image(glyph, size, color, THEME.typography.icon_files, box))
+    files = THEME.typography.icon_files
+    token = getattr(color, "token", None)
+    if token:
+        return _bank.photo(("icon", glyph, size, "@" + token, box),
+                           lambda: icon_image(glyph, size, getattr(THEME.palette, token), files, box),
+                           live=True)
+    return _bank.photo(("icon", glyph, size, color, box),
+                       lambda: icon_image(glyph, size, color, files, box))
 
 
 def icon_states(glyph, size=16, color=None):
@@ -89,6 +151,195 @@ def surface_of(widget):
 
 def image_bank():
     return _bank
+
+
+# ── Theme-following classic widgets ─────────────────────────────────────────
+
+def themed(widget, **colors):
+    """Set colour options on a classic Tk widget (Canvas, Text, Listbox,
+    tk.Label, a Toplevel's bg) and keep them in step with theme changes.
+
+        styles.themed(tk.Canvas(parent, highlightthickness=0), bg=P.sunken)
+
+    Token values (P.<name>) follow the theme; a plain colour is applied
+    once. Call it again to change a colour later, not widget.configure().
+    """
+    widget.configure(**{option: color(value) for option, value in colors.items()})
+    entry = _themed.get(str(widget))
+    if entry is None or entry[0]() is not widget:
+        entry = _themed[str(widget)] = [weakref.ref(widget), {}]
+    for option, value in colors.items():
+        token = getattr(value, "token", None)
+        if token:
+            entry[1][option] = token
+        else:
+            entry[1].pop(option, None)
+    return widget
+
+
+def on_theme_change(callback):
+    """Run `callback()` after every theme change (canvas redraws). A bound
+    method is held weakly and dropped once its widget is destroyed."""
+    if hasattr(callback, "__self__"):
+        ref = weakref.WeakMethod(callback)
+    else:
+        ref = lambda cb=callback: cb  # noqa: E731
+    _hooks.append(ref)
+    return callback
+
+
+def _repaint_themed():
+    for path, (ref, options) in list(_themed.items()):
+        widget = ref()
+        try:
+            if widget is None or not widget.winfo_exists():
+                raise tk.TclError
+            if options:
+                widget.configure(**{o: getattr(THEME.palette, t) for o, t in options.items()})
+        except tk.TclError:
+            _themed.pop(path, None)
+
+
+def _run_hooks():
+    for ref in list(_hooks):
+        callback = ref()
+        owner = getattr(callback, "__self__", None)
+        try:
+            if callback is None or (isinstance(owner, tk.Misc) and not owner.winfo_exists()):
+                raise tk.TclError
+        except tk.TclError:
+            _hooks.remove(ref)
+            continue
+        try:
+            callback()
+        except tk.TclError:
+            _hooks.remove(ref)
+        except Exception:
+            logging.exception("Theme change callback failed: %r", callback)
+
+
+def _recolor_popdowns(root):
+    """Combobox drop-down lists are classic listboxes, created on first use
+    from the option database; restyle the ones that already exist."""
+    stack = [root]
+    while stack:
+        widget = stack.pop()
+        stack.extend(widget.winfo_children())
+        if widget.winfo_class() != "TCombobox":
+            continue
+        listbox = f"{widget}.popdown.f.l"
+        try:
+            if int(root.tk.call("winfo", "exists", listbox)):
+                root.tk.call(listbox, "configure", "-background", P.surface, "-foreground", P.text,
+                             "-selectbackground", P.accent_subtle_hover, "-selectforeground", P.text)
+        except tk.TclError:
+            pass
+
+
+# ── Window title bar ────────────────────────────────────────────────────────
+
+_DWMWA_USE_IMMERSIVE_DARK_MODE = (20, 19)   # 19 before Windows 10 20H1
+_DWMWA_CAPTION_COLOR = 35                   # Windows 11
+_DWMWA_TEXT_COLOR = 36
+
+
+def _colorref(value):
+    value = str(value).lstrip("#")
+    r, g, b = (int(value[i:i + 2], 16) for i in (0, 2, 4))
+    return r | (g << 8) | (b << 16)
+
+
+def style_title_bar(window):
+    """Paint a window's native title bar to match the theme: dark mode on
+    Windows 10/11, and on Windows 11 the canvas colour itself so the bar and
+    the window read as one surface. Silently does nothing elsewhere."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        window.update_idletasks()
+        hwnd = ctypes.windll.user32.GetParent(window.winfo_id()) or window.winfo_id()
+        set_attribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
+        set_attribute.argtypes = (wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD)
+        dark = ctypes.c_int(1 if THEME.dark else 0)
+        for attribute in _DWMWA_USE_IMMERSIVE_DARK_MODE:
+            if set_attribute(hwnd, attribute, ctypes.byref(dark), ctypes.sizeof(dark)) == 0:
+                break
+        for attribute, value in ((_DWMWA_CAPTION_COLOR, P.canvas), (_DWMWA_TEXT_COLOR, P.text)):
+            ref = wintypes.DWORD(_colorref(value))
+            set_attribute(hwnd, attribute, ctypes.byref(ref), ctypes.sizeof(ref))
+        # Windows 10 repaints the frame only when told it changed.
+        flags = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020   # NOSIZE|NOMOVE|NOZORDER|NOACTIVATE|FRAMECHANGED
+        ctypes.windll.user32.SetWindowPos(hwnd, None, 0, 0, 0, 0, flags)
+    except Exception:
+        pass
+
+
+def _toplevels(root):
+    yield root
+    stack = list(root.winfo_children())
+    while stack:
+        widget = stack.pop()
+        if isinstance(widget, (tk.Toplevel, tk.Tk)):
+            yield widget
+        stack.extend(widget.winfo_children())
+
+
+def _follow_new_windows(root):
+    """Dialogs and viewers opened later get the themed title bar too."""
+    if getattr(root, "_aura_title_bars", False):
+        return
+    root._aura_title_bars = True
+    root.bind_class("Toplevel", "<Map>", lambda e: style_title_bar(e.widget)
+                    if isinstance(e.widget, tk.Toplevel) and not e.widget.overrideredirect() else None, add="+")
+
+
+# ── Switching themes ────────────────────────────────────────────────────────
+
+def apply_theme(name, root=None):
+    """Switch the running app to theme `name` without a restart. Returns
+    True when the theme changed."""
+    global THEME, M
+    root = root or (_bank.master if _bank else tk._default_root)
+    new = set_active_theme(name)
+    if new is THEME and f"aura-{THEME.name}" in _built:
+        return False
+    THEME = new
+    M = THEME.metrics
+    TONES.update(_tones())
+    if root is None or _bank is None:
+        return True
+    _use_theme(ttk.Style(root), root)
+    _bank.repaint()
+    _repaint_themed()
+    _recolor_popdowns(root)
+    for window in _toplevels(root):
+        if window is root or not window.overrideredirect():
+            style_title_bar(window)
+    _run_hooks()
+    root.event_generate("<<AuraThemeChanged>>", when="tail")
+    return True
+
+
+def apply_preference(preference=None, root=None):
+    """Apply the theme a preference ("system" or a theme name) means now;
+    None reads it from the config."""
+    return apply_theme(resolve_theme_name(preference or theme_preference()), root)
+
+
+def follow_system_theme(root, interval_ms=2000):
+    """While the preference is "system", switch when Windows does."""
+    def check():
+        try:
+            if not root.winfo_exists():
+                return
+            if theme_preference() == "system":
+                apply_preference("system", root)
+        except tk.TclError:
+            return
+        except Exception:
+            logging.exception("Could not follow the Windows theme")
+        root.after(interval_ms, check)
+    root.after(interval_ms, check)
 
 
 # ── Setup ───────────────────────────────────────────────────────────────────
@@ -233,12 +484,34 @@ def setup_styles(root=None):
     style = ttk.Style(root)
     if _bank is not None and _bank.master is root:
         return style                     # already built for this window
-    style.theme_use("clam")
     _bank = ImageBank(root)
+    _built.clear()
     _resolve_fonts(root)
     _set_named_fonts(root)
+    _use_theme(style, root)
+    _follow_new_windows(root)
+    return style
+
+
+def _use_theme(style, root):
+    """Make the active theme's ttk theme current, building it the first time."""
+    name = f"aura-{THEME.name}"
+    if name not in _built:
+        if name not in style.theme_names():
+            style.theme_create(name, parent="clam")
+        style.theme_use(name)
+        INTERIOR.clear()
+        _build_styles(style)
+        _built[name] = dict(INTERIOR)
+    else:
+        style.theme_use(name)
+    INTERIOR.clear()
+    INTERIOR.update(_built[name])
     _option_database(root)
 
+
+def _build_styles(style):
+    """Configure every named style in the current ttk theme."""
     body, label = font("body"), font("label")
 
     style.configure(".", background=P.canvas, foreground=P.text, font=body,
@@ -363,8 +636,8 @@ def setup_styles(root=None):
     _configure_button(style, "Primary.TButton", P.surface, P.accent, P.accent_hover,
                       P.accent_pressed, P.text_on_accent, disabled_fill=P.sunken,
                       disabled_border=P.sunken, padding=(18, M.control_pad_y + 1))
-    _configure_button(style, "Danger.TButton", P.surface, P.danger, P.danger_hover,
-                      P.danger_hover, P.text_on_accent, disabled_fill=P.sunken)
+    _configure_button(style, "Danger.TButton", P.surface, P.danger_fill, P.danger_fill_hover,
+                      P.danger_fill_hover, P.text_on_accent, disabled_fill=P.sunken)
     _configure_button(style, "Secondary.TButton", P.surface, P.surface, P.surface_subtle,
                       P.sunken, P.text, border=P.border, border_hover=P.border_strong,
                       disabled_fill=P.surface, disabled_border=P.border_subtle)
@@ -406,6 +679,13 @@ def setup_styles(root=None):
                       P.text_secondary, fg_hover=P.text, padding=(10, 4), font_role="small",
                       anchor="w")
     style.configure("NavFile.TButton", compound="left", space=8)
+    # Theme picker cards in Settings: a preview image above the name.
+    _configure_button(style, "ThemeOption.TButton", P.surface, P.surface, P.surface_subtle,
+                      P.sunken, P.text_secondary, border=P.border_subtle, border_hover=P.border_strong,
+                      fg_hover=P.text, selected=P.accent_subtle, selected_border=P.accent,
+                      selected_fg=P.accent_text, padding=(10, 10, 10, 8), font_role="body_strong",
+                      radius=M.radius_lg)
+    style.configure("ThemeOption.TButton", compound="top", space=8)
     for name in ("Feedback.Secondary.TButton", "Feedback.Ghost.TButton", "Voice.TButton",
                  "VoiceActive.TButton", "Secondary.TButton", "Ghost.TButton", "Small.TButton",
                  "Primary.TButton"):
@@ -488,9 +768,9 @@ def setup_styles(root=None):
                         bordercolor=bg, lightcolor=bg, darkcolor=bg, arrowsize=0, width=12)
 
     # ── Notebook, treeview ──
-    tab_off = _img(("tab", "off"), lambda: _tab_image(P.canvas, P.border_subtle, 1))
-    tab_on = _img(("tab", "on"), lambda: _tab_image(P.canvas, P.accent, 2))
-    tab_hover = _img(("tab", "hover"), lambda: _tab_image(P.canvas, P.border_strong, 1))
+    tab = lambda line, thickness: _img(("tab", P.canvas, line, thickness),  # noqa: E731
+                                       lambda: _tab_image(P.canvas, line, thickness))
+    tab_off, tab_on, tab_hover = tab(P.border_subtle, 1), tab(P.accent, 2), tab(P.border_strong, 1)
     style.element_create("Aura.tab", "image", tab_off, ("selected", tab_on), ("active", tab_hover),
                          border=(2, 2, 2, 3), padding=0, width=8, height=4, sticky="nsew")
     style.layout("Tabs.TNotebook.Tab", [("Aura.tab", {"sticky": "nsew", "children": [
@@ -515,8 +795,6 @@ def setup_styles(root=None):
                     lightcolor=P.surface_subtle, darkcolor=P.border_subtle)
     style.map("Treeview.Heading", background=[("active", P.sunken)])
     style.layout("Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
-
-    return style
 
 
 def _pad_img(img, margin=2):

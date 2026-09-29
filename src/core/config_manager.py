@@ -45,6 +45,7 @@ class ConfigManager:
             "default_output_dir": "",
             "recent_files": [],
             "close_to_tray": True,
+            "theme": "system",             # "system", "paper" (light) or "night" (dark)
             "ai_model_root": "",
             "ai_model_paths": {},
             "scanner_session_enabled": True,

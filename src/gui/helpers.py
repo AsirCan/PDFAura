@@ -100,17 +100,20 @@ class ToolLayout:
 def style_listbox(listbox):
     """Give a tk.Listbox the same flat look as the ttk entries around it."""
     listbox.configure(
-        bg=P.field,
-        fg=P.text,
-        selectbackground=P.accent_subtle_hover,
-        selectforeground=P.text,
         font=styles.font("body"),
         borderwidth=0,
         relief="flat",
         highlightthickness=1,
+        activestyle="none",
+    )
+    styles.themed(
+        listbox,
+        bg=P.field,
+        fg=P.text,
+        selectbackground=P.accent_subtle_hover,
+        selectforeground=P.text,
         highlightbackground=P.border,
         highlightcolor=P.accent,
-        activestyle="none",
         disabledforeground=P.text_disabled,
     )
 
@@ -121,9 +124,10 @@ class ListEmptyHint:
 
     def __init__(self, listbox, text, command=None):
         self.listbox = listbox
-        self.label = tk.Label(listbox, text=text, bg=P.field, fg=P.text_tertiary,
-                              font=styles.font("small"), justify="center", wraplength=260,
-                              cursor="hand2" if command else "")
+        self.label = styles.themed(
+            tk.Label(listbox, text=text, font=styles.font("small"), justify="center",
+                     wraplength=260, cursor="hand2" if command else ""),
+            bg=P.field, fg=P.text_tertiary)
         if command:
             self.label.bind("<Button-1>", lambda _e: command())
         self.refresh()
@@ -251,10 +255,11 @@ class InlineFeedback(ttk.Frame):
 
         head = ttk.Frame(self, style="FeedbackRow.TFrame")
         head.pack(fill="x")
-        self.icon = tk.Label(head, bg=P.surface_subtle, bd=0)
+        self.icon = styles.themed(tk.Label(head, bd=0), bg=P.surface_subtle)
         self.icon.pack(side="left", padx=(0, 6))
-        self.badge = tk.Label(head, text=_("feedback_ready_badge"), bg=P.surface_subtle,
-                              fg=P.text_secondary, font=styles.font("micro"), bd=0)
+        self.badge = styles.themed(tk.Label(head, text=_("feedback_ready_badge"),
+                                            font=styles.font("micro"), bd=0),
+                                   bg=P.surface_subtle, fg=P.text_secondary)
         self.badge.pack(side="left")
 
         self.title_var = tk.StringVar(value=_("feedback_ready_title"))
@@ -287,9 +292,11 @@ class InlineFeedback(ttk.Frame):
         signal; the label always says the state in words."""
         self.tone = tone
         foreground, glyph = TONES[tone]
-        self.badge.config(text=text, fg=foreground)
+        self.badge.config(text=text)
+        styles.themed(self.badge, fg=foreground)
         image = styles.icon(glyph, 12, foreground, box=14)
-        self.icon.config(image=image or "", text="" if image else "•", fg=foreground)
+        self.icon.config(image=image or "", text="" if image else "•")
+        styles.themed(self.icon, fg=foreground)
         self.icon.image = image
 
     def _reveal(self):

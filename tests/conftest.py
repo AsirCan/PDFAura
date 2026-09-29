@@ -15,6 +15,11 @@ if ROOT not in sys.path:
 import pytest  # noqa: E402
 from pypdf import PdfWriter  # noqa: E402
 
+# The theme follows Windows' light/dark mode by default. Pin the light theme
+# before anything builds styles, so tests do not depend on the machine.
+from src.core.config_manager import cfg as _cfg  # noqa: E402
+_cfg.config["theme"] = "paper"
+
 
 def make_pdf(path, pages=3, size=(595, 842), metadata=None):
     """Write a PDF with `pages` blank pages; page i gets width size[0] + i so

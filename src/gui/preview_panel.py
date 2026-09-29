@@ -68,10 +68,12 @@ class PreviewPanel(ttk.Frame):
         follow_width(name, self.info, 4)
         follow_width(path, self.info, 4)
 
-        self.canvas = tk.Canvas(self, width=280, height=240, bg=P.surface, bd=0, highlightthickness=0)
+        self.canvas = styles.themed(tk.Canvas(self, width=280, height=240, bd=0, highlightthickness=0),
+                                    bg=P.surface)
         self.canvas.pack(fill="both", expand=True, pady=(14, 0))
         self.canvas.bind("<Configure>", self._on_resize)
         self.canvas.bind("<Double-Button-1>", lambda _e: self.open_viewer())
+        styles.on_theme_change(self._draw)
 
     # ── State ─────────────────────────────────────────────────────────────
 

@@ -51,11 +51,7 @@ from src.gui.widgets import Tooltip
 
 # ── Constants ────────────────────────────────────────────────────────────────
 CORNER_RADIUS = 8
-CORNER_COLOR = P.handle
-CORNER_ACTIVE = P.handle_active
-LINE_COLOR = P.handle_line
 LINE_WIDTH = 2
-CANVAS_BG = P.stage
 
 # Map internal mode constants → i18n keys
 _MODE_MAP = [
@@ -241,8 +237,8 @@ class ScannerTab:
         self._strip_wide = None
         self._relayout_strip_header(strip_w)
 
-        self.strip_canvas = tk.Canvas(strip, bg=P.sunken, highlightthickness=0,
-                                      width=128, yscrollincrement=20)
+        self.strip_canvas = styles.themed(tk.Canvas(strip, highlightthickness=0, width=128, yscrollincrement=20),
+                                          bg=P.sunken)
         self.strip_canvas.pack(fill="both", expand=True)
         c = self.strip_canvas
         c.bind("<ButtonPress-1>", self._on_strip_press)
@@ -260,17 +256,19 @@ class ScannerTab:
         c.bind("<Configure>", lambda e: self._debounce("strip", 60, self._refresh_strip))
 
         # Drag to resize the strip; double-click returns to auto width.
-        self.strip_sash = tk.Frame(work, width=self._SASH_W, bg=P.surface, cursor="sb_h_double_arrow")
+        self.strip_sash = styles.themed(tk.Frame(work, width=self._SASH_W, cursor="sb_h_double_arrow"),
+                                        bg=P.surface)
         self.strip_sash.pack(side="left", fill="y")
-        self._sash_grip = tk.Frame(self.strip_sash, width=4, height=48, bg=P.border, cursor="sb_h_double_arrow")
+        self._sash_grip = styles.themed(tk.Frame(self.strip_sash, width=4, height=48, cursor="sb_h_double_arrow"),
+                                        bg=P.border)
         self._sash_grip.place(relx=0.5, rely=0.5, anchor="center")
         for w in (self.strip_sash, self._sash_grip):
             w.bind("<ButtonPress-1>", self._on_sash_press)
             w.bind("<B1-Motion>", self._on_sash_drag)
             w.bind("<ButtonRelease-1>", self._on_sash_release)
             w.bind("<Double-Button-1>", self._on_sash_double)
-            w.bind("<Enter>", lambda e: self._sash_grip.configure(bg=P.accent))
-            w.bind("<Leave>", lambda e: self._sash_drag or self._sash_grip.configure(bg=P.border))
+            w.bind("<Enter>", lambda e: styles.themed(self._sash_grip, bg=P.accent))
+            w.bind("<Leave>", lambda e: self._sash_drag or styles.themed(self._sash_grip, bg=P.border))
         work.bind("<Configure>", lambda e: self._debounce("fit", 60, self._fit_strip))
 
         self._detect_controls = [
@@ -285,7 +283,8 @@ class ScannerTab:
 
         # width=1: never request more room than the strip leaves, or pack would
         # squeeze the preview panel on the right when the strip is wide.
-        self.canvas = tk.Canvas(canvas_frame, bg=CANVAS_BG, highlightthickness=0, cursor="crosshair", width=1)
+        self.canvas = styles.themed(tk.Canvas(canvas_frame, highlightthickness=0, cursor="crosshair", width=1),
+                                    bg=P.stage)
         self.canvas.pack(fill="both", expand=True)
 
         self.canvas.bind("<ButtonPress-1>", self._on_canvas_press)
@@ -334,7 +333,8 @@ class ScannerTab:
         left.pack(side="left", fill="both", expand=True)
 
         ttk.Label(right, text=tr("scanner_preview"), style="PreviewTitle.TLabel").pack(anchor="w", pady=(0, 10))
-        self.preview_canvas = tk.Canvas(right, bg=P.sunken, width=260, height=370, highlightthickness=0)
+        self.preview_canvas = styles.themed(tk.Canvas(right, width=260, height=370, highlightthickness=0),
+                                            bg=P.sunken)
         self.preview_canvas.pack(fill="both", expand=True)
         # Without this the preview kept its old size and sat off to one side
         # when the panel was resized.
@@ -346,6 +346,19 @@ class ScannerTab:
         # preview shrinks and the result panel stays whole.
         self.feedback.pack(side="bottom", fill="x", pady=(14, 0), before=self.preview_canvas)
         self.feedback.set_info(tr("scanner_scan_mode"), tr("scanner_select_hint"))
+        styles.on_theme_change(self._on_theme_changed)
+
+    def _on_theme_changed(self):
+        # Thumbnails are letterboxed in the strip's colour; draw them again.
+        self._thumb_cache.clear()
+        self._refresh_strip()
+        # A canvas never shown yet has nothing drawn; <Configure> draws it
+        # when it appears (redrawing now would poll until then).
+        if self.canvas.winfo_width() >= 10:
+            self._redraw_canvas()
+        if getattr(self, "fs_top", None) is not None and self.fs_top.winfo_exists():
+            styles.themed(self.fs_top, bg=P.stage)
+            self._fs_redraw()
 
     # ─────────────────────────────────────────────────────────────────────
     #  Page management
@@ -711,7 +724,7 @@ class ScannerTab:
         return row * cols + col, row, col
 
     def _page_thumb(self, pg, thumb_w, thumb_h):
-        key = (pg.rotation, tuple(pg.corners), thumb_w, thumb_h)
+        key = (pg.rotation, tuple(pg.corners), thumb_w, thumb_h, str(P.sunken))
         cached = self._thumb_cache.get(id(pg))
         if cached and cached[0] == key:
             return cached[1]
@@ -725,7 +738,9 @@ class ScannerTab:
         warped = perspective_warp(pg.display_image, pg.corners, warp_w * 2, warp_h * 2)
         small = cv2.resize(warped, (warp_w, warp_h), interpolation=cv2.INTER_AREA)
 
-        canvas = np.full((thumb_h, thumb_w, 3), 255, dtype=np.uint8)
+        # Letterboxed in the strip's own colour, so only the page shows.
+        back = P.sunken.lstrip("#")
+        canvas = np.full((thumb_h, thumb_w, 3), [int(back[i:i + 2], 16) for i in (4, 2, 0)], dtype=np.uint8)
         top = (thumb_h - warp_h) // 2
         left = (thumb_w - warp_w) // 2
         canvas[top:top + warp_h, left:left + warp_w] = small
@@ -927,9 +942,10 @@ class ScannerTab:
         self._finish_rename()
         if page not in self.pages:
             return
-        entry = tk.Entry(self.strip_canvas, font=self._caption_font, justify="center", relief="flat",
-                         bg=P.field, fg=P.text, insertbackground=P.text,
-                         highlightthickness=2, highlightcolor=P.accent, highlightbackground=P.accent)
+        entry = styles.themed(tk.Entry(self.strip_canvas, font=self._caption_font, justify="center",
+                                       relief="flat", highlightthickness=2),
+                              bg=P.field, fg=P.text, insertbackground=P.text,
+                              highlightcolor=P.accent, highlightbackground=P.accent)
         entry.insert(0, page.label)
         entry.select_range(0, "end")
         entry.bind("<Return>", lambda e: self._finish_rename(refocus=True))
@@ -1072,7 +1088,7 @@ class ScannerTab:
 
     def _on_sash_press(self, event):
         self._sash_drag = [event.x_root, self._strip_width(), False]
-        self._sash_grip.configure(bg=P.accent)
+        styles.themed(self._sash_grip, bg=P.accent)
 
     def _on_sash_drag(self, event):
         if not self._sash_drag:
@@ -1084,7 +1100,7 @@ class ScannerTab:
 
     def _on_sash_release(self, _event):
         drag, self._sash_drag = self._sash_drag, None
-        self._sash_grip.configure(bg=P.border)
+        styles.themed(self._sash_grip, bg=P.border)
         if drag and drag[2]:
             self._strip_auto = False
             cfg.set("scanner_strip_width", self._strip_width())
@@ -1239,7 +1255,7 @@ class ScannerTab:
         canvas_pts = []
         for (px, py) in pg.corners:
             canvas_pts.extend([ox + px * scale, oy + py * scale])
-        self.canvas.create_polygon(canvas_pts, outline=LINE_COLOR, fill="", width=LINE_WIDTH, dash=(6, 4), tags="poly")
+        self.canvas.create_polygon(canvas_pts, outline=P.handle_line, fill="", width=LINE_WIDTH, dash=(6, 4), tags="poly")
 
         # corner handles
         for i, (px, py) in enumerate(pg.corners):
@@ -1247,7 +1263,7 @@ class ScannerTab:
             cy = oy + py * scale
             r = CORNER_RADIUS
             self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                                     fill=CORNER_COLOR, outline=P.surface, width=2, tags=f"corner_{i}")
+                                     fill=P.handle, outline=P.handle_ring, width=2, tags=f"corner_{i}")
 
         if self.dragging_corner is not None and getattr(self, "last_ex", None) is not None:
             self._draw_magnifier(self.canvas, pg, self.dragging_corner, self.last_ex, self.last_ey, scale)
@@ -1278,7 +1294,7 @@ class ScannerTab:
             cy = oy + py * self.canvas_scale
             if abs(event.x - cx) < CORNER_RADIUS * 2 and abs(event.y - cy) < CORNER_RADIUS * 2:
                 self.dragging_corner = i
-                self.canvas.itemconfigure(f"corner_{i}", fill=CORNER_ACTIVE)
+                self.canvas.itemconfigure(f"corner_{i}", fill=P.handle_active)
                 return
         self.dragging_corner = None
 
@@ -1297,7 +1313,7 @@ class ScannerTab:
 
     def _on_canvas_release(self, event):
         if self.dragging_corner is not None:
-            self.canvas.itemconfigure(f"corner_{self.dragging_corner}", fill=CORNER_COLOR)
+            self.canvas.itemconfigure(f"corner_{self.dragging_corner}", fill=P.handle)
             self.dragging_corner = None
             self._redraw_canvas() # remove magnifier
             self.update_preview()
@@ -1693,7 +1709,7 @@ class ScannerTab:
 
         self.fs_top = tk.Toplevel(self.app_root)
         self.fs_top.title(tr("scanner_fullscreen_crop"))
-        self.fs_top.configure(bg=CANVAS_BG)
+        styles.themed(self.fs_top, bg=P.stage)
         self.fs_top.state('zoomed')  # Maximize on Windows
 
         header = ttk.Frame(self.fs_top, style="Surface.TFrame", padding=(20, 10))
@@ -1705,7 +1721,8 @@ class ScannerTab:
         Tooltip(close, "Esc")
         self.fs_top.bind("<Escape>", lambda _e: self.close_fullscreen_crop())
 
-        self.fs_canvas = tk.Canvas(self.fs_top, bg=CANVAS_BG, highlightthickness=0, cursor="crosshair")
+        self.fs_canvas = styles.themed(tk.Canvas(self.fs_top, highlightthickness=0, cursor="crosshair"),
+                                       bg=P.stage)
         self.fs_canvas.pack(fill="both", expand=True)
 
         self.fs_canvas_scale = 1.0
@@ -1780,14 +1797,14 @@ class ScannerTab:
         canvas_pts = []
         for (px, py) in pg.corners:
             canvas_pts.extend([ox + px * scale, oy + py * scale])
-        self.fs_canvas.create_polygon(canvas_pts, outline=LINE_COLOR, fill="", width=3, dash=(6, 4), tags="poly")
+        self.fs_canvas.create_polygon(canvas_pts, outline=P.handle_line, fill="", width=3, dash=(6, 4), tags="poly")
 
         for i, (px, py) in enumerate(pg.corners):
             cx = ox + px * scale
             cy = oy + py * scale
             r = CORNER_RADIUS + 4  # Bigger handle in fullscreen
             self.fs_canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                                     fill=CORNER_COLOR, outline=P.surface, width=2, tags=f"corner_{i}")
+                                     fill=P.handle, outline=P.handle_ring, width=2, tags=f"corner_{i}")
 
         if self.fs_dragging_corner is not None and getattr(self, "last_fs_ex", None) is not None:
             self._draw_magnifier(self.fs_canvas, pg, self.fs_dragging_corner, self.last_fs_ex, self.last_fs_ey, scale)
@@ -1804,7 +1821,7 @@ class ScannerTab:
             cy = oy + py * self.fs_canvas_scale
             if abs(event.x - cx) < (CORNER_RADIUS + 4) * 2 and abs(event.y - cy) < (CORNER_RADIUS + 4) * 2:
                 self.fs_dragging_corner = i
-                self.fs_canvas.itemconfigure(f"corner_{i}", fill=CORNER_ACTIVE)
+                self.fs_canvas.itemconfigure(f"corner_{i}", fill=P.handle_active)
                 return
         self.fs_dragging_corner = None
 
@@ -1822,7 +1839,7 @@ class ScannerTab:
 
     def _fs_on_release(self, event):
         if self.fs_dragging_corner is not None:
-            self.fs_canvas.itemconfigure(f"corner_{self.fs_dragging_corner}", fill=CORNER_COLOR)
+            self.fs_canvas.itemconfigure(f"corner_{self.fs_dragging_corner}", fill=P.handle)
             self.fs_dragging_corner = None
             self._fs_redraw() # remove magnifier
             self._schedule_session_save()
@@ -1873,13 +1890,13 @@ class ScannerTab:
         if mag_y + mag_size > ch: mag_y = ey - mag_size - 40
         
         # Draw Loupe background and image
-        canvas.create_rectangle(mag_x-2, mag_y-2, mag_x+mag_size+2, mag_y+mag_size+2, outline=P.surface, width=3, fill=P.stage, tags="mag")
+        canvas.create_rectangle(mag_x-2, mag_y-2, mag_x+mag_size+2, mag_y+mag_size+2, outline=P.handle_ring, width=3, fill=P.stage, tags="mag")
         canvas.create_image(mag_x, mag_y, image=photo, anchor="nw", tags="mag")
         
         # Crosshair inside Loupe
         center_x, center_y = mag_x + mag_size//2, mag_y + mag_size//2
         canvas.create_line(center_x-15, center_y, center_x+15, center_y, fill=P.magnifier_cross, width=2, tags="mag")
         canvas.create_line(center_x, center_y-15, center_x, center_y+15, fill=P.magnifier_cross, width=2, tags="mag")
-        canvas.create_oval(center_x-3, center_y-3, center_x+3, center_y+3, fill=P.handle, outline=P.surface, tags="mag")
+        canvas.create_oval(center_x-3, center_y-3, center_x+3, center_y+3, fill=P.handle, outline=P.handle_ring, tags="mag")
 
 

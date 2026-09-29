@@ -52,8 +52,9 @@ class Palette:
     warning: str
     warning_bg: str
     warning_border: str
-    danger: str
-    danger_hover: str
+    danger: str             # danger text and icons
+    danger_fill: str        # destructive button face (carries text_on_accent)
+    danger_fill_hover: str
     danger_bg: str
     danger_border: str
 
@@ -64,6 +65,7 @@ class Palette:
     handle: str             # crop corner handle
     handle_active: str
     handle_line: str        # crop outline
+    handle_ring: str        # outline that lifts a handle off the photo
     magnifier_cross: str
 
 
