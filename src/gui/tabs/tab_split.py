@@ -8,7 +8,7 @@ from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.split import split_pdf
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, quick_error
 from src.utils.file_helper import format_size_mb, suggest_split_output_path
 
 
@@ -29,21 +29,13 @@ class SplitTab:
         self.build_ui()
 
     def build_ui(self):
-        shell = ttk.Frame(self.parent, style="App.TFrame")
-        shell.pack(fill="both", expand=True)
-
-        build_hint_strip(shell, _("hint_split"))
-
-        body = ttk.Frame(shell, style="App.TFrame")
-        body.pack(fill="both", expand=True)
-
-        left = ttk.Frame(body, style="Card.TFrame", padding=22)
-        left.pack(side="left", fill="both", expand=True)
+        self.layout = ToolLayout(self.parent, _("hint_split"))
+        left = self.layout.form
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
         input_row = ttk.Frame(left, style="Surface.TFrame")
         input_row.pack(fill="x", pady=(8, 0))
-        self.split_input_entry = ttk.Entry(input_row, textvariable=self.split_input_var, style="Dark.TEntry")
+        self.split_input_entry = ttk.Entry(input_row, textvariable=self.split_input_var, style="Input.TEntry")
         self.split_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.split_input_button = ttk.Button(input_row, text=_("str_browse"), command=self.choose_split_input_pdf, style="Secondary.TButton")
         self.split_input_button.pack(side="right")
@@ -53,9 +45,9 @@ class SplitTab:
         ttk.Label(left, text=_("str_output_pdf"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
         output_row = ttk.Frame(left, style="Surface.TFrame")
         output_row.pack(fill="x", pady=(8, 0))
-        self.split_output_entry = ttk.Entry(output_row, textvariable=self.split_output_var, style="Dark.TEntry")
+        self.split_output_entry = ttk.Entry(output_row, textvariable=self.split_output_var, style="Input.TEntry")
         self.split_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        self.split_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_split_output_pdf, style="Ghost.TButton")
+        self.split_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_split_output_pdf, style="Secondary.TButton")
         self.split_output_button.pack(side="right")
         ttk.Label(
             left,
@@ -72,20 +64,18 @@ class SplitTab:
         grid.pack(anchor="w", pady=(14, 0))
         ttk.Label(grid, text=_("split_start"), style="Field.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(grid, text=_("split_end"), style="Field.TLabel").grid(row=0, column=2, sticky="w", padx=(20, 0))
-        self.split_start_spin = ttk.Spinbox(grid, from_=1, to=99999, textvariable=self.split_start_var, width=10, style="Dark.TSpinbox", command=self.update_split_output_name)
+        self.split_start_spin = ttk.Spinbox(grid, from_=1, to=99999, textvariable=self.split_start_var, width=10, style="Input.TSpinbox", command=self.update_split_output_name)
         self.split_start_spin.grid(row=1, column=0, sticky="w", pady=(8, 0))
         ttk.Label(grid, text="-", style="CardTitle.TLabel").grid(row=1, column=1, padx=12, pady=(8, 0))
-        self.split_end_spin = ttk.Spinbox(grid, from_=1, to=99999, textvariable=self.split_end_var, width=10, style="Dark.TSpinbox", command=self.update_split_output_name)
+        self.split_end_spin = ttk.Spinbox(grid, from_=1, to=99999, textvariable=self.split_end_var, width=10, style="Input.TSpinbox", command=self.update_split_output_name)
         self.split_end_spin.grid(row=1, column=2, sticky="w", padx=(20, 0), pady=(8, 0))
         ttk.Label(range_card, text=_("split_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(12, 0))
 
-        self.footer = ProgressFooter(left, _("split_btn"), self.start_split, button_style="Split.TButton", progress_style="Split.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(22, 0))
+        self.footer = ProgressFooter(left, _("split_btn"), self.start_split)
+        self.footer.pack(fill="x", pady=(24, 0))
 
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="right", fill="y", padx=(18, 0))
-        self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x")
+        self.feedback = InlineFeedback(left)
+        self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("split_page_range"), _("output_action_hint").format(action=_("split_btn")))
 
         self.split_start_var.trace_add("write", lambda *_args: self.update_split_output_name())

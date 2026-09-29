@@ -66,19 +66,14 @@ def test_no_hardcoded_turkish_in_displayed_strings(path):
 
 # ── Styles referenced actually exist (#20.1) ──────────────────────────────
 
-def test_every_referenced_ttk_style_is_defined():
+def test_every_referenced_ttk_style_is_defined(tk_root):
     """Hero.TFrame was used but never defined, so its labels sat on coloured
-    boxes against the wrong background."""
-    with open("src/gui/styles.py", encoding="utf-8") as f:
-        styles_source = f.read()
-    # Styles are set up both directly and through the _configure_button and
-    # _configure_progressbar helpers.
-    defined = set(re.findall(r'style\.configure\(\s*"([^"]+)"', styles_source))
-    defined |= set(re.findall(r'style\.layout\(\s*"([^"]+)"', styles_source))
-    defined |= set(re.findall(r'_configure_\w+\(\s*style,\s*"([^"]+)"', styles_source))
-    # ...and in a loop that derives "<name>.Horizontal.TProgressbar" per accent.
-    for name in re.findall(r'\(\s*"(\w+)",\s*\w+_ACCENT\s*\)', styles_source):
-        defined.add(f"{name}.Horizontal.TProgressbar")
+    boxes against the wrong background.
+
+    Styles are generated from the theme by helpers, so this asks ttk itself
+    (after setup_styles) rather than reading styles.py."""
+    from tkinter import ttk
+    style = ttk.Style(tk_root)
 
     used = set()
     for path in source_files():
@@ -88,7 +83,7 @@ def test_every_referenced_ttk_style_is_defined():
     # ttk's own built-ins need no definition.
     builtin = {"TFrame", "TLabel", "TButton", "TEntry", "TCombobox", "TCheckbutton",
                "TNotebook", "TProgressbar", "TScrollbar", "TSeparator", "Treeview"}
-    missing = {name for name in used - defined if name not in builtin}
+    missing = {name for name in used - builtin if not style.configure(name)}
     assert missing == set(), f"styles used but never configured: {sorted(missing)}"
 
 
@@ -117,7 +112,8 @@ def test_merge_uses_the_standard_hint_strip():
     """The merge tab showed a fabricated "2 files merged" line in a hero."""
     with open("src/gui/tabs/tab_merge.py", encoding="utf-8") as f:
         source = f.read()
-    assert "build_hint_strip" in source
+    # ToolLayout builds the standard hint strip for every tool page.
+    assert "ToolLayout(self.parent, _(\"hint_merge\"))" in source
     assert "HeroBody.TLabel" not in source
 
 
@@ -165,17 +161,17 @@ def test_mismatched_drop_is_reported():
 # ── Layout at the supported window widths (#20.2) ─────────────────────────
 
 @pytest.fixture(scope="module")
-def app_window():
-    """A real MainWindow; skipped where Tk cannot open a display."""
-    import tkinter as tk
-    try:
-        root = tk.Tk()
-    except Exception as exc:                       # pragma: no cover
-        pytest.skip(f"no Tk display: {exc}")
+def app_window(tk_root):
+    """A real MainWindow on the shared Tk root."""
     from src.gui.main_window import MainWindow
-    window = MainWindow(root)
-    yield root, window
-    root.destroy()
+    for child in tk_root.winfo_children():
+        child.destroy()
+    tk_root.deiconify()
+    window = MainWindow(tk_root)
+    yield tk_root, window
+    for child in tk_root.winfo_children():
+        child.destroy()
+    tk_root.withdraw()
 
 
 PREVIEW_PAGES = ["compress", "organize", "convert", "security", "advanced", "batch"]

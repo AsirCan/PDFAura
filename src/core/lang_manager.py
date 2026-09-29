@@ -17,10 +17,10 @@ _STRINGS = {
         # ── Kabuk / Arayüz ──
         "brand_tagline":            "Hepsi bir arada PDF araçları",
         "chat_placeholder":         "Aura'ya yazın...",
-        "voice_idle":               "🎙 Asistan",
-        "voice_loading":            "🎙 AI Modeli Yükleniyor...",
-        "voice_listening":          "🎙 Dinleniyor...",
-        "voice_processing":         "🎙 İşleniyor...",
+        "voice_idle":               "Asistan",
+        "voice_loading":            "Model yükleniyor...",
+        "voice_listening":          "Dinleniyor...",
+        "voice_processing":         "İşleniyor...",
         "tray_background_title":    "PDF Aura arka planda çalışıyor",
         "tray_background_body":     "Tamamen kapatmak için saatin yanındaki PDF Aura simgesine sağ tıklayıp Çıkış'ı seçin.",
         "page_meta_scanner_eyebrow": "BELGE TARAYICI",
@@ -34,10 +34,10 @@ _STRINGS = {
         "hint_split":               "PDF'i seçin, almak istediğiniz sayfa aralığını girin ve PDF Kes'e basın.",
         "hint_merge":               "PDF'leri ekleyin, Yukarı/Aşağı ile sırayı ayarlayın ve Birleştir'e basın.",
         "hint_edit":                "PDF'i seçin, işlemi seçin (sıralama, silme, döndürme) ve Uygula'ya basın.",
-        "hint_scanner":             "Fotoğrafları ekleyin veya sürükleyin, kırmızı köşeleri kağıdın köşelerine oturtun, sırayı ayarlayın ve PDF oluşturun.",
+        "hint_scanner":             "Fotoğrafları ekleyin veya sürükleyin, köşe noktalarını kağıdın köşelerine oturtun, sırayı ayarlayın ve PDF oluşturun.",
         "scanner_pages":            "Sayfalar",
-        "scanner_move_up":          "▲ Öne Al",
-        "scanner_move_down":        "▼ Arkaya Al",
+        "scanner_move_up":          "Öne Al",
+        "scanner_move_down":        "Arkaya Al",
         "scanner_empty_canvas":     "Fotoğraf Ekle'ye basın ya da fotoğrafları buraya sürükleyin",
 
         # ── Genel / Ortak ──
@@ -341,11 +341,11 @@ _STRINGS = {
 
         # ── Viewer ──
         "viewer_title":             "PDF Aura - Gelişmiş Önizleyici",
-        "viewer_prev":              "<< Önceki",
-        "viewer_next":              "Sonraki >>",
+        "viewer_prev":              "Önceki",
+        "viewer_next":              "Sonraki",
         "viewer_page":              "Sayfa {current} / {total}",
-        "viewer_zoom_in":           "Yakınlaştır (+)",
-        "viewer_zoom_out":          "Uzaklaştır (−)",
+        "viewer_zoom_in":           "Yakınlaştır",
+        "viewer_zoom_out":          "Uzaklaştır",
         "quality_screen":           "screen — en küçük dosya (ekran, 72 dpi)",
         "quality_ebook":            "ebook — dengeli (e-kitap, 150 dpi)",
         "quality_printer":          "printer — yüksek kalite (baskı, 300 dpi)",
@@ -401,8 +401,12 @@ _STRINGS = {
         "settings_clear_history":   "Son Dosyalar Kaydını Temizle",
         "settings_save_btn":        "Ayarları Kaydet",
         "settings_cleared":         "Geçmiş kayıtlar temizlendi.",
-        "settings_saved":           "Ayarlar kaydedildi.\nDil değişikliğinin uygulanması için uygulamayı yeniden başlatmanızı tavsiye ederiz.",
-        "settings_intro":           "Degisiklikler Kaydet'e bastiginizda uygulanir. Dil degisikligi icin uygulamayi yeniden baslatin.",
+        "settings_saved":           "Ayarlar kaydedildi.",
+        "settings_restart_title":   "Dil değişti",
+        "settings_restart_body":    "Yeni dilin uygulanması için PDF Aura yeniden başlatılmalı. Şimdi yeniden başlatılsın mı?\n\nTarayıcıdaki sayfalar korunur; devam eden bir işlem varsa yarıda kalır.",
+        "settings_saved_restart_later": "Ayarlar kaydedildi. Yeni dil, PDF Aura'yı tepsi simgesinden Çık ile kapatıp yeniden açtığınızda geçerli olur.",
+        "settings_restart_failed":  "Uygulama yeniden başlatılamadı: {error}",
+        "settings_intro":           "Değişiklikler Kaydet'e bastığınızda uygulanır. Dili değiştirirseniz PDF Aura yeniden başlatmayı önerir.",
         "model_detail_status":      "Durum",
         "model_detail_path":        "Yol",
         "model_detail_license":     "Lisans",
@@ -444,10 +448,14 @@ _STRINGS = {
 
         # ── Header ──
         "header_subtitle": "Sıkıştır  •  Kes  •  Birleştir  •  Düzenle  •  Dönüştür  •  Güvenlik  •  Gelişmiş  •  Toplu İşlemler",
-        "sidebar_workspace": "ÇALIŞMA ALANI",
+        "sidebar_workspace": "Araçlar",
         "sidebar_drag_drop": "SÜRÜKLE BIRAK",
         "sidebar_recent":           "Son Dosyalar",
         "sidebar_recent_empty":     "Henüz dosya üretilmedi.",
+        "sidebar_offline":          "Çevrimdışı çalışır; dosyalar bilgisayarınızda kalır.",
+        "merge_empty_hint":         "PDF'leri buraya sürükleyin ya da Ekle'ye basın.",
+        "convert_images_empty_hint": "Görselleri buraya sürükleyin ya da Ekle'ye basın.",
+        "voice_hold_hint":          "Basılı tutun ve konuşun  ·  Ctrl+K: yazarak sorun",
         "page_meta_compress_eyebrow": "HIZLI ARAÇ",
         "page_meta_compress_title": "PDF sıkıştırma",
         "page_meta_compress_body": "Dosya boyutunu azalt, kalite profilini seç ve sonucu anında dışa aktar.",
@@ -539,7 +547,7 @@ _STRINGS = {
         "scanner_page_count":       "{count} sayfa",
         "scanner_page_label":       "Sayfa {num}/{total}",
         "scanner_no_pages":         "Henüz fotoğraf eklenmedi.",
-        "scanner_fullscreen_crop":  "🔍 Tam Ekran Kırp",
+        "scanner_fullscreen_crop":  "Tam Ekran Kırp",
         "scanner_fullscreen_close": "Tam Ekrandan Çık",
         "err_select_valid_image":   "Geçerli bir resim dosyası seçin.",
 
@@ -575,10 +583,10 @@ _STRINGS = {
         # ── Shell / UI ──
         "brand_tagline":            "All-in-one PDF toolkit",
         "chat_placeholder":         "Ask Aura...",
-        "voice_idle":               "🎙 Assistant",
-        "voice_loading":            "🎙 Loading AI model...",
-        "voice_listening":          "🎙 Listening...",
-        "voice_processing":         "🎙 Processing...",
+        "voice_idle":               "Assistant",
+        "voice_loading":            "Loading model...",
+        "voice_listening":          "Listening...",
+        "voice_processing":         "Processing...",
         "tray_background_title":    "PDF Aura is still running",
         "tray_background_body":     "To quit completely, right-click the PDF Aura icon next to the clock and choose Quit.",
         "page_meta_scanner_eyebrow": "DOCUMENT SCANNER",
@@ -592,10 +600,10 @@ _STRINGS = {
         "hint_split":               "Pick a PDF, enter the page range you want to keep and press Split PDF.",
         "hint_merge":               "Add the PDFs, set the order with Up/Down and press Merge.",
         "hint_edit":                "Pick a PDF, choose an operation (reorder, delete, rotate) and press Apply.",
-        "hint_scanner":             "Add or drop photos, drag the red corners onto the paper's corners, set the order and create the PDF.",
+        "hint_scanner":             "Add or drop photos, drag the corner handles onto the paper's corners, set the order and create the PDF.",
         "scanner_pages":            "Pages",
-        "scanner_move_up":          "▲ Move up",
-        "scanner_move_down":        "▼ Move down",
+        "scanner_move_up":          "Move up",
+        "scanner_move_down":        "Move down",
         "scanner_empty_canvas":     "Press Add Photo or drop photos here",
 
         # ── General / Common ──
@@ -899,11 +907,11 @@ _STRINGS = {
 
         # ── Viewer ──
         "viewer_title":             "PDF Aura - Advanced Viewer",
-        "viewer_prev":              "<< Previous",
-        "viewer_next":              "Next >>",
+        "viewer_prev":              "Previous",
+        "viewer_next":              "Next",
         "viewer_page":              "Page {current} / {total}",
-        "viewer_zoom_in":           "Zoom In (+)",
-        "viewer_zoom_out":          "Zoom Out (−)",
+        "viewer_zoom_in":           "Zoom in",
+        "viewer_zoom_out":          "Zoom out",
         "quality_screen":           "screen — smallest file (screen, 72 dpi)",
         "quality_ebook":            "ebook — balanced (e-book, 150 dpi)",
         "quality_printer":          "printer — high quality (printing, 300 dpi)",
@@ -959,8 +967,12 @@ _STRINGS = {
         "settings_clear_history":   "Clear Recent Files History",
         "settings_save_btn":        "Save Settings",
         "settings_cleared":         "History cleared.",
-        "settings_saved":           "Settings saved.\nWe recommend restarting the application to apply the language change.",
-        "settings_intro":           "Changes are applied when you press Save. Restart the app after changing the language.",
+        "settings_saved":           "Settings saved.",
+        "settings_restart_title":   "Language changed",
+        "settings_restart_body":    "PDF Aura has to restart to use the new language. Restart now?\n\nScanner pages are kept; a job that is still running will be stopped.",
+        "settings_saved_restart_later": "Settings saved. The new language applies after you quit PDF Aura from its tray icon and open it again.",
+        "settings_restart_failed":  "PDF Aura could not be restarted: {error}",
+        "settings_intro":           "Changes are applied when you press Save. If you change the language, PDF Aura offers to restart.",
         "model_detail_status":      "Status",
         "model_detail_path":        "Path",
         "model_detail_license":     "License",
@@ -1002,10 +1014,14 @@ _STRINGS = {
 
         # ── Header ──
         "header_subtitle": "Compress  •  Split  •  Merge  •  Edit  •  Convert  •  Security  •  Advanced  •  Batch Process",
-        "sidebar_workspace": "WORKSPACE",
+        "sidebar_workspace": "Tools",
         "sidebar_drag_drop": "DRAG AND DROP",
         "sidebar_recent":           "Recent Files",
         "sidebar_recent_empty":     "No files produced yet.",
+        "sidebar_offline":          "Works offline; your files stay on this PC.",
+        "merge_empty_hint":         "Drop PDFs here or press Add.",
+        "convert_images_empty_hint": "Drop images here or press Add.",
+        "voice_hold_hint":          "Hold and speak  ·  Ctrl+K: type instead",
         "page_meta_compress_eyebrow": "QUICK TOOL",
         "page_meta_compress_title": "PDF compression",
         "page_meta_compress_body": "Reduce file size, choose a quality profile, and export the result immediately.",
@@ -1097,7 +1113,7 @@ _STRINGS = {
         "scanner_page_count":       "{count} pages",
         "scanner_page_label":       "Page {num}/{total}",
         "scanner_no_pages":         "No photos added yet.",
-        "scanner_fullscreen_crop":  "🔍 Fullscreen Crop",
+        "scanner_fullscreen_crop":  "Fullscreen Crop",
         "scanner_fullscreen_close": "Exit Fullscreen",
         "err_select_valid_image":   "Select a valid image file.",
 
@@ -1117,6 +1133,10 @@ _STRINGS = {
         "progress_saving":          "Saving...",
     }
 }
+
+# Each language named in itself, the way language pickers show them.
+LANGUAGES = {"tr": "Türkçe", "en": "English"}
+
 
 def get_text(key):
     """

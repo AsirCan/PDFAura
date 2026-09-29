@@ -7,7 +7,7 @@ from src.core.compress import VALID_QUALITIES, compress_pdf
 from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, confirm_overwrite, quick_error
 from src.utils.file_helper import format_size_mb, suggest_output_path
 
 
@@ -28,22 +28,14 @@ class CompressTab:
         self.build_ui()
 
     def build_ui(self):
-        shell = ttk.Frame(self.parent, style="App.TFrame")
-        shell.pack(fill="both", expand=True)
-
-        build_hint_strip(shell, _("hint_compress"))
-
-        body = ttk.Frame(shell, style="App.TFrame")
-        body.pack(fill="both", expand=True)
-
-        left = ttk.Frame(body, style="Card.TFrame", padding=22)
-        left.pack(side="left", fill="both", expand=True)
+        self.layout = ToolLayout(self.parent, _("hint_compress"))
+        left = self.layout.form
 
         ttk.Label(left, text=_("str_file_selection"), style="Section.TLabel").pack(anchor="w")
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
         input_row = ttk.Frame(left, style="Surface.TFrame")
         input_row.pack(fill="x", pady=(8, 0))
-        self.input_entry = ttk.Entry(input_row, textvariable=self.input_var, style="Dark.TEntry")
+        self.input_entry = ttk.Entry(input_row, textvariable=self.input_var, style="Input.TEntry")
         self.input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.input_button = ttk.Button(input_row, text=_("str_browse"), command=self.choose_input_pdf, style="Secondary.TButton")
         self.input_button.pack(side="right")
@@ -51,31 +43,32 @@ class CompressTab:
         ttk.Label(left, text=_("str_output_pdf"), style="Field.TLabel").pack(anchor="w", pady=(16, 0))
         output_row = ttk.Frame(left, style="Surface.TFrame")
         output_row.pack(fill="x", pady=(8, 0))
-        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Dark.TEntry")
+        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Input.TEntry")
         self.output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output_pdf, style="Ghost.TButton")
+        self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output_pdf, style="Secondary.TButton")
         self.output_button.pack(side="right")
 
         settings = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         settings.pack(fill="x", pady=(22, 0))
         ttk.Label(settings, text=_("compress_settings"), style="Section.TLabel").pack(anchor="w")
-        ttk.Label(settings, text=_("compress_quality"), style="Field.TLabel").pack(anchor="w", pady=(14, 0))
+        ttk.Label(settings, text=_("compress_quality"), style="Field.TLabel").pack(anchor="w", pady=(12, 2))
         # Bare "screen/ebook/printer/prepress" said nothing about what they do.
         self._quality_labels = {q: _(f"quality_{q}") for q in VALID_QUALITIES}
         self._quality_by_label = {v: k for k, v in self._quality_labels.items()}
-        self.quality_combo = ttk.Combobox(settings, textvariable=self.quality_var,
-                                          values=list(self._quality_labels.values()),
-                                          state="readonly", width=42, style="Dark.TCombobox")
-        self.quality_combo.pack(anchor="w", pady=(8, 0))
-        ttk.Label(settings, text=_("compress_quality_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(10, 0))
+        # All four profiles in view: the choice is the whole point of the tool.
+        self.quality_buttons = []
+        for label in self._quality_labels.values():
+            button = ttk.Radiobutton(settings, text=label, value=label, variable=self.quality_var,
+                                     style="Flat.TRadiobutton")
+            button.pack(anchor="w", pady=(6, 0))
+            self.quality_buttons.append(button)
+        ttk.Label(settings, text=_("compress_quality_hint"), style="Hint.TLabel", justify="left").pack(anchor="w", pady=(10, 0))
 
-        self.footer = ProgressFooter(left, _("compress_btn"), self.start_compression, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(22, 0))
+        self.footer = ProgressFooter(left, _("compress_btn"), self.start_compression)
+        self.footer.pack(fill="x", pady=(24, 0))
 
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="right", fill="y", padx=(18, 0))
-        self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x")
+        self.feedback = InlineFeedback(left)
+        self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("compress_settings"), _("compress_quality_hint"))
 
     def choose_input_pdf(self):

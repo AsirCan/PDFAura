@@ -8,7 +8,8 @@ from src.core.edit import delete_pages_from_pdf, reorder_pages_in_pdf, rotate_pa
 from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.widgets import SegmentedControl
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, quick_error
 
 
 class EditTab:
@@ -31,59 +32,46 @@ class EditTab:
         self.build_ui()
 
     def build_ui(self):
-        shell = ttk.Frame(self.parent, style="App.TFrame")
-        shell.pack(fill="both", expand=True)
-
-        build_hint_strip(shell, _("hint_edit"))
-
-        body = ttk.Frame(shell, style="App.TFrame")
-        body.pack(fill="both", expand=True)
-
-        left = ttk.Frame(body, style="Card.TFrame", padding=22)
-        left.pack(side="left", fill="both", expand=True)
+        self.layout = ToolLayout(self.parent, _("hint_edit"))
+        left = self.layout.form
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
         input_row = ttk.Frame(left, style="Surface.TFrame")
         input_row.pack(fill="x", pady=(8, 0))
-        self.edit_input_entry = ttk.Entry(input_row, textvariable=self.edit_input_var, style="Dark.TEntry")
+        self.edit_input_entry = ttk.Entry(input_row, textvariable=self.edit_input_var, style="Input.TEntry")
         self.edit_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.edit_input_button = ttk.Button(input_row, text=_("str_browse"), command=self.choose_edit_input_pdf, style="Secondary.TButton")
         self.edit_input_button.pack(side="right")
         ttk.Label(left, textvariable=self.edit_page_info_var, style="PageInfo.TLabel").pack(anchor="w", pady=(8, 0))
 
         ttk.Label(left, text=_("edit_operation"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
-        self.edit_mode_combo = ttk.Combobox(
-            left,
-            textvariable=self.edit_mode_var,
-            values=[_("edit_mode_delete"), _("edit_mode_rotate"), _("edit_mode_reorder")],
-            state="readonly",
-            width=26,
-            style="Dark.TCombobox",
-        )
-        self.edit_mode_combo.pack(anchor="w", pady=(8, 0))
-        self.edit_mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_edit_mode())
+        self.edit_mode_picker = SegmentedControl(
+            left, self.edit_mode_var,
+            [_("edit_mode_delete"), _("edit_mode_rotate"), _("edit_mode_reorder")],
+            command=self.switch_edit_mode)
+        self.edit_mode_picker.pack(fill="x", pady=(8, 0))
 
         self.edit_dynamic = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.edit_dynamic.pack(fill="x", pady=(18, 0))
 
         self.edit_delete_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_delete_frame, text=_("edit_pages_to_delete"), style="Field.TLabel").pack(anchor="w")
-        ttk.Entry(self.edit_delete_frame, textvariable=self.edit_delete_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
+        ttk.Entry(self.edit_delete_frame, textvariable=self.edit_delete_pages_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
         ttk.Label(self.edit_delete_frame, text=_("edit_delete_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
 
         self.edit_rotate_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_rotate_frame, text=_("edit_pages_to_rotate"), style="Field.TLabel").pack(anchor="w")
-        ttk.Entry(self.edit_rotate_frame, textvariable=self.edit_rotate_pages_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
+        ttk.Entry(self.edit_rotate_frame, textvariable=self.edit_rotate_pages_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
         ttk.Label(self.edit_rotate_frame, text=_("edit_rotate_hint"), style="Hint.TLabel").pack(anchor="w", pady=(8, 0))
         angle_row = ttk.Frame(self.edit_rotate_frame, style="Panel.TFrame")
         angle_row.pack(anchor="w", pady=(10, 0))
         ttk.Label(angle_row, text=_("edit_angle"), style="Field.TLabel").pack(side="left")
-        ttk.Combobox(angle_row, textvariable=self.edit_angle_var, values=["90", "180", "270"], state="readonly", width=8, style="Dark.TCombobox").pack(side="left", padx=(12, 0))
+        ttk.Combobox(angle_row, textvariable=self.edit_angle_var, values=["90", "180", "270"], state="readonly", width=8, style="Input.TCombobox").pack(side="left", padx=(12, 0))
         ttk.Label(angle_row, text=_("edit_angle_hint"), style="Hint.TLabel").pack(side="left", padx=(12, 0))
 
         self.edit_reorder_frame = ttk.Frame(self.edit_dynamic, style="Panel.TFrame")
         ttk.Label(self.edit_reorder_frame, text=_("edit_new_order"), style="Field.TLabel").pack(anchor="w")
-        ttk.Entry(self.edit_reorder_frame, textvariable=self.edit_order_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
+        ttk.Entry(self.edit_reorder_frame, textvariable=self.edit_order_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
         ttk.Label(self.edit_reorder_frame, text=_("edit_order_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(8, 0))
 
         self.edit_frames = {
@@ -96,18 +84,16 @@ class EditTab:
         ttk.Label(left, text=_("str_output_pdf"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
         output_row = ttk.Frame(left, style="Surface.TFrame")
         output_row.pack(fill="x", pady=(8, 0))
-        self.edit_output_entry = ttk.Entry(output_row, textvariable=self.edit_output_var, style="Dark.TEntry")
+        self.edit_output_entry = ttk.Entry(output_row, textvariable=self.edit_output_var, style="Input.TEntry")
         self.edit_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        self.edit_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_edit_output_pdf, style="Ghost.TButton")
+        self.edit_output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_edit_output_pdf, style="Secondary.TButton")
         self.edit_output_button.pack(side="right")
 
-        self.footer = ProgressFooter(left, _("str_apply"), self.start_edit, button_style="Edit.TButton", progress_style="Edit.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(22, 0))
+        self.footer = ProgressFooter(left, _("str_apply"), self.start_edit)
+        self.footer.pack(fill="x", pady=(24, 0))
 
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="right", fill="y", padx=(18, 0))
-        self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x")
+        self.feedback = InlineFeedback(left)
+        self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("edit_operation"), _("edit_delete_hint"))
 
     def switch_edit_mode(self):

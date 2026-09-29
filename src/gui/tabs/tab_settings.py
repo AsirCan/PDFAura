@@ -2,18 +2,24 @@ import os
 import threading
 import webbrowser
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import filedialog, messagebox, ttk
 
-from src.ai.model_manager import ModelDownloadError, ModelManager
+from src.ai.model_manager import ModelManager
 from src.core.config_manager import cfg
-from src.core.lang_manager import _
-from src.gui.helpers import InlineFeedback
+from src.core.lang_manager import LANGUAGES, _
+from src.gui import styles
+from src.gui.helpers import InlineFeedback, follow_width
+from src.gui.styles import P
+from src.gui.theme.images import Icons
+from src.gui.widgets import Tooltip
 
 
 class SettingsPanel(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent, style="App.TFrame")
-        self.lang_var = tk.StringVar(value=cfg.get("language", "tr"))
+        # The language the running UI was built in; changing it needs a restart.
+        self._ui_language = cfg.get("language", "tr")
+        self.lang_var = tk.StringVar(value=LANGUAGES.get(self._ui_language, self._ui_language))
         self.tray_var = tk.BooleanVar(value=cfg.get("close_to_tray", True))
         self.sound_var = tk.BooleanVar(value=cfg.get("sound_enabled", True))
         self.out_dir_var = tk.StringVar(value=cfg.get("default_output_dir", ""))
@@ -24,22 +30,14 @@ class SettingsPanel(ttk.Frame):
         self.build_ui()
 
     def build_ui(self):
-        hero = ttk.Frame(self, style="Hero.TFrame", padding=22)
-        hero.pack(fill="x")
-        ttk.Label(hero, text=_("txt_settings"), style="HeroEyebrow.TLabel").pack(anchor="w")
-        ttk.Label(hero, text=_("settings_appearance"), style="HeroTitle.TLabel").pack(anchor="w", pady=(6, 0))
-        ttk.Label(
-            hero,
-            text=_("settings_intro"),
-            style="HeroBody.TLabel",
-            wraplength=380,
-            justify="left",
-        ).pack(anchor="w", pady=(8, 0))
+        intro = ttk.Label(self, text=_("settings_intro"), style="PageBody.TLabel", justify="left")
+        intro.pack(anchor="w", fill="x")
+        follow_width(intro, self)
 
         body = ttk.Frame(self, style="App.TFrame")
-        body.pack(fill="both", expand=True, pady=(18, 0))
+        body.pack(fill="both", expand=True, pady=(16, 0))
 
-        settings_tabs = ttk.Notebook(body, style="Dark.TNotebook")
+        settings_tabs = ttk.Notebook(body, style="Tabs.TNotebook")
         settings_tabs.pack(side="left", fill="both", expand=True)
 
         general_tab = ttk.Frame(settings_tabs, style="Card.TFrame", padding=20)
@@ -50,8 +48,10 @@ class SettingsPanel(ttk.Frame):
         self._build_general_settings(general_tab)
         self._build_ai_settings(ai_tab)
 
-        right = ttk.Frame(body, style="PanelCard.TFrame", padding=18)
-        right.pack(side="right", fill="y", padx=(18, 0))
+        # Beside the notebook, level with its cards (below the tab row).
+        right = ttk.Frame(body, style="Card.TFrame", padding=16, width=300)
+        right.pack(side="right", fill="y", padx=(18, 0), pady=(46, 0))
+        right.pack_propagate(False)
         self.feedback = InlineFeedback(right)
         self.feedback.pack(fill="x")
         # set_info, not set_success: nothing has been saved yet, and the
@@ -69,23 +69,24 @@ class SettingsPanel(ttk.Frame):
         ttk.Combobox(
             row,
             textvariable=self.lang_var,
-            values=["tr", "en"],
+            values=list(LANGUAGES.values()),
             state="readonly",
-            width=12,
-            style="Dark.TCombobox",
+            width=14,
+            style="Input.TCombobox",
         ).pack(side="left", padx=(14, 0))
 
         ttk.Checkbutton(parent, text=_("settings_tray"), variable=self.tray_var, style="Flat.TCheckbutton").pack(anchor="w", pady=(16, 0))
         ttk.Checkbutton(parent, text=_("settings_sound"), variable=self.sound_var, style="Flat.TCheckbutton").pack(anchor="w", pady=(8, 0))
 
-        ttk.Separator(parent, orient="horizontal").pack(fill="x", pady=18)
+        ttk.Frame(parent, style="Divider.TFrame", height=1).pack(fill="x", pady=18)
         ttk.Label(parent, text=_("settings_file_ops"), style="Section.TLabel").pack(anchor="w")
         ttk.Label(parent, text=_("settings_default_dir"), style="Field.TLabel").pack(anchor="w", pady=(14, 0))
         folder_row = ttk.Frame(parent, style="Surface.TFrame")
         folder_row.pack(fill="x", pady=(8, 0))
-        ttk.Entry(folder_row, textvariable=self.out_dir_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ttk.Entry(folder_row, textvariable=self.out_dir_var, style="Input.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(folder_row, text=_("str_select"), command=self.pick_dir, style="Secondary.TButton").pack(side="right")
-        ttk.Button(folder_row, text=_("str_delete"), command=lambda: self.out_dir_var.set(""), style="Ghost.TButton").pack(side="right", padx=(0, 8))
+        ttk.Button(folder_row, text=_("str_delete"), command=lambda: self.out_dir_var.set(""), style="Ghost.TButton",
+                   image=styles.icon(Icons.CLEAR, 12, P.text_secondary) or "", compound="left").pack(side="right", padx=(0, 8))
 
         actions = ttk.Frame(parent, style="Surface.TFrame")
         actions.pack(anchor="w", pady=(18, 0))
@@ -98,7 +99,7 @@ class SettingsPanel(ttk.Frame):
             parent,
             text=_("settings_local_ai_desc"),
             style="Hint.TLabel",
-            wraplength=380,
+            wraplength=560,
             justify="left",
         ).pack(anchor="w", pady=(8, 0))
 
@@ -108,11 +109,11 @@ class SettingsPanel(ttk.Frame):
 
         root_picker = ttk.Frame(parent, style="Surface.TFrame")
         root_picker.pack(fill="x", pady=(8, 0))
-        ttk.Entry(root_picker, textvariable=self.ai_root_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ttk.Entry(root_picker, textvariable=self.ai_root_var, style="Input.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 8))
         ttk.Button(root_picker, text=_("str_select"), command=self.pick_ai_root, style="Secondary.TButton").pack(side="right")
-        ttk.Button(root_picker, text=_("settings_ai_open_folder"), command=self.open_ai_root, style="Ghost.TButton").pack(side="right", padx=(0, 8))
+        ttk.Button(root_picker, text=_("settings_ai_open_folder"), command=self.open_ai_root, style="Secondary.TButton").pack(side="right", padx=(0, 8))
 
-        table_frame = ttk.Frame(parent, style="Surface.TFrame")
+        table_frame = ttk.Frame(parent, style="PanelCard.TFrame", padding=2)
         table_frame.pack(fill="both", expand=True, pady=(16, 0))
 
         columns = ("status", "model", "type", "size", "hardware")
@@ -138,11 +139,11 @@ class SettingsPanel(ttk.Frame):
         action_row.pack(fill="x", pady=(14, 0))
         self.ai_refresh_btn = ttk.Button(action_row, text=_("settings_ai_refresh"), command=self.refresh_ai_models, style="Secondary.TButton")
         self.ai_refresh_btn.pack(side="left")
-        self.ai_pick_btn = ttk.Button(action_row, text=_("settings_ai_pick_model"), command=self.pick_selected_model_path, style="Ghost.TButton")
+        self.ai_pick_btn = ttk.Button(action_row, text=_("settings_ai_pick_model"), command=self.pick_selected_model_path, style="Secondary.TButton")
         self.ai_pick_btn.pack(side="left", padx=(8, 0))
-        self.ai_download_btn = ttk.Button(action_row, text=_("settings_ai_download"), command=self.download_selected_model, style="Ghost.TButton")
+        self.ai_download_btn = ttk.Button(action_row, text=_("settings_ai_download"), command=self.download_selected_model, style="Secondary.TButton")
         self.ai_download_btn.pack(side="left", padx=(8, 0))
-        self.ai_test_btn = ttk.Button(action_row, text=_("settings_ai_test"), command=self.test_selected_model, style="Ghost.TButton")
+        self.ai_test_btn = ttk.Button(action_row, text=_("settings_ai_test"), command=self.test_selected_model, style="Secondary.TButton")
         self.ai_test_btn.pack(side="left", padx=(8, 0))
         ttk.Button(action_row, text=_("settings_save_btn"), command=self.save_settings, style="Primary.TButton").pack(side="right")
 
@@ -150,7 +151,7 @@ class SettingsPanel(ttk.Frame):
             parent,
             textvariable=self.ai_detail_var,
             style="Hint.TLabel",
-            wraplength=380,
+            wraplength=560,
             justify="left",
         ).pack(anchor="w", pady=(12, 0))
 
@@ -320,15 +321,37 @@ class SettingsPanel(ttk.Frame):
         cfg.clear_recent_files()
         self.feedback.set_success(_("str_success"), _("settings_cleared"))
 
+    def _selected_language(self):
+        name = self.lang_var.get()
+        return next((code for code, label in LANGUAGES.items() if label == name), name)
+
     def save_settings(self):
-        cfg.set("language", self.lang_var.get())
+        language = self._selected_language()
+        cfg.set("language", language)
         cfg.set("close_to_tray", self.tray_var.get())
         cfg.set("sound_enabled", self.sound_var.get())
         cfg.set("default_output_dir", self.out_dir_var.get())
         if self.ai_root_var.get().strip():
             self.model_manager.set_model_root(self.ai_root_var.get().strip())
         self.refresh_ai_models()
-        self.feedback.set_success(_("str_success"), _("settings_saved"))
+        if language != self._ui_language:
+            self._offer_restart()
+        else:
+            self.feedback.set_success(_("str_success"), _("settings_saved"))
+
+    def _offer_restart(self):
+        """Every label is built once at start-up, so a new language only shows
+        after a restart. Closing the window just hides it in the tray, so
+        offer to do the restart rather than leave the user wondering."""
+        restart = getattr(self.nametowidget("."), "pdf_aura_restart", None)
+        if restart and messagebox.askyesno(_("settings_restart_title"), _("settings_restart_body"),
+                                           parent=self.winfo_toplevel()):
+            error = restart()
+            if error is None:
+                return
+            self.feedback.set_error(_("str_error"), _("settings_restart_failed").format(error=error))
+            return
+        self.feedback.set_success(_("str_success"), _("settings_saved_restart_later"))
 
 
 class SettingsDialog(tk.Toplevel):
@@ -338,7 +361,7 @@ class SettingsDialog(tk.Toplevel):
         self.transient(parent)
         self.geometry("1060x760")
         self.minsize(920, 660)
-        self.configure(bg="#f4efe8")
+        self.configure(bg=P.canvas)
 
         shell = ttk.Frame(self, style="App.TFrame", padding=24)
         shell.pack(fill="both", expand=True)
@@ -346,7 +369,10 @@ class SettingsDialog(tk.Toplevel):
         head = ttk.Frame(shell, style="App.TFrame")
         head.pack(fill="x", pady=(0, 16))
         ttk.Label(head, text=_("txt_settings"), style="PageTitle.TLabel").pack(side="left")
-        ttk.Button(head, text=_("str_close"), command=self.destroy, style="Ghost.TButton").pack(side="right")
+        close = ttk.Button(head, text=_("str_close"), command=self.destroy, style="Canvas.Secondary.TButton")
+        close.pack(side="right")
+        Tooltip(close, "Esc")
+        self.bind("<Escape>", lambda _e: self.destroy())
 
         panel = SettingsPanel(shell)
         panel.pack(fill="both", expand=True)

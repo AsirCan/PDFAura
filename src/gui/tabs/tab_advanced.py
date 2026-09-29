@@ -9,7 +9,8 @@ from src.core.metainfo import read_metadata, update_metadata
 from src.core.ocr import check_tesseract_availability, perform_ocr_to_text
 from src.core.signature import stamp_visual_signature
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.widgets import SegmentedControl
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, quick_error
 from src.gui.pdf_viewer import PDFViewerWindow
 
 
@@ -43,38 +44,25 @@ class AdvancedTab:
         self.build_ui()
 
     def build_ui(self):
-        shell = ttk.Frame(self.parent, style="App.TFrame")
-        shell.pack(fill="both", expand=True)
-
-        build_hint_strip(shell, _("hint_advanced"))
-
-        body = ttk.Frame(shell, style="App.TFrame")
-        body.pack(fill="both", expand=True)
-
-        left = ttk.Frame(body, style="Card.TFrame", padding=22)
-        left.pack(side="left", fill="both", expand=True)
+        self.layout = ToolLayout(self.parent, _("hint_advanced"))
+        left = self.layout.form
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
         input_row = ttk.Frame(left, style="Surface.TFrame")
         input_row.pack(fill="x", pady=(8, 0))
-        self.input_entry = ttk.Entry(input_row, textvariable=self.input_var, style="Dark.TEntry")
+        self.input_entry = ttk.Entry(input_row, textvariable=self.input_var, style="Input.TEntry")
         self.input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(input_row, text=_("str_select"), command=self.choose_input, style="Secondary.TButton").pack(side="right")
 
         ttk.Label(left, text=_("adv_operation"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
-        self.mode_combo = ttk.Combobox(
-            left,
-            textvariable=self.action_var,
-            values=[_("adv_preview"), _("adv_ocr"), _("adv_metadata"), _("adv_signature")],
-            state="readonly",
-            width=30,
-            style="Dark.TCombobox",
-        )
-        self.mode_combo.pack(anchor="w", pady=(8, 0))
-        self.mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_mode())
+        self.mode_picker = SegmentedControl(
+            left, self.action_var,
+            [_("adv_preview"), _("adv_ocr"), _("adv_metadata"), _("adv_signature")],
+            command=self.switch_mode)
+        self.mode_picker.pack(fill="x", pady=(8, 0))
 
         self.dyn_frame = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
-        self.dyn_frame.pack(fill="both", expand=True, pady=(18, 0))
+        self.dyn_frame.pack(fill="x", pady=(18, 0))
 
         self.f_preview = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Label(self.f_preview, text=_("adv_preview_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w")
@@ -113,27 +101,25 @@ class AdvancedTab:
         ttk.Label(left, text=_("str_output_dir_file"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
         output_row = ttk.Frame(left, style="Surface.TFrame")
         output_row.pack(fill="x", pady=(8, 0))
-        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Dark.TEntry")
+        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Input.TEntry")
         self.output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output, style="Ghost.TButton")
+        self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output, style="Secondary.TButton")
         self.output_button.pack(side="right")
 
-        self.footer = ProgressFooter(left, _("str_start"), self.start_action, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(22, 0))
+        self.footer = ProgressFooter(left, _("str_start"), self.start_action)
+        self.footer.pack(fill="x", pady=(24, 0))
 
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="right", fill="y", padx=(18, 0))
-        self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x")
+        self.feedback = InlineFeedback(left)
+        self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("adv_operation"), _("adv_preview_hint"))
 
     def _meta_row(self, parent, row, label_text, variable, button_command=None, button_text=None):
         ttk.Label(parent, text=label_text, style="Field.TLabel").grid(row=row, column=0, sticky="w", pady=(10, 0))
         entry_row = ttk.Frame(parent, style="Panel.TFrame")
         entry_row.grid(row=row, column=1, sticky="ew", pady=(10, 0), padx=(12, 0))
-        ttk.Entry(entry_row, textvariable=variable, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ttk.Entry(entry_row, textvariable=variable, style="Input.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
         if button_command and button_text:
-            ttk.Button(entry_row, text=button_text, command=button_command, style="Ghost.TButton").pack(side="right")
+            ttk.Button(entry_row, text=button_text, command=button_command, style="Secondary.TButton").pack(side="right")
 
     def switch_mode(self):
         for frame in self.frames.values():

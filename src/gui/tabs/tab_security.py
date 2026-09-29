@@ -7,7 +7,8 @@ from src.core.errors import friendly_error
 from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, check_new_password, decrypt_pdf, encrypt_pdf
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, bind_preview, build_hint_strip, quick_error
+from src.gui.widgets import SegmentedControl
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, confirm_overwrite, quick_error
 
 
 class SecurityTab:
@@ -30,54 +31,41 @@ class SecurityTab:
         self.build_ui()
 
     def build_ui(self):
-        shell = ttk.Frame(self.parent, style="App.TFrame")
-        shell.pack(fill="both", expand=True)
-
-        build_hint_strip(shell, _("hint_security"))
-
-        body = ttk.Frame(shell, style="App.TFrame")
-        body.pack(fill="both", expand=True)
-
-        left = ttk.Frame(body, style="Card.TFrame", padding=22)
-        left.pack(side="left", fill="both", expand=True)
+        self.layout = ToolLayout(self.parent, _("hint_security"))
+        left = self.layout.form
 
         ttk.Label(left, text=_("str_input_pdf"), style="Field.TLabel").pack(anchor="w")
         input_row = ttk.Frame(left, style="Surface.TFrame")
         input_row.pack(fill="x", pady=(8, 0))
-        self.input_entry = ttk.Entry(input_row, textvariable=self.input_var, style="Dark.TEntry")
+        self.input_entry = ttk.Entry(input_row, textvariable=self.input_var, style="Input.TEntry")
         self.input_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
         self.input_button = ttk.Button(input_row, text=_("str_browse"), command=self.choose_input_pdf, style="Secondary.TButton")
         self.input_button.pack(side="right")
 
         ttk.Label(left, text=_("security_op_type"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
-        self.mode_combo = ttk.Combobox(
-            left,
-            textvariable=self.mode_var,
-            values=[_("security_encrypt"), _("security_decrypt"), _("security_watermark")],
-            state="readonly",
-            width=24,
-            style="Dark.TCombobox",
-        )
-        self.mode_combo.pack(anchor="w", pady=(8, 0))
-        self.mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_mode())
+        self.mode_picker = SegmentedControl(
+            left, self.mode_var,
+            [_("security_encrypt"), _("security_decrypt"), _("security_watermark")],
+            command=self.switch_mode)
+        self.mode_picker.pack(fill="x", pady=(8, 0))
 
         self.dynamic_frame = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.dynamic_frame.pack(fill="x", pady=(18, 0))
 
         self.password_frame = ttk.Frame(self.dynamic_frame, style="Panel.TFrame")
         ttk.Label(self.password_frame, text=_("security_password"), style="Field.TLabel").pack(anchor="w")
-        self.password_entry = ttk.Entry(self.password_frame, textvariable=self.password_var, show="*", style="Dark.TEntry")
+        self.password_entry = ttk.Entry(self.password_frame, textvariable=self.password_var, show="*", style="Input.TEntry")
         self.password_entry.pack(fill="x", pady=(8, 0))
 
         # Only shown when encrypting; removing a password needs no confirmation.
         self.confirm_row = ttk.Frame(self.password_frame, style="Panel.TFrame")
         ttk.Label(self.confirm_row, text=_("security_password_confirm"), style="Field.TLabel").pack(anchor="w", pady=(12, 0))
-        self.confirm_entry = ttk.Entry(self.confirm_row, textvariable=self.confirm_var, show="*", style="Dark.TEntry")
+        self.confirm_entry = ttk.Entry(self.confirm_row, textvariable=self.confirm_var, show="*", style="Input.TEntry")
         self.confirm_entry.pack(fill="x", pady=(8, 0))
 
         self.watermark_frame = ttk.Frame(self.dynamic_frame, style="Panel.TFrame")
         ttk.Label(self.watermark_frame, text=_("security_watermark_text"), style="Field.TLabel").pack(anchor="w")
-        self.watermark_entry = ttk.Entry(self.watermark_frame, textvariable=self.watermark_text_var, style="Dark.TEntry")
+        self.watermark_entry = ttk.Entry(self.watermark_frame, textvariable=self.watermark_text_var, style="Input.TEntry")
         self.watermark_entry.pack(fill="x", pady=(8, 0))
 
         self.frames = {
@@ -90,18 +78,16 @@ class SecurityTab:
         ttk.Label(left, text=_("str_output_pdf"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
         output_row = ttk.Frame(left, style="Surface.TFrame")
         output_row.pack(fill="x", pady=(8, 0))
-        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Dark.TEntry")
+        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Input.TEntry")
         self.output_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output_pdf, style="Ghost.TButton")
+        self.output_button = ttk.Button(output_row, text=_("str_save_as"), command=self.choose_output_pdf, style="Secondary.TButton")
         self.output_button.pack(side="right")
 
-        self.footer = ProgressFooter(left, _("str_apply"), self.start_action, button_style="Security.TButton", progress_style="Security.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(22, 0))
+        self.footer = ProgressFooter(left, _("str_apply"), self.start_action)
+        self.footer.pack(fill="x", pady=(24, 0))
 
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="right", fill="y", padx=(18, 0))
-        self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x")
+        self.feedback = InlineFeedback(left)
+        self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("security_op_type"), _("security_watermark_text"))
 
     def switch_mode(self):

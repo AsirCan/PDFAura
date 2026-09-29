@@ -6,7 +6,10 @@ from tkinter import ttk, filedialog
 from src.core.batch import batch_compress_dir, batch_convert_dir, batch_rename_dir
 from src.core.lang_manager import _
 from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, build_hint_strip, quick_error
+from src.gui import styles
+from src.gui.styles import P
+from src.gui.widgets import SegmentedControl
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, quick_error
 
 
 class BatchTab:
@@ -25,41 +28,28 @@ class BatchTab:
         self.build_ui()
 
     def build_ui(self):
-        shell = ttk.Frame(self.parent, style="App.TFrame")
-        shell.pack(fill="both", expand=True)
-
-        build_hint_strip(shell, _("hint_batch"))
-
-        body = ttk.Frame(shell, style="App.TFrame")
-        body.pack(fill="both", expand=True)
-
-        left = ttk.Frame(body, style="Card.TFrame", padding=22)
-        left.pack(side="left", fill="both", expand=True)
+        self.layout = ToolLayout(self.parent, _("hint_batch"))
+        left = self.layout.form
 
         ttk.Label(left, text=_("str_input_folder"), style="Field.TLabel").pack(anchor="w")
         input_row = ttk.Frame(left, style="Surface.TFrame")
         input_row.pack(fill="x", pady=(8, 0))
-        ttk.Entry(input_row, textvariable=self.input_dir_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ttk.Entry(input_row, textvariable=self.input_dir_var, style="Input.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
         ttk.Button(input_row, text=_("str_select_dir"), command=self.choose_input_dir, style="Secondary.TButton").pack(side="right")
 
         ttk.Label(left, text=_("batch_main_type"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
-        self.mode_combo = ttk.Combobox(
-            left,
-            textvariable=self.action_var,
-            values=[_("batch_compress"), _("batch_convert"), _("batch_rename")],
-            state="readonly",
-            width=30,
-            style="Dark.TCombobox",
-        )
-        self.mode_combo.pack(anchor="w", pady=(8, 0))
-        self.mode_combo.bind("<<ComboboxSelected>>", lambda _event: self.switch_mode())
+        self.mode_picker = SegmentedControl(
+            left, self.action_var,
+            [_("batch_compress"), _("batch_convert"), _("batch_rename")],
+            command=self.switch_mode)
+        self.mode_picker.pack(fill="x", pady=(8, 0))
 
         self.dyn_frame = ttk.Frame(left, style="PanelCard.TFrame", padding=16)
         self.dyn_frame.pack(fill="x", pady=(18, 0))
 
         self.f_compress = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Label(self.f_compress, text=_("batch_compress_quality"), style="Field.TLabel").pack(anchor="w")
-        ttk.Combobox(self.f_compress, textvariable=self.compress_qual_var, values=["screen", "ebook", "printer", "prepress"], state="readonly", style="Dark.TCombobox").pack(anchor="w", pady=(8, 0))
+        ttk.Combobox(self.f_compress, textvariable=self.compress_qual_var, values=["screen", "ebook", "printer", "prepress"], state="readonly", style="Input.TCombobox").pack(anchor="w", pady=(8, 0))
 
         self.f_convert = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Radiobutton(self.f_convert, text=_("batch_radio_pdf2img"), variable=self.convert_mode_var, value="pdf2img", style="Flat.TRadiobutton").pack(anchor="w")
@@ -67,7 +57,7 @@ class BatchTab:
 
         self.f_rename = ttk.Frame(self.dyn_frame, style="Panel.TFrame")
         ttk.Label(self.f_rename, text=_("batch_rename_rule"), style="Field.TLabel").pack(anchor="w")
-        ttk.Entry(self.f_rename, textvariable=self.rename_rule_var, style="Dark.TEntry").pack(fill="x", pady=(8, 0))
+        ttk.Entry(self.f_rename, textvariable=self.rename_rule_var, style="Input.TEntry").pack(fill="x", pady=(8, 0))
         ttk.Label(self.f_rename, text=_("batch_rename_hint"), style="Hint.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(10, 0))
 
         self.frames = {
@@ -80,24 +70,26 @@ class BatchTab:
         ttk.Label(left, text=_("str_output_folder_label"), style="Field.TLabel").pack(anchor="w", pady=(18, 0))
         output_row = ttk.Frame(left, style="Surface.TFrame")
         output_row.pack(fill="x", pady=(8, 0))
-        ttk.Entry(output_row, textvariable=self.output_dir_var, style="Dark.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
-        ttk.Button(output_row, text=_("str_select_dir"), command=self.choose_output_dir, style="Ghost.TButton").pack(side="right")
+        ttk.Entry(output_row, textvariable=self.output_dir_var, style="Input.TEntry").pack(side="left", fill="x", expand=True, padx=(0, 10))
+        ttk.Button(output_row, text=_("str_select_dir"), command=self.choose_output_dir, style="Secondary.TButton").pack(side="right")
 
-        self.footer = ProgressFooter(left, _("batch_start_btn"), self.start_action, button_style="Accent.TButton", progress_style="Accent.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(22, 0))
+        self.footer = ProgressFooter(left, _("batch_start_btn"), self.start_action)
+        self.footer.pack(fill="x", pady=(24, 0))
 
         log_card = ttk.Frame(left, style="PanelCard.TFrame", padding=14)
         log_card.pack(fill="both", expand=True, pady=(18, 0))
         ttk.Label(log_card, text=_("batch_log_title"), style="Section.TLabel").pack(anchor="w")
         # width=1: a Text defaults to 80 columns, which demanded ~560 px and
         # squeezed the preview panel off the right of the window.
-        self.log_text = tk.Text(log_card, height=10, width=1, bg="#fbfdff", fg="#18212b", bd=0, state="disabled", font=("Consolas", 9), wrap="word")
+        self.log_text = tk.Text(log_card, height=10, width=1, bg=P.surface_subtle, fg=P.text, bd=0,
+                                state="disabled", font=styles.font("mono"), wrap="word",
+                                padx=10, pady=8, highlightthickness=1,
+                                highlightbackground=P.border_subtle, highlightcolor=P.border_subtle,
+                                selectbackground=P.accent_subtle_hover, selectforeground=P.text)
         self.log_text.pack(fill="both", expand=True, pady=(10, 0))
 
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="right", fill="y", padx=(18, 0))
-        self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x")
+        self.feedback = InlineFeedback(left)
+        self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("batch_main_type"), _("batch_rename_hint"))
 
     def switch_mode(self):
@@ -187,10 +179,15 @@ class BatchTab:
         except CancelledError:
             self.app_root.after(0, self._cancelled)
         except Exception as exc:
+            # Bind the text now: Python unbinds `exc` when the except block
+            # ends, so a closure reading it later raised NameError instead of
+            # showing the error.
+            message = str(exc)
+
             def fail():
                 self.footer.stop_busy()
                 self.status_var.set(_("err_critical"))
-                self.feedback.set_error(_("err_critical"), str(exc))
+                self.feedback.set_error(_("err_critical"), message)
             self.app_root.after(0, fail)
 
     def _cancelled(self):

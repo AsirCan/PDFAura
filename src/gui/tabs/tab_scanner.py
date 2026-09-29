@@ -43,19 +43,19 @@ from src.core.config_manager import cfg
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
 from src.core.scanner_session import ScannerSessionStore, SESSION_VERSION
 from src.core.task_manager import TaskContext, CancelledError
+from src.gui import styles
 from src.gui.helpers import confirm_overwrite, InlineFeedback, ProgressFooter, build_hint_strip, quick_error
-from src.gui.styles import (
-    SURFACE_COLOR, SURFACE_ALT, FIELD_COLOR, TEXT_COLOR, MUTED_TEXT,
-    BORDER_COLOR, PRIMARY_ACCENT, CONVERT_ACCENT,
-)
+from src.gui.styles import P
+from src.gui.theme.images import Icons
+from src.gui.widgets import Tooltip
 
 # ── Constants ────────────────────────────────────────────────────────────────
 CORNER_RADIUS = 8
-CORNER_COLOR = "#ef4444"
-CORNER_ACTIVE = "#f97316"
-LINE_COLOR = "#3b82f6"
+CORNER_COLOR = P.handle
+CORNER_ACTIVE = P.handle_active
+LINE_COLOR = P.handle_line
 LINE_WIDTH = 2
-CANVAS_BG = "#1e293b"
+CANVAS_BG = P.stage
 
 # Map internal mode constants → i18n keys
 _MODE_MAP = [
@@ -180,35 +180,48 @@ class ScannerTab:
         body.pack(fill="both", expand=True)
 
         # ── Left panel ──
-        left = ttk.Frame(body, style="Card.TFrame", padding=14)
-        left.pack(side="left", fill="both", expand=True)
+        left = ttk.Frame(body, style="Card.TFrame", padding=16)   # packed after the right column
 
         # ── Toolbar row 1: photos in/out ──
         toolbar1 = ttk.Frame(left, style="Surface.TFrame")
         toolbar1.pack(fill="x", pady=(0, 8))
 
-        self.add_photo_button = ttk.Button(toolbar1, text="＋ " + tr("scanner_add_photo"), command=self.add_photos, style="Secondary.TButton")
+        def icon(glyph, color=P.text_secondary):
+            return styles.icon(glyph, 13, color) or ""
+
+        self.add_photo_button = ttk.Button(toolbar1, text=tr("scanner_add_photo"), command=self.add_photos,
+                                           style="Secondary.TButton", image=icon(Icons.ADD, P.text), compound="left")
         self.add_photo_button.pack(side="left", padx=(0, 6))
-        self.remove_photo_button = ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current, style="Ghost.TButton")
-        self.remove_photo_button.pack(side="left", padx=(0, 6))
-        ttk.Button(toolbar1, text=tr("scanner_clear_all"), command=self.clear_all_pages, style="Ghost.TButton").pack(side="left", padx=(0, 6))
-        ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop, style="Ghost.TButton").pack(side="right")
+        self.remove_photo_button = ttk.Button(toolbar1, text=tr("scanner_remove_photo"), command=self.remove_current,
+                                              style="Ghost.TButton", image=icon(Icons.DELETE), compound="left")
+        self.remove_photo_button.pack(side="left", padx=(0, 2))
+        ttk.Button(toolbar1, text=tr("scanner_clear_all"), command=self.clear_all_pages, style="Ghost.TButton",
+                   image=icon(Icons.CLEAR), compound="left").pack(side="left", padx=(0, 6))
+        fullscreen = ttk.Button(toolbar1, text=tr("scanner_fullscreen_crop"), command=self.open_fullscreen_crop,
+                                style="Ghost.TButton", image=icon(Icons.FULLSCREEN), compound="left")
+        fullscreen.pack(side="right")
+        Tooltip(fullscreen, tr("scanner_fullscreen_crop"))
 
         # ── Toolbar row 2: per-page corrections ──
         toolbar2 = ttk.Frame(left, style="Surface.TFrame")
         toolbar2.pack(fill="x", pady=(0, 8))
         ttk.Button(toolbar2, text=tr("scanner_rotate_ccw"), command=self.rotate_ccw, style="Small.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar2, text=tr("scanner_rotate_cw"), command=self.rotate_cw, style="Small.TButton").pack(side="left", padx=(0, 12))
-        ttk.Button(toolbar2, text=tr("scanner_auto_detect"), command=self.auto_detect, style="Small.TButton").pack(side="left", padx=(0, 4))
-        ttk.Button(toolbar2, text=tr("scanner_reset_corners"), command=self.reset_corners, style="Small.TButton").pack(side="left")
+        ttk.Button(toolbar2, text=tr("scanner_rotate_cw"), command=self.rotate_cw, style="Small.TButton").pack(side="left", padx=(0, 4))
+        ttk.Frame(toolbar2, style="Divider.TFrame", width=1).pack(side="left", fill="y", padx=8, pady=4)
+        ttk.Button(toolbar2, text=tr("scanner_auto_detect"), command=self.auto_detect, style="Small.TButton",
+                   image=icon(Icons.SPARK), compound="left").pack(side="left", padx=(0, 4))
+        ttk.Button(toolbar2, text=tr("scanner_reset_corners"), command=self.reset_corners, style="Small.TButton",
+                   image=icon(Icons.SYNC), compound="left").pack(side="left")
 
         # ── Page strip (left) | sash | crop canvas (right) ──
         work = ttk.Frame(left, style="Surface.TFrame")
         work.pack(fill="both", expand=True)
         self.work_frame = work
 
-        self._caption_font = tkfont.Font(root=self.app_root, family="Segoe UI", size=9)
-        self._caption_font_sel = tkfont.Font(root=self.app_root, family="Segoe UI Semibold", size=9)
+        family, size = styles.font("small")
+        self._caption_font = tkfont.Font(root=self.app_root, family=family, size=size)
+        family, size = styles.font("small_strong")
+        self._caption_font_sel = tkfont.Font(root=self.app_root, family=family, size=size)
 
         strip_w = self._STRIP_MIN_W if self._strip_auto else max(self._STRIP_MIN_W, int(cfg.get("scanner_strip_width", 0)))
         strip = ttk.Frame(work, style="Surface.TFrame", width=strip_w)
@@ -221,12 +234,14 @@ class ScannerTab:
         self.strip_hint_widget.pack(anchor="w", pady=(0, 6))
         strip_buttons = ttk.Frame(strip, style="Surface.TFrame")
         strip_buttons.pack(side="bottom", fill="x", pady=(8, 0))
-        self.move_up_button = ttk.Button(strip_buttons, text=tr("scanner_move_up"), command=lambda: self.move_page(-1), style="Small.TButton")
-        self.move_down_button = ttk.Button(strip_buttons, text=tr("scanner_move_down"), command=lambda: self.move_page(1), style="Small.TButton")
+        self.move_up_button = ttk.Button(strip_buttons, text=tr("scanner_move_up"), command=lambda: self.move_page(-1),
+                                         style="Small.TButton", image=icon(Icons.UP), compound="left")
+        self.move_down_button = ttk.Button(strip_buttons, text=tr("scanner_move_down"), command=lambda: self.move_page(1),
+                                           style="Small.TButton", image=icon(Icons.DOWN), compound="left")
         self._strip_wide = None
         self._relayout_strip_header(strip_w)
 
-        self.strip_canvas = tk.Canvas(strip, bg=SURFACE_ALT, highlightthickness=1, highlightbackground=BORDER_COLOR,
+        self.strip_canvas = tk.Canvas(strip, bg=P.sunken, highlightthickness=0,
                                       width=128, yscrollincrement=20)
         self.strip_canvas.pack(fill="both", expand=True)
         c = self.strip_canvas
@@ -245,17 +260,17 @@ class ScannerTab:
         c.bind("<Configure>", lambda e: self._debounce("strip", 60, self._refresh_strip))
 
         # Drag to resize the strip; double-click returns to auto width.
-        self.strip_sash = tk.Frame(work, width=self._SASH_W, bg=SURFACE_COLOR, cursor="sb_h_double_arrow")
+        self.strip_sash = tk.Frame(work, width=self._SASH_W, bg=P.surface, cursor="sb_h_double_arrow")
         self.strip_sash.pack(side="left", fill="y")
-        self._sash_grip = tk.Frame(self.strip_sash, width=4, height=48, bg=BORDER_COLOR, cursor="sb_h_double_arrow")
+        self._sash_grip = tk.Frame(self.strip_sash, width=4, height=48, bg=P.border, cursor="sb_h_double_arrow")
         self._sash_grip.place(relx=0.5, rely=0.5, anchor="center")
         for w in (self.strip_sash, self._sash_grip):
             w.bind("<ButtonPress-1>", self._on_sash_press)
             w.bind("<B1-Motion>", self._on_sash_drag)
             w.bind("<ButtonRelease-1>", self._on_sash_release)
             w.bind("<Double-Button-1>", self._on_sash_double)
-            w.bind("<Enter>", lambda e: self._sash_grip.configure(bg=PRIMARY_ACCENT))
-            w.bind("<Leave>", lambda e: self._sash_drag or self._sash_grip.configure(bg=BORDER_COLOR))
+            w.bind("<Enter>", lambda e: self._sash_grip.configure(bg=P.accent))
+            w.bind("<Leave>", lambda e: self._sash_drag or self._sash_grip.configure(bg=P.border))
         work.bind("<Configure>", lambda e: self._debounce("fit", 60, self._fit_strip))
 
         self._detect_controls = [
@@ -278,44 +293,58 @@ class ScannerTab:
         self.canvas.bind("<ButtonRelease-1>", self._on_canvas_release)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
-        ttk.Label(left, text=tr("scanner_corners_hint"), style="Hint.TLabel").pack(anchor="w", pady=(6, 0))
+        corners_hint = ttk.Label(left, text=tr("scanner_corners_hint"), style="Hint.TLabel")
 
         # ── Mode + Output row ──
-        options_row = ttk.Frame(left, style="Surface.TFrame")
-        options_row.pack(fill="x", pady=(10, 0))
+        # Two rows: side by side they did not fit the narrowest window.
+        options = ttk.Frame(left, style="Surface.TFrame")
+        options.columnconfigure(1, weight=1)
 
-        ttk.Label(options_row, text=tr("scanner_scan_mode"), style="Field.TLabel").pack(side="left")
+        ttk.Label(options, text=tr("scanner_scan_mode"), style="Field.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 12))
         mode_values = [tr(key) for _mode, key in _MODE_MAP]
         self.mode_combo = ttk.Combobox(
-            options_row, textvariable=self.scan_mode_var, values=mode_values,
-            state="readonly", width=28, style="Dark.TCombobox",
+            options, textvariable=self.scan_mode_var, values=mode_values,
+            state="readonly", width=30, style="Input.TCombobox",
         )
-        self.mode_combo.pack(side="left", padx=(8, 18))
+        self.mode_combo.grid(row=0, column=1, sticky="w")
         self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
 
-        ttk.Label(options_row, text=tr("scanner_output_pdf"), style="Field.TLabel").pack(side="left")
-        self.output_entry = ttk.Entry(options_row, textvariable=self.output_var, style="Dark.TEntry", width=26)
-        self.output_entry.pack(side="left", padx=(8, 4), fill="x", expand=True)
-        ttk.Button(options_row, text=tr("str_save"), command=self.choose_output, style="Ghost.TButton").pack(side="left")
+        ttk.Label(options, text=tr("scanner_output_pdf"), style="Field.TLabel").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=(8, 0))
+        output_row = ttk.Frame(options, style="Surface.TFrame")
+        output_row.grid(row=1, column=1, sticky="ew", pady=(8, 0))
+        self.output_entry = ttk.Entry(output_row, textvariable=self.output_var, style="Input.TEntry", width=20)
+        self.output_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ttk.Button(output_row, text=tr("str_save"), command=self.choose_output, style="Secondary.TButton").pack(side="left")
 
-        self.footer = ProgressFooter(left, tr("scanner_btn"), self.start_scan, button_style="Convert.TButton", progress_style="Convert.Horizontal.TProgressbar")
-        self.footer.pack(fill="x", pady=(14, 0))
+        self.footer = ProgressFooter(left, tr("scanner_btn"), self.start_scan)
+        # Bottom-up, ahead of the editor in pack order: on a short window the
+        # photo area shrinks, and the export button never falls off the card.
+        self.footer.pack(side="bottom", fill="x", pady=(14, 0), before=work)
+        options.pack(side="bottom", fill="x", pady=(12, 0), before=work)
+        corners_hint.pack(side="bottom", anchor="w", pady=(6, 0), before=work)
 
         # ── Right panel: preview + feedback ──
-        right = ttk.Frame(body, style="App.TFrame")
-        right.pack(side="left", fill="y", padx=(14, 0))
+        # Fixed width: sized by its content, the column and the wrapping
+        # text in the result panel kept resizing each other.
+        right = ttk.Frame(body, style="Card.TFrame", padding=16, width=280)
+        right.pack(side="right", fill="y", padx=(16, 0))
+        right.pack_propagate(False)
+        # Packed second so a narrow window takes the space from the editor,
+        # not from this fixed-width column.
+        left.pack(side="left", fill="both", expand=True)
 
-        ttk.Label(right, text=tr("scanner_preview"), style="PageEyebrow.TLabel").pack(anchor="w", pady=(0, 6))
-        self.preview_canvas = tk.Canvas(right, bg=CANVAS_BG, width=260, height=370,
-                                         highlightthickness=1, highlightbackground=BORDER_COLOR)
-        self.preview_canvas.pack(fill="x")
+        ttk.Label(right, text=tr("scanner_preview"), style="PreviewTitle.TLabel").pack(anchor="w", pady=(0, 10))
+        self.preview_canvas = tk.Canvas(right, bg=P.sunken, width=260, height=370, highlightthickness=0)
+        self.preview_canvas.pack(fill="both", expand=True)
         # Without this the preview kept its old size and sat off to one side
         # when the panel was resized.
         self.preview_canvas.bind(
             "<Configure>", lambda e: self._debounce("preview", 80, self.update_preview))
 
         self.feedback = InlineFeedback(right)
-        self.feedback.pack(fill="x", pady=(12, 0))
+        # Packed at the bottom ahead of the canvas: on a short window the
+        # preview shrinks and the result panel stays whole.
+        self.feedback.pack(side="bottom", fill="x", pady=(14, 0), before=self.preview_canvas)
         self.feedback.set_info(tr("scanner_scan_mode"), tr("scanner_select_hint"))
 
     # ─────────────────────────────────────────────────────────────────────
@@ -400,7 +429,7 @@ class ScannerTab:
 
         if not self.output_var.get().strip() and self.pages:
             base = os.path.splitext(self.pages[0].path)[0]
-            self.output_var.set(f"{base}{_('suffix_scanned')}.pdf")
+            self.output_var.set(f"{base}{tr('suffix_scanned')}.pdf")
 
         self._show_current_page()
         self.feedback.set_info(
@@ -726,15 +755,15 @@ class ScannerTab:
             x, y = self._cell_xy(i, layout)
             selected = i == self.current_index
             if selected:
-                c.create_rectangle(x - 5, y - 4, x + tw + 5, y + th + 4, outline=PRIMARY_ACCENT, width=3, tags="strip")
+                c.create_rectangle(x - 5, y - 4, x + tw + 5, y + th + 4, outline=P.accent, width=2, tags="strip")
             try:
                 c.create_image(x, y, image=self._page_thumb(pg, tw, th), anchor="nw", tags="strip")
             except Exception:
-                c.create_rectangle(x, y, x + tw, y + th, fill="#dfe6ee", outline="", tags="strip")
+                c.create_rectangle(x, y, x + tw, y + th, fill=P.border_subtle, outline="", tags="strip")
             font = self._caption_font_sel if selected else self._caption_font
             caption = str(i + 1) + (f" · {pg.label}" if pg.label else "")
             c.create_text(x + tw / 2, y + th + 13, text=self._ellipsize(caption, font, cell_w - 4),
-                          fill=PRIMARY_ACCENT if selected else MUTED_TEXT, font=font, tags="strip")
+                          fill=P.accent_text if selected else P.text_secondary, font=font, tags="strip")
 
         width = max(int(c.winfo_width()), self._STRIP_MIN_W - 4)
         total_h = self._THUMB_TOP + -(-len(self.pages) // cols) * cell_h
@@ -835,8 +864,8 @@ class ScannerTab:
 
         # fade the page being moved
         sx, sy = self._cell_xy(self.pages.index(page), layout)
-        c.create_rectangle(sx, sy, sx + tw, sy + th, fill=SURFACE_ALT, stipple="gray50",
-                           outline=MUTED_TEXT, dash=(4, 3), tags="drag")
+        c.create_rectangle(sx, sy, sx + tw, sy + th, fill=P.surface_subtle, stipple="gray50",
+                           outline=P.text_tertiary, dash=(4, 3), tags="drag")
 
         # where it will land
         ex, ey = self._strip_drag_xy
@@ -844,11 +873,11 @@ class ScannerTab:
         _insert_at, row, col = self._strip_drop_slot(x, y, layout)
         if cols == 1:
             ly = self._THUMB_TOP + row * cell_h - half_gap
-            c.create_line(left - 4, ly, left + tw + 4, ly, fill=PRIMARY_ACCENT, width=4, capstyle="round", tags="drag")
+            c.create_line(left - 4, ly, left + tw + 4, ly, fill=P.accent, width=4, capstyle="round", tags="drag")
         else:
             lx = left + col * cell_w - half_gap
             ly = self._THUMB_TOP + row * cell_h
-            c.create_line(lx, ly - 4, lx, ly + th + 4, fill=PRIMARY_ACCENT, width=4, capstyle="round", tags="drag")
+            c.create_line(lx, ly - 4, lx, ly + th + 4, fill=P.accent, width=4, capstyle="round", tags="drag")
 
         # small copy under the pointer
         if self._drag_ghost is not None:
@@ -856,7 +885,7 @@ class ScannerTab:
             gx = x + 14 if ex + 14 + gw < c.winfo_width() else x - 14 - gw
             gy = y + 10
             c.create_image(gx, gy, image=self._drag_ghost, anchor="nw", tags="drag")
-            c.create_rectangle(gx - 1, gy - 1, gx + gw + 1, gy + gh + 1, outline=PRIMARY_ACCENT, width=2, tags="drag")
+            c.create_rectangle(gx - 1, gy - 1, gx + gw + 1, gy + gh + 1, outline=P.accent, width=2, tags="drag")
 
     def _autoscroll_step(self):
         if not self._strip_dragging:
@@ -899,8 +928,8 @@ class ScannerTab:
         if page not in self.pages:
             return
         entry = tk.Entry(self.strip_canvas, font=self._caption_font, justify="center", relief="flat",
-                         bg=SURFACE_COLOR, fg=TEXT_COLOR, insertbackground=TEXT_COLOR,
-                         highlightthickness=2, highlightcolor=PRIMARY_ACCENT, highlightbackground=PRIMARY_ACCENT)
+                         bg=P.field, fg=P.text, insertbackground=P.text,
+                         highlightthickness=2, highlightcolor=P.accent, highlightbackground=P.accent)
         entry.insert(0, page.label)
         entry.select_range(0, "end")
         entry.bind("<Return>", lambda e: self._finish_rename(refocus=True))
@@ -1043,7 +1072,7 @@ class ScannerTab:
 
     def _on_sash_press(self, event):
         self._sash_drag = [event.x_root, self._strip_width(), False]
-        self._sash_grip.configure(bg=PRIMARY_ACCENT)
+        self._sash_grip.configure(bg=P.accent)
 
     def _on_sash_drag(self, event):
         if not self._sash_drag:
@@ -1055,7 +1084,7 @@ class ScannerTab:
 
     def _on_sash_release(self, _event):
         drag, self._sash_drag = self._sash_drag, None
-        self._sash_grip.configure(bg=BORDER_COLOR)
+        self._sash_grip.configure(bg=P.border)
         if drag and drag[2]:
             self._strip_auto = False
             cfg.set("scanner_strip_width", self._strip_width())
@@ -1180,9 +1209,11 @@ class ScannerTab:
             return
 
         if pg is None:
-            self.canvas.create_text(cw // 2, ch // 2 - 22, text="📷", fill="#64748b", font=("Segoe UI Emoji", 30))
-            self.canvas.create_text(cw // 2, ch // 2 + 26, text=tr("scanner_empty_canvas"), fill="#cbd5e1",
-                                    font=("Segoe UI", 11), width=max(200, cw - 80), justify="center")
+            glyph = styles.icon_font(30)
+            if glyph:
+                self.canvas.create_text(cw // 2, ch // 2 - 24, text=Icons.SCAN, fill=P.stage_muted, font=glyph)
+            self.canvas.create_text(cw // 2, ch // 2 + 24, text=tr("scanner_empty_canvas"), fill=P.stage_text,
+                                    font=styles.font("body"), width=max(200, cw - 80), justify="center")
             return
 
         ih, iw = pg.display_image.shape[:2]
@@ -1216,7 +1247,7 @@ class ScannerTab:
             cy = oy + py * scale
             r = CORNER_RADIUS
             self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                                     fill=CORNER_COLOR, outline="#ffffff", width=2, tags=f"corner_{i}")
+                                     fill=CORNER_COLOR, outline=P.surface, width=2, tags=f"corner_{i}")
 
         if self.dragging_corner is not None and getattr(self, "last_ex", None) is not None:
             self._draw_magnifier(self.canvas, pg, self.dragging_corner, self.last_ex, self.last_ey, scale)
@@ -1665,12 +1696,14 @@ class ScannerTab:
         self.fs_top.configure(bg=CANVAS_BG)
         self.fs_top.state('zoomed')  # Maximize on Windows
 
-        header = ttk.Frame(self.fs_top, style="Card.TFrame", padding=10)
+        header = ttk.Frame(self.fs_top, style="Surface.TFrame", padding=(20, 10))
         header.pack(fill="x", side="top")
-        
-        ttk.Label(header, text=tr("scanner_corners_hint"), style="Hint.TLabel").pack(side="left")
-        ttk.Button(header, text=tr("scanner_fullscreen_close"), style="Convert.TButton", 
-                   command=self.close_fullscreen_crop).pack(side="right")
+        ttk.Label(header, text=tr("scanner_corners_hint"), style="Body.TLabel").pack(side="left")
+        close = ttk.Button(header, text=tr("scanner_fullscreen_close"), style="Primary.TButton",
+                           command=self.close_fullscreen_crop)
+        close.pack(side="right")
+        Tooltip(close, "Esc")
+        self.fs_top.bind("<Escape>", lambda _e: self.close_fullscreen_crop())
 
         self.fs_canvas = tk.Canvas(self.fs_top, bg=CANVAS_BG, highlightthickness=0, cursor="crosshair")
         self.fs_canvas.pack(fill="both", expand=True)
@@ -1754,7 +1787,7 @@ class ScannerTab:
             cy = oy + py * scale
             r = CORNER_RADIUS + 4  # Bigger handle in fullscreen
             self.fs_canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
-                                     fill=CORNER_COLOR, outline="#ffffff", width=2, tags=f"corner_{i}")
+                                     fill=CORNER_COLOR, outline=P.surface, width=2, tags=f"corner_{i}")
 
         if self.fs_dragging_corner is not None and getattr(self, "last_fs_ex", None) is not None:
             self._draw_magnifier(self.fs_canvas, pg, self.fs_dragging_corner, self.last_fs_ex, self.last_fs_ey, scale)
@@ -1840,13 +1873,13 @@ class ScannerTab:
         if mag_y + mag_size > ch: mag_y = ey - mag_size - 40
         
         # Draw Loupe background and image
-        canvas.create_rectangle(mag_x-2, mag_y-2, mag_x+mag_size+2, mag_y+mag_size+2, outline="#3b82f6", width=4, fill="#1e293b", tags="mag")
+        canvas.create_rectangle(mag_x-2, mag_y-2, mag_x+mag_size+2, mag_y+mag_size+2, outline=P.surface, width=3, fill=P.stage, tags="mag")
         canvas.create_image(mag_x, mag_y, image=photo, anchor="nw", tags="mag")
         
         # Crosshair inside Loupe
         center_x, center_y = mag_x + mag_size//2, mag_y + mag_size//2
-        canvas.create_line(center_x-15, center_y, center_x+15, center_y, fill="#22c55e", width=2, tags="mag")
-        canvas.create_line(center_x, center_y-15, center_x, center_y+15, fill="#22c55e", width=2, tags="mag")
-        canvas.create_oval(center_x-3, center_y-3, center_x+3, center_y+3, fill="#ef4444", outline="#ef4444", tags="mag")
+        canvas.create_line(center_x-15, center_y, center_x+15, center_y, fill=P.magnifier_cross, width=2, tags="mag")
+        canvas.create_line(center_x, center_y-15, center_x, center_y+15, fill=P.magnifier_cross, width=2, tags="mag")
+        canvas.create_oval(center_x-3, center_y-3, center_x+3, center_y+3, fill=P.handle, outline=P.surface, tags="mag")
 
 

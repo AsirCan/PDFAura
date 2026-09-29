@@ -55,3 +55,26 @@ def _language_tr():
     cfg.config["language"] = "tr"
     yield
     cfg.config["language"] = old
+
+
+@pytest.fixture(scope="session")
+def tk_root():
+    """One Tk interpreter for the whole run.
+
+    Creating a second one after destroying the first made Tcl fail to read
+    its own init.tcl on some runs, so UI tests share this root; each test
+    cleans up the windows it opens.
+    """
+    import tkinter as tk
+    try:
+        root = tk.Tk()
+    except Exception as exc:                       # pragma: no cover
+        pytest.skip(f"no Tk display: {exc}")
+    root.withdraw()
+    from src.gui.styles import setup_styles
+    setup_styles(root)
+    yield root
+    try:
+        root.destroy()
+    except Exception:
+        pass
