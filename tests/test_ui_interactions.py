@@ -77,7 +77,7 @@ def test_every_nav_button_opens_its_page(app, page):
     window.nav_buttons[page].invoke()
     pump(root)
     assert window.current_page == page
-    assert window.workspaces[page].frame.winfo_ismapped()
+    assert wait_for(root, lambda: window.workspaces[page].frame.winfo_ismapped(), timeout=2)
     selected = [k for k, b in window.nav_buttons.items() if b.instate(["selected"])]
     assert selected == [page]
     eyebrow, title, _body = __import__("src.gui.main_window", fromlist=["PAGE_META_KEYS"]).PAGE_META_KEYS[page]
@@ -118,7 +118,7 @@ def test_group_segments_switch_split_merge_edit(app):
         group.buttons[key].invoke()
         pump(root)
         assert group.current_key == key
-        assert group.groups[key].frame.winfo_ismapped()
+        assert wait_for(root, lambda: group.groups[key].frame.winfo_ismapped(), timeout=2)
         assert [k for k, b in group.buttons.items() if b.instate(["selected"])] == [key]
 
 
@@ -315,7 +315,7 @@ def test_preview_follows_the_selected_pdf(app, tmp_path):
     assert panel.current_path == pdf
     assert panel.tk_image is not None
     assert panel.open_button.instate(["!disabled"])
-    assert panel.info.winfo_ismapped()
+    assert wait_for(root, lambda: panel.info.winfo_ismapped(), timeout=2)
     assert "2" in panel.meta_var.get()
 
     window.set_preview_file(None)
@@ -369,7 +369,7 @@ def test_assistant_replies_show_and_dismiss(app):
     root, window = app
     window._show_assistant_reply("Merhaba")
     pump(root)
-    assert window.assistant_reply.winfo_ismapped()
+    assert wait_for(root, lambda: window.assistant_reply.winfo_ismapped(), timeout=2)
     assert window.assistant_reply_var.get() == "Merhaba"
     window.hide_assistant_reply()
     pump(root)
