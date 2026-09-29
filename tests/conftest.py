@@ -52,6 +52,18 @@ def page_widths(path, password=None):
     return [round(float(p.mediabox.width)) for p in reader.pages]
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _session_language_tr():
+    """Module-scoped fixtures build whole windows before the per-test
+    fixture below runs; without this they came up in the Windows UI
+    language, so the suite only passed on a Turkish Windows."""
+    from src.core.config_manager import cfg
+    old = cfg.config.get("language")
+    cfg.config["language"] = "tr"
+    yield
+    cfg.config["language"] = old
+
+
 @pytest.fixture(autouse=True)
 def _language_tr():
     """Tests assert on Turkish messages unless they switch language themselves."""

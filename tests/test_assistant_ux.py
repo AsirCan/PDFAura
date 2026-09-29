@@ -23,7 +23,8 @@ def test_importing_the_recognizer_does_not_import_whisper():
         "print('faster_whisper' in sys.modules)"
     )
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
-    assert result.stdout.strip() == "False", result.stderr
+    # Newer PyMuPDF prints a deprecation notice for `import fitz` first.
+    assert result.stdout.strip().splitlines()[-1:] == ["False"], result.stdout + result.stderr
 
 
 def test_recognizer_starts_with_no_model():
