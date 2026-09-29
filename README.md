@@ -160,7 +160,7 @@ Piyasadaki birçok çevrim içi PDF dönüştürücü hassas belgelerinizi uzak 
 | **📷 Akıllı Tarayıcı** | **Fotoğraftan PDF'e** | AI tabanlı 4 köşe algılama, etkileşimli köşe düzenleme, çoklu sayfa yönetimi, perspektif düzeltme |
 | | **Görüntü Filtreleri** | Temiz Belge (arka plan bölme), Siyah-Beyaz (adaptif eşikleme), Gri Tonlama (CLAHE), Keskinleştirme, Orijinal |
 | **🔄 Dönüştürme** | **Görsel & Metin** | PDF ➔ PNG / JPG (özel DPI seçimi), Görseller ➔ PDF, PDF ➔ TXT |
-| | **Microsoft Office** | Word (`.doc`, `.docx`) ➔ PDF, Excel (`.xls`, `.xlsx`) ➔ PDF, PowerPoint (`.ppt`, `.pptx`) ➔ PDF |
+| | **Office Belgeleri** | Word (`.doc`, `.docx`) ➔ PDF, Excel (`.xls`, `.xlsx`) ➔ PDF, PowerPoint (`.ppt`, `.pptx`) ➔ PDF (Microsoft Office veya LibreOffice ile) |
 | **🔒 Güvenlik** | **Kriptolama & Damga**| AES-256 parola şifreleme, şifre kaldırma, sayfa bazlı metin filigranı ekleme |
 | **🧰 Gelişmiş** | **OCR & Evrak** | Resim tabanlı PDF'lerden Tesseract ile metin tanıma (kurulu dil paketlerine göre Türkçe/İngilizce), meta veri (Title, Author vb.) düzenleme, görsel imza damgalama |
 | **📦 Otomasyon** | **Toplu İşlemler** | Klasör bazlı toplu sıkıştırma, toplu dönüştürme, değişken parametreli akıllı yeniden adlandırma |
@@ -290,7 +290,7 @@ PDF Aura belge tarama özelliğinde yapay zekâ çıkarımı için ONNX modeller
 Tam fonksiyonel kullanım için aşağıdaki ek bileşenler önerilir:
 
 - **Ghostscript (Sıkıştırma için gerekli):** PDF sıkıştırma Ghostscript ile yapılır; kurulu değilse Sıkıştır sekmesi kurulum bağlantısı içeren bir uyarı gösterir. ([Ghostscript İndir](https://www.ghostscript.com/releases/index.html))
-- **Microsoft Office:** Word (`.docx`), PowerPoint (`.pptx`) ve Excel (`.xlsx`) dosyalarını PDF'e dönüştürürken sisteminizde yüklü MS Office kullanılır.
+- **Microsoft Office veya LibreOffice:** Word (`.docx`), PowerPoint (`.pptx`) ve Excel (`.xlsx`) dosyalarını PDF'e dönüştürmek için ikisinden biri gerekir. MS Office kuruluysa o kullanılır; yoksa ücretsiz [LibreOffice](https://www.libreoffice.org/download/) devreye girer.
 - **Tesseract OCR (Opsiyonel):** Resim tabanlı PDF'lerden metin okumak için Tesseract kurulu olmalıdır. Hangi dil paketleri kuruluysa OCR onları kullanır (Türkçe yoksa İngilizce ile çalışır). Uygulama içerisindeki Gelişmiş sekmesinden tek tıkla otomatik olarak da kurulabilir.
 
 ---

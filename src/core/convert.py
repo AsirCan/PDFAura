@@ -191,6 +191,10 @@ PP_SAVE_AS_PDF = 32
 XL_TYPE_PDF = 0
 
 
+class OfficeNotInstalledError(RuntimeError):
+    """The Microsoft Office application a conversion needs is not installed."""
+
+
 def _require_win32com():
     try:
         import pythoncom
@@ -207,8 +211,36 @@ def _office_error(exc, app_name):
         args = getattr(exc, "args", ())
         code = args[0] if args else None
     if code in _COM_NOT_INSTALLED:
-        return RuntimeError(_("err_office_not_installed").format(app=app_name))
+        return OfficeNotInstalledError(_("err_office_not_installed").format(app=app_name))
     return RuntimeError(f"{_('err_office_failed').format(app=app_name)} {exc}")
+
+
+def _office_to_pdf(com_convert, app_name, input_path, output_pdf, ctx):
+    """Convert with Microsoft Office, or with LibreOffice when Office is absent.
+
+    Office goes first because it renders its own formats most faithfully.
+    Without it (or without pywin32) every Office conversion used to fail
+    outright, even with LibreOffice sitting on the same machine.
+    """
+    from src.utils.libreoffice_helper import find_libreoffice, libreoffice_to_pdf
+
+    input_abs = os.path.abspath(input_path)
+    output_abs = os.path.abspath(output_pdf)
+
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 100, _("progress_converting"))
+
+    try:
+        com_convert(input_abs, output_abs)
+    except (OfficeNotInstalledError, ImportError):
+        soffice = find_libreoffice()
+        if soffice is None:
+            raise
+        libreoffice_to_pdf(soffice, input_abs, output_abs, ctx=ctx)
+
+    if ctx:
+        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 def _is_already_running(client, prog_id):
@@ -256,14 +288,11 @@ def _office_app(prog_id, app_name, single_instance=False):
 
 
 def word_to_pdf(input_docx, output_pdf, ctx=None):
-    """Convert Word to PDF via COM (requires Microsoft Word). Supports .doc and .docx."""
-    input_abs = os.path.abspath(input_docx)
-    output_abs = os.path.abspath(output_pdf)
+    """Convert Word (.doc, .docx) to PDF with Microsoft Word or LibreOffice."""
+    _office_to_pdf(_word_to_pdf_com, "Word", input_docx, output_pdf, ctx)
 
-    if ctx:
-        ctx.check_cancelled()
-        ctx.report_progress(0, 100, _("progress_converting"))
 
+def _word_to_pdf_com(input_abs, output_abs):
     with _office_app("Word.Application", "Word") as word:
         doc = None
         try:
@@ -279,19 +308,13 @@ def word_to_pdf(input_docx, output_pdf, ctx=None):
                 except Exception:
                     pass
 
-    if ctx:
-        ctx.report_progress(100, 100, _("progress_finished"))
-
 
 def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
-    """Convert PowerPoint to PDF via COM (requires Microsoft PowerPoint)."""
-    input_abs = os.path.abspath(input_ppt)
-    output_abs = os.path.abspath(output_pdf)
+    """Convert PowerPoint to PDF with Microsoft PowerPoint or LibreOffice."""
+    _office_to_pdf(_ppt_to_pdf_com, "PowerPoint", input_ppt, output_pdf, ctx)
 
-    if ctx:
-        ctx.check_cancelled()
-        ctx.report_progress(0, 100, _("progress_converting"))
 
+def _ppt_to_pdf_com(input_abs, output_abs):
     # PowerPoint is single-instance: quitting it would close the user's decks.
     with _office_app("PowerPoint.Application", "PowerPoint", single_instance=True) as powerpoint:
         deck = None
@@ -307,19 +330,13 @@ def ppt_to_pdf(input_ppt, output_pdf, ctx=None):
                 except Exception:
                     pass
 
-    if ctx:
-        ctx.report_progress(100, 100, _("progress_finished"))
-
 
 def excel_to_pdf(input_excel, output_pdf, ctx=None):
-    """Convert Excel to PDF via COM (requires Microsoft Excel)."""
-    input_abs = os.path.abspath(input_excel)
-    output_abs = os.path.abspath(output_pdf)
+    """Convert Excel to PDF with Microsoft Excel or LibreOffice."""
+    _office_to_pdf(_excel_to_pdf_com, "Excel", input_excel, output_pdf, ctx)
 
-    if ctx:
-        ctx.check_cancelled()
-        ctx.report_progress(0, 100, _("progress_converting"))
 
+def _excel_to_pdf_com(input_abs, output_abs):
     with _office_app("Excel.Application", "Excel") as excel:
         workbook = None
         try:
@@ -336,9 +353,6 @@ def excel_to_pdf(input_excel, output_pdf, ctx=None):
                     workbook.Close(False)
                 except Exception:
                     pass
-
-    if ctx:
-        ctx.report_progress(100, 100, _("progress_finished"))
 
 
 def pdf_to_txt(input_pdf, output_txt, ctx=None):

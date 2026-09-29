@@ -180,8 +180,14 @@ def test_powerpoint_we_started_is_quit(tmp_path, fake_com):
     assert ("quit", "PowerPoint.Application") in fake_com.events
 
 
+@pytest.fixture
+def no_libreoffice(monkeypatch):
+    from src.utils import libreoffice_helper
+    monkeypatch.setattr(libreoffice_helper, "find_libreoffice", lambda: None)
+
+
 @pytest.mark.parametrize("func, name, prog_id", CONVERTERS)
-def test_missing_office_gives_readable_message(tmp_path, fake_com, func, name, prog_id):
+def test_missing_office_gives_readable_message(tmp_path, fake_com, no_libreoffice, func, name, prog_id):
     fake_com.dispatch_error = -2147221005  # invalid class string
     src = tmp_path / name
     src.write_bytes(b"x")
@@ -216,6 +222,176 @@ def test_failure_still_uninitialises_and_quits(tmp_path, fake_com, func, name, p
 
     assert monkey  # sanity: the collection name is the one we expect to fail
     assert fake_com.names()[-1] == "CoUninitialize"
+
+
+# ── LibreOffice fallback ───────────────────────────────────────────────────
+#
+# PowerPoint → PDF failed with "PowerPoint is not installed" on a machine
+# that had LibreOffice, which converts the same files.
+
+
+class FakeSoffice:
+    """Stands in for subprocess.Popen running soffice --convert-to pdf."""
+
+    def __init__(self, rec, write_output=True, returncode=0, hang=False):
+        self.rec = rec
+        self.write_output = write_output
+        self.returncode_on_exit = returncode
+        self.hang = hang
+
+    def __call__(self, command, **kwargs):
+        self.rec.log("soffice", command, kwargs)
+        out_dir = command[command.index("--outdir") + 1]
+        if self.write_output and not self.hang:
+            with open(f"{out_dir}/input.pdf", "wb") as f:
+                f.write(b"%PDF-1.7 from libreoffice")
+        return FakeProcess(self)
+
+
+class FakeProcess:
+    pid = 4242
+
+    def __init__(self, fake):
+        self.fake = fake
+        self.returncode = None if fake.hang else fake.returncode_on_exit
+
+    def communicate(self, timeout=None):
+        import subprocess
+        if self.returncode is None:
+            raise subprocess.TimeoutExpired("soffice", timeout)
+        return b"soffice output", None
+
+    def poll(self):
+        return self.returncode
+
+    def kill(self):
+        self.fake.rec.log("kill")
+        self.returncode = -9
+
+
+@pytest.fixture
+def libreoffice(monkeypatch, fake_com):
+    """Office is missing, LibreOffice is 'installed' and 'converts' the file."""
+    import subprocess
+    from src.utils import libreoffice_helper
+
+    fake_com.dispatch_error = -2147221005
+    monkeypatch.setattr(libreoffice_helper, "find_libreoffice", lambda: r"C:\LO\soffice.exe")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: fake_com.log("taskkill"))
+    fake = FakeSoffice(fake_com)
+    monkeypatch.setattr(subprocess, "Popen", fake)
+    return fake
+
+
+@pytest.mark.parametrize("func, name, prog_id", CONVERTERS)
+def test_libreoffice_is_used_when_office_is_missing(tmp_path, libreoffice, func, name, prog_id):
+    src = tmp_path / name
+    src.write_bytes(b"x")
+    out = tmp_path / "out.pdf"
+
+    func(str(src), str(out))
+
+    assert out.read_bytes() == b"%PDF-1.7 from libreoffice"
+    command = [e for e in libreoffice.rec.events if e[0] == "soffice"][0][1]
+    assert command[0] == r"C:\LO\soffice.exe"
+    assert "--headless" in command
+    assert command[command.index("--convert-to") + 1] == "pdf"
+
+
+def test_libreoffice_gets_a_private_profile(tmp_path, libreoffice):
+    """Sharing the user's profile hands the job to their open LibreOffice,
+    which returns at once without writing anything."""
+    src = tmp_path / "in.pptx"
+    src.write_bytes(b"x")
+
+    convert.ppt_to_pdf(str(src), str(tmp_path / "out.pdf"))
+
+    command = [e for e in libreoffice.rec.events if e[0] == "soffice"][0][1]
+    profile = [arg for arg in command if arg.startswith("-env:UserInstallation=file:")]
+    assert profile
+
+
+def test_libreoffice_does_not_touch_the_input_folder(tmp_path, libreoffice):
+    """soffice writes lock files next to what it opens."""
+    folder = tmp_path / "Ders Notları"
+    folder.mkdir()
+    src = folder / "ders 1.pptx"
+    src.write_bytes(b"x")
+
+    convert.ppt_to_pdf(str(src), str(folder / "ders 1.pdf"))
+
+    assert sorted(p.name for p in folder.iterdir()) == ["ders 1.pdf", "ders 1.pptx"]
+    command = [e for e in libreoffice.rec.events if e[0] == "soffice"][0][1]
+    assert str(src) not in command
+
+
+def test_libreoffice_failure_is_readable_and_keeps_the_old_output(tmp_path, libreoffice):
+    libreoffice.write_output = False
+    libreoffice.returncode_on_exit = 1
+    src = tmp_path / "in.pptx"
+    src.write_bytes(b"x")
+    out = tmp_path / "out.pdf"
+    out.write_bytes(b"previous")
+
+    with pytest.raises(RuntimeError) as excinfo:
+        convert.ppt_to_pdf(str(src), str(out))
+
+    assert "LibreOffice" in str(excinfo.value)
+    assert out.read_bytes() == b"previous"
+
+
+def test_cancel_stops_libreoffice(tmp_path, libreoffice):
+    from src.core.task_manager import CancelledError, TaskContext
+
+    libreoffice.hang = True
+    src = tmp_path / "in.pptx"
+    src.write_bytes(b"x")
+    ctx = TaskContext()
+    # Cancel as soon as the conversion has started.
+    ctx.report_progress = lambda *a, **k: ctx.cancel() if a[0] == 0 else None
+
+    with pytest.raises(CancelledError):
+        convert.ppt_to_pdf(str(src), str(tmp_path / "out.pdf"), ctx=ctx)
+
+    assert "taskkill" in libreoffice.rec.names() or "kill" in libreoffice.rec.names()
+    assert not (tmp_path / "out.pdf").exists()
+
+
+def test_office_is_preferred_when_installed(tmp_path, fake_com, monkeypatch):
+    from src.utils import libreoffice_helper
+    monkeypatch.setattr(libreoffice_helper, "find_libreoffice",
+                        lambda: pytest.fail("LibreOffice used although Office is there"))
+    src = tmp_path / "in.pptx"
+    src.write_bytes(b"x")
+
+    convert.ppt_to_pdf(str(src), str(tmp_path / "out.pdf"))
+
+    assert ("saveas", "ppt", (str(tmp_path / "out.pdf"), convert.PP_SAVE_AS_PDF)) in fake_com.events
+
+
+@pytest.mark.skipif(not __import__("src.utils.libreoffice_helper", fromlist=["x"]).find_libreoffice(),
+                    reason="LibreOffice is not installed")
+def test_real_libreoffice_converts_a_word_document(tmp_path, monkeypatch):
+    """End to end with the real soffice, when this machine has it."""
+    import docx
+    import fitz
+
+    monkeypatch.setattr(convert, "_word_to_pdf_com", _raise_not_installed)
+    document = docx.Document()
+    document.add_paragraph("PDF Aura LibreOffice çıktısı")
+    src = tmp_path / "Ders Notları" / "ders.docx"
+    src.parent.mkdir()
+    document.save(src)
+    out = tmp_path / "Ders Notları" / "ders.pdf"
+
+    convert.word_to_pdf(str(src), str(out))
+
+    with fitz.open(out) as pdf:
+        assert "PDF Aura LibreOffice" in pdf[0].get_text()
+
+
+def _raise_not_installed(*_args):
+    raise convert.OfficeNotInstalledError("not installed")
 
 
 def test_word_no_longer_uses_docx2pdf():
