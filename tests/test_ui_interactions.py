@@ -677,7 +677,11 @@ def test_every_page_fits_and_scrolls_at_each_size(app, size):
         # The primary action is reachable: visible, or inside a scroll area.
         tab = window.get_active_tab()
         footer = tab.footer
-        assert footer.action_button.winfo_ismapped() or _inside_scrolling_area(footer), f"{page} at {size}"
+        # The scroll area settles over a few idle passes after a resize, so
+        # wait for it rather than checking at a fixed moment (flaky on CI).
+        reachable = wait_for(root, lambda: footer.action_button.winfo_ismapped()
+                             or _inside_scrolling_area(footer), timeout=3.0)
+        assert reachable, f"{page} at {size}"
     window.show_page("scanner")
     pump(root, 0.1)
     right = window.workspaces["scanner"].instance.preview_canvas.master

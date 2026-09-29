@@ -54,6 +54,7 @@ venv.bak/
 *.xlsx
 *.txt
 !requirements.txt
+!requirements-dev.txt
 *.png
 *.jpg
 *.jpeg
