@@ -7,7 +7,7 @@
 # PDF reading and writing
 pypdf>=4.0,<7
 cryptography>=42.0        # AES-256 encryption support for pypdf
-PyMuPDF>=1.24,<2          # rendering, image->PDF, scanner output
+PyMuPDF>=1.26.1,<2        # rendering, image->PDF, scanner output, compression (rewrite_images)
 reportlab>=4.0,<6         # watermark and signature stamps
 pdf2docx>=0.5.8,<0.6      # PDF -> Word
 

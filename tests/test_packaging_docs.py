@@ -78,11 +78,9 @@ def test_installer_output_name_matches_the_readme():
     assert "OutputBaseFilename=PDFAura-Setup" in read("setup.iss")
 
 
-def test_ghostscript_bundling_is_optional():
-    """assets\\gs10040w64.exe is not in the repo, so `iscc setup.iss` failed."""
-    iss = read("setup.iss")
-    assert "#if FileExists(GhostscriptInstaller)" in iss
-    assert iss.count("#endif") >= 2
+def test_installer_does_not_ship_ghostscript():
+    """Compression runs on PyMuPDF now; the installer has nothing extra to install."""
+    assert "ghostscript" not in read("setup.iss").lower()
 
 
 def test_the_broken_cx_freeze_script_is_gone():
@@ -184,9 +182,12 @@ def test_readme_is_honest_about_the_first_run_download():
     assert "460 MB" in readme
 
 
-def test_readme_calls_ghostscript_required_for_compression():
-    """compress_pdf() raises without it, so "recommended" was wrong."""
-    assert "Sıkıştırma için gerekli" in read("README.md")
+def test_readme_does_not_ask_for_ghostscript():
+    """Compression no longer needs Ghostscript; telling users to install it
+    would send them after a download they do not need."""
+    readme = read("README.md")
+    assert "Sıkıştırma için gerekli" not in readme
+    assert "ghostscript.com" not in readme
 
 
 def test_readme_assistant_examples_actually_parse():

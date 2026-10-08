@@ -99,7 +99,7 @@ def test_signature_coordinates_never_leak_int_errors():
 @pytest.mark.parametrize("key", [
     "err_start_page_min", "err_end_page_max", "err_start_after_end",
     "err_delete_all_pages", "err_invalid_range", "err_invalid_page",
-    "err_need_one_page", "err_ghostscript_missing", "err_tesseract_missing",
+    "err_need_one_page", "err_pdf_password_protected", "err_tesseract_missing",
 ])
 def test_core_messages_are_translated(key):
     from src.core.lang_manager import _

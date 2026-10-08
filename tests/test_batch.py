@@ -11,8 +11,8 @@ from src.core.output_paths import unique_path
 
 
 @pytest.fixture
-def no_ghostscript(monkeypatch):
-    """batch_compress_dir needs Ghostscript; replace it with a copy."""
+def copy_instead_of_compress(monkeypatch):
+    """These tests are about output names, not compression: copy instead."""
     def fake_compress(src, dst, quality, ctx=None):
         with open(src, "rb") as fin, open(dst, "wb") as fout:
             fout.write(fin.read())
@@ -87,7 +87,7 @@ def test_tokens_are_case_insensitive():
 
 # ── Compress ──────────────────────────────────────────────────────────────
 
-def test_same_name_in_subfolders_keeps_both(tmp_path, no_ghostscript):
+def test_same_name_in_subfolders_keeps_both(tmp_path, copy_instead_of_compress):
     """'rapor.pdf' and 'alt/rapor.pdf' both wrote compressed_rapor.pdf."""
     src = tmp_path / "in"
     (src / "alt").mkdir(parents=True)
@@ -101,7 +101,7 @@ def test_same_name_in_subfolders_keeps_both(tmp_path, no_ghostscript):
     assert len(pdf_names(out)) == 2
 
 
-def test_output_inside_input_is_not_reprocessed(tmp_path, no_ghostscript):
+def test_output_inside_input_is_not_reprocessed(tmp_path, copy_instead_of_compress):
     """A second run used to produce compressed_compressed_rapor.pdf."""
     src = tmp_path / "in"
     src.mkdir()

@@ -35,17 +35,6 @@ class TaskContext:
     def is_cancelled(self):
         return self._cancel_event.is_set()
 
-    def child(self):
-        """A context sharing this one's cancellation but reporting no progress.
-
-        Handed to parallel workers: they must notice a cancel (and kill their
-        Ghostscript), but four workers fighting over one progress bar would
-        just make it jump around.
-        """
-        child = TaskContext()
-        child._cancel_event = self._cancel_event
-        return child
-
     def report_progress(self, current, total, message=""):
         """
         İlerlemeyi UI'a raporlar.

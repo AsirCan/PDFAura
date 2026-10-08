@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 from src.core.lang_manager import _
-from src.utils.ghostscript_helper import CREATE_NO_WINDOW, _decode
+from src.utils.process_helper import CREATE_NO_WINDOW, decode_output
 
 # A deck with hundreds of slides takes a minute or two; a hang takes forever.
 LIBREOFFICE_TIMEOUT_S = 600
@@ -141,7 +141,7 @@ def libreoffice_to_pdf(soffice, input_path, output_pdf, ctx=None):
         produced = os.path.join(out_dir, "input.pdf")
         if process.returncode != 0 or not os.path.isfile(produced) \
                 or os.path.getsize(produced) == 0:
-            detail = _decode(output) or f"exit code {process.returncode}"
+            detail = decode_output(output) or f"exit code {process.returncode}"
             raise RuntimeError(f"{_('err_libreoffice_failed')} {detail}")
 
         with atomic_output(output_pdf) as temp_path:

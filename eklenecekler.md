@@ -6,13 +6,13 @@
 
 ## ✅ Mevcut Özellikler (Tamamlandı)
 
-- [x] PDF sıkıştırma (Ghostscript tabanlı, 4 kalite modu)
+- [x] PDF sıkıştırma (uygulama içi PyMuPDF motoru, 4 kalite modu; Ghostscript gerekmez)
 - [x] PDF kesme (sayfa aralığı seçerek kaydetme)
 - [x] Modern masaüstü arayüz
 - [x] Sekmeli araç yapısı
 - [x] Otomatik çıktı dosya adı oluşturma
 - [x] Sayfa sayısı algılama ve gösterme
-- [x] Windows installer (Inno Setup + Ghostscript otomatik kurulum)
+- [x] Windows installer (Inno Setup)
 - [x] PDF birleştirme (çoklu dosya, sıralama, ekleme/kaldırma)
 - [x] Sayfa silme (tekli, çoklu, aralık: `3, 5, 12-15`)
 - [x] Sayfa döndürme (90/180/270 derece, tekli veya tümü)

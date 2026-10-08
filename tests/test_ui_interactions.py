@@ -2,7 +2,7 @@
 tool run with its result panel, the preview, the assistant bar and resizing.
 
 The window is built once on the shared Tk root; each test leaves it on a
-known page. Worker threads are replaced where a real run needs Ghostscript.
+known page. Worker threads are replaced where a real run would be slow.
 """
 import os
 import shutil

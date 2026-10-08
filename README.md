@@ -56,7 +56,7 @@ https://github.com/user-attachments/assets/d833ff09-a121-4ea8-9124-70190dd4c518
     </td>
     <td width="33%" valign="top">
       <h3>🗜️ Gerçek sıkıştırma</h3>
-      Ghostscript tabanlı dört profille taranmış bir sözleşme 5,3 MB'tan 0,5 MB'a iner. Önceki ve sonraki boyutu ekranda görürsünüz.
+      Dört kalite profiliyle taranmış bir sözleşme 5,3 MB'tan 0,5 MB'a iner. Ek program kurmanız gerekmez; önceki ve sonraki boyutu ekranda görürsünüz.
     </td>
   </tr>
   <tr>
@@ -106,7 +106,7 @@ https://github.com/user-attachments/assets/be5c3994-be5e-45b8-8060-7a71e89c27cd
 
 > **Görüntü kalitesini koruyarak dosya boyutunu küçültün.**
 
-E-posta için `screen`, günlük kullanım için `ebook`, baskı için `printer` ya da matbaa için `prepress`. Sıkıştırma bitince özgün ve yeni boyut yan yana gösterilir; çıktıyı ya da klasörünü tek tıkla açabilirsiniz.
+E-posta için `screen`, günlük kullanım için `ebook`, baskı için `printer` ya da matbaa için `prepress`. Görseller profile uygun çözünürlüğe indirilip yeniden kodlanır, yazı tipleri yalnızca kullanılan karakterlere indirgenir; metin metin olarak kalır. Sıkıştırma uygulamanın içinde yapılır, Ghostscript gibi ayrı bir program gerekmez. Sonuç özgün dosyadan büyük çıkarsa özgün dosya korunur. İşlem bitince özgün ve yeni boyut yan yana gösterilir; çıktıyı ya da klasörünü tek tıkla açabilirsiniz.
 
 https://github.com/user-attachments/assets/0690e03b-9bdd-4cb7-97bf-0c48254090bc
 
@@ -205,8 +205,8 @@ flowchart TB
     UI["Arayüz<br/>Tkinter · ttk · TkinterDnD"]
     subgraph CORE["Çekirdek araçlar"]
         direction LR
-        P1["pypdf · PyMuPDF<br/>kes, birleştir, şifrele, önizle"]
-        P2["Ghostscript<br/>sıkıştırma"]
+        P1["PyMuPDF<br/>sıkıştır, önizle, tara"]
+        P2["pypdf<br/>kes, birleştir, şifrele"]
         P3["Office / LibreOffice · pdf2docx<br/>dönüştürme"]
         P4["Tesseract<br/>OCR"]
         P5["ReportLab<br/>filigran ve imza"]
@@ -303,7 +303,6 @@ Sonraki açılışlarda proje klasöründeki `baslat.bat` dosyasına çift tıkl
 
 | Bileşen | Ne için? | Durum |
 | :--- | :--- | :--- |
-| [Ghostscript](https://www.ghostscript.com/releases/index.html) | PDF sıkıştırma ve toplu sıkıştırma | **Sıkıştırma için gerekli.** Kurulu değilse Sıkıştır sekmesi kurulum bağlantısıyla uyarır. |
 | Microsoft Office veya [LibreOffice](https://www.libreoffice.org/download/) | Word, Excel ve PowerPoint → PDF | İkisinden biri yeterli. Office yoksa LibreOffice kullanılır. |
 | [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) | Taranmış PDF'lerden metin çıkarma | İsteğe bağlı. Gelişmiş sekmesinden tek tıkla kurulabilir. Kurulu dil paketleri kullanılır; Türkçe yoksa İngilizce ile çalışır. |
 
@@ -339,8 +338,6 @@ Modeller `models/` klasörüne indirilir ([ayrıntılar](models/README.md)). Tar
 
    Çıktı: `dist\PDFAura-Setup.exe`
 
-Ghostscript'i kuruluma eklemek isterseniz yükleyicisini `assets\gs10040w64.exe` olarak yerleştirin. Setup onu paketler ve hedef makinede Ghostscript yoksa sessizce kurar. Dosya yoksa kurulum yine sorunsuz derlenir.
-
 </details>
 
 ---
@@ -357,11 +354,11 @@ Hayır. PDF işlemlerinin hepsi çevrimdışı çalışır. İnternet yalnızca 
 </details>
 
 <details>
-<summary><b>Sıkıştır'a bastığımda Ghostscript uyarısı alıyorum.</b></summary>
+<summary><b>Sıkıştırdığım dosya neden pek küçülmedi?</b></summary>
 
 <br />
 
-Sıkıştırma Ghostscript ile yapılır. [Ghostscript'i indirip](https://www.ghostscript.com/releases/index.html) kurun ve PDF Aura'yı yeniden açın; uygulama kurulu Ghostscript'i kendisi bulur.
+PDF'lerdeki boyutun büyük kısmı görsellerden gelir; sıkıştırma da en çok onları küçültür. Taranmış belgeler ve fotoğraflı PDF'ler belirgin şekilde küçülür, yalnızca metinden oluşan bir PDF ise zaten küçüktür. Daha küçük dosya için `screen` profilini deneyin. Sonuç özgün dosyadan büyük çıkacaksa PDF Aura özgün dosyayı korur, böylece dosya hiçbir zaman büyümez.
 
 </details>
 
@@ -413,6 +410,7 @@ Ayarlar (<kbd>Ctrl</kbd>+<kbd>,</kbd>) → **Uygulama Dili**'nden dili seçip ka
 - [x] Yerel Faster-Whisper sesli komut asistanı
 - [x] Windows sistem tepsisi entegrasyonu
 - [x] Microsoft Office yoksa LibreOffice ile Office dönüştürme
+- [x] Ghostscript gerektirmeyen, uygulama içi PDF sıkıştırma
 - [ ] Windows Gezgini sağ tık menüsü (*"PDF Aura ile Sıkıştır / Dönüştür"*)
 - [ ] İsteğe bağlı yerel LLM entegrasyonu (Ollama / llama.cpp ile belge özeti)
 
@@ -435,7 +433,7 @@ Hata bildirimleri, öneriler ve pull request'ler memnuniyetle karşılanır.
 
 PDF Aura [MIT lisansı](LICENSE) ile dağıtılır; kişisel ve ticari amaçlarla özgürce kullanılabilir, değiştirilebilir ve dağıtılabilir.
 
-PDF Aura şu açık kaynak projelerin üzerine kuruludur: [pypdf](https://github.com/py-pdf/pypdf), [PyMuPDF](https://github.com/pymupdf/PyMuPDF), [Ghostscript](https://www.ghostscript.com/), [OpenCV](https://opencv.org/), [ONNX Runtime](https://onnxruntime.ai/), [U2-Net](https://github.com/xuebinqin/U-2-Net), [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Tesseract](https://github.com/tesseract-ocr/tesseract), [pdf2docx](https://github.com/ArtifexSoftware/pdf2docx), [ReportLab](https://www.reportlab.com/) ve [tkinterdnd2](https://github.com/Eliav2/tkinterdnd2). Ghostscript, LibreOffice ve Tesseract ayrı programlar olarak çağrılır ve kendi lisanslarıyla dağıtılır.
+PDF Aura şu açık kaynak projelerin üzerine kuruludur: [pypdf](https://github.com/py-pdf/pypdf), [PyMuPDF](https://github.com/pymupdf/PyMuPDF), [OpenCV](https://opencv.org/), [ONNX Runtime](https://onnxruntime.ai/), [U2-Net](https://github.com/xuebinqin/U-2-Net), [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Tesseract](https://github.com/tesseract-ocr/tesseract), [pdf2docx](https://github.com/ArtifexSoftware/pdf2docx), [ReportLab](https://www.reportlab.com/) ve [tkinterdnd2](https://github.com/Eliav2/tkinterdnd2). LibreOffice ve Tesseract ayrı programlar olarak çağrılır ve kendi lisanslarıyla dağıtılır.
 
 Tanıtım videolarındaki fiş fotoğrafları Wikimedia Commons'taki CC0 / kamu malı görsellerdir (Sarah Stierch, Mattes, Grandmaster Huon).
 

@@ -5,7 +5,7 @@ import threading
 import urllib.request
 
 from src.core.lang_manager import _
-from src.utils.ghostscript_helper import CREATE_NO_WINDOW
+from src.utils.process_helper import CREATE_NO_WINDOW
 
 def _installed_dir():
     """Where Tesseract ended up, or "" if it is not installed."""

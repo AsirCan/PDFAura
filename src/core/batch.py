@@ -48,9 +48,12 @@ def get_files_in_dir(directory, exts=[".pdf"], exclude_dir=None):
 
 def batch_compress_dir(input_dir, output_dir, quality="screen", progress_callback=None, ctx=None):
     """
-    Finds all PDFs in input_dir, compresses them via Python Core, saves into output_dir.
-    Çoklu çekirdek desteği ile paralel çalışır.
+    Finds all PDFs in input_dir, compresses them and saves them into output_dir.
     Returns (success_count, error_list)
+
+    One file at a time: compression now runs inside PyMuPDF, which must not be
+    used from several threads at once (the old parallel Ghostscript runs were
+    separate processes).
     """
     os.makedirs(output_dir, exist_ok=True)
     pdfs = get_files_in_dir(input_dir, [".pdf"], exclude_dir=output_dir)
@@ -61,59 +64,23 @@ def batch_compress_dir(input_dir, output_dir, quality="screen", progress_callbac
     errors = []
     total = len(pdfs)
     taken = set()
-    
-    # Çoklu çekirdek: paralel sıkıştırma
-    max_workers = min(os.cpu_count() or 4, total, 4)
-    
-    if max_workers > 1 and total > 1:
-        completed = 0
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_pdf = {}
-            for pdf in pdfs:
-                if ctx and ctx.is_cancelled:
-                    break
-                base = os.path.relpath(pdf, input_dir)
-                out_path = mirrored_output(pdf, input_dir, output_dir, prefix="compressed_", taken=taken)
-                future = executor.submit(compress_pdf, pdf, out_path, quality,
-                                         ctx.child() if ctx else None)
-                future_to_pdf[future] = (pdf, base, out_path)
-            
-            for future in as_completed(future_to_pdf):
-                if ctx and ctx.is_cancelled:
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    from src.core.task_manager import CancelledError
-                    raise CancelledError("İşlem kullanıcı tarafından iptal edildi.")
-                
-                pdf, base, out_path = future_to_pdf[future]
-                completed += 1
-                try:
-                    future.result()
-                    success += 1
-                    if progress_callback:
-                        progress_callback(completed, total, f"{_('batch_log_compressed')}: {base}")
-                except Exception as e:
-                    err = f"{base} -> {_('str_error')}: {str(e)}"
-                    errors.append(err)
-                    if progress_callback:
-                        progress_callback(completed, total, err)
-    else:
-        # Tek çekirdek: sıralı çalışma
-        for idx, pdf in enumerate(pdfs):
-            if ctx:
-                ctx.check_cancelled()
-            base = os.path.relpath(pdf, input_dir)
-            out_path = mirrored_output(pdf, input_dir, output_dir, prefix="compressed_", taken=taken)
-            try:
-                compress_pdf(pdf, out_path, quality)
-                success += 1
-                if progress_callback:
-                    progress_callback(idx + 1, total, f"{_('batch_log_compressed')}: {base}")
-            except Exception as e:
-                err = f"{base} -> {_('str_error')}: {str(e)}"
-                errors.append(err)
-                if progress_callback:
-                    progress_callback(idx + 1, total, err)
-                
+
+    for idx, pdf in enumerate(pdfs):
+        if ctx:
+            ctx.check_cancelled()
+        base = os.path.relpath(pdf, input_dir)
+        out_path = mirrored_output(pdf, input_dir, output_dir, prefix="compressed_", taken=taken)
+        try:
+            compress_pdf(pdf, out_path, quality)
+            success += 1
+            if progress_callback:
+                progress_callback(idx + 1, total, f"{_('batch_log_compressed')}: {base}")
+        except Exception as e:
+            err = f"{base} -> {_('str_error')}: {str(e)}"
+            errors.append(err)
+            if progress_callback:
+                progress_callback(idx + 1, total, err)
+
     _write_report(output_dir, "Batch_Compress_Report", total, success, errors)
     return success, errors
 
