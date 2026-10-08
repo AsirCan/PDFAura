@@ -201,17 +201,24 @@ Arayüz İngilizceyken İngilizce komutlar da anlaşılır (*"compress report.pd
 PDF Aura bir Python masaüstü uygulamasıdır. Arayüz Tkinter/ttk üzerine kurulu, token tabanlı bir tema sistemi kullanır. Uzun işlemler arka planda çalışır; bu sırada arayüz donmaz ve çoğu işlemi yarıda iptal edebilirsiniz.
 
 ```mermaid
-flowchart LR
-    UI["Arayüz<br/>Tkinter · ttk · TkinterDnD"] --> Core["Çekirdek araçlar"]
-    UI --> AI["Yerel yapay zekâ"]
-    Core --> P1["pypdf · PyMuPDF<br/>kes, birleştir, şifrele, önizle"]
-    Core --> P2["Ghostscript<br/>sıkıştırma"]
-    Core --> P3["MS Office / LibreOffice · pdf2docx<br/>dönüştürme"]
-    Core --> P4["Tesseract<br/>OCR"]
-    Core --> P5["ReportLab<br/>filigran ve imza"]
-    AI --> A1["OpenCV + U2-Net ONNX<br/>belge köşe tespiti"]
-    AI --> A2["Faster-Whisper<br/>ses tanıma"]
-    AI --> A3["Kural tabanlı ayrıştırıcı<br/>komut → işlem"]
+flowchart TB
+    UI["Arayüz<br/>Tkinter · ttk · TkinterDnD"]
+    subgraph CORE["Çekirdek araçlar"]
+        direction LR
+        P1["pypdf · PyMuPDF<br/>kes, birleştir, şifrele, önizle"]
+        P2["Ghostscript<br/>sıkıştırma"]
+        P3["Office / LibreOffice · pdf2docx<br/>dönüştürme"]
+        P4["Tesseract<br/>OCR"]
+        P5["ReportLab<br/>filigran ve imza"]
+    end
+    subgraph AI["Yerel yapay zekâ"]
+        direction LR
+        A1["OpenCV + U2-Net ONNX<br/>belge köşe tespiti"]
+        A2["Faster-Whisper<br/>ses tanıma"]
+        A3["Komut ayrıştırıcı<br/>cümle → işlem zinciri"]
+    end
+    UI --> CORE
+    UI --> AI
 ```
 
 ### Belge tarayıcının köşe tespiti
