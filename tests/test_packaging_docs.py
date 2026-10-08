@@ -55,12 +55,20 @@ def test_every_relative_readme_link_resolves():
     assert missing == [], f"broken links in README: {missing}"
 
 
-def test_every_readme_screenshot_exists():
+def test_every_readme_image_exists():
     readme = read("README.md")
-    images = re.findall(r'src="(docs/screenshots/[^"?]+)[^"]*"', readme)  # drop ?v= cache busters
-    assert images, "no screenshots referenced"
+    images = re.findall(r'src="((?!https?://)[^"?]+)[^"]*"', readme)  # drop ?v= cache busters
     missing = [i for i in images if not os.path.exists(os.path.join(ROOT, i))]
-    assert missing == [], f"missing screenshots: {missing}"
+    assert missing == [], f"missing images: {missing}"
+
+
+def test_readme_embeds_the_demo_videos():
+    """The screenshots became videos. GitHub only plays an attachment URL
+    that stands on a line of its own."""
+    videos = re.findall(r"^https://github\.com/user-attachments/assets/[0-9a-f-]+$",
+                        read("README.md"), re.MULTILINE)
+    assert len(videos) >= 8, f"expected the demo videos, found {len(videos)}"
+    assert len(set(videos)) == len(videos), "the same video is embedded twice"
 
 
 # ── Installer ─────────────────────────────────────────────────────────────
