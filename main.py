@@ -8,6 +8,12 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = io.StringIO()
 
+# numpy's OpenBLAS reserves about 31 MB for every CPU thread as it loads:
+# 620 MB of commit on a 20-thread machine, for an app whose only BLAS work
+# is a few vector norms. One thread costs nothing measurable. It has to be
+# set before anything imports numpy; a value the user set still wins.
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
 import tkinter as tk
 from tkinterdnd2 import TkinterDnD
 
