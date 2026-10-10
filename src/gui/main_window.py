@@ -8,6 +8,7 @@ from tkinter import ttk
 
 from PIL import Image, ImageTk
 
+from src.app import assistant
 from src.core.config_manager import cfg
 from src.core.lang_manager import _
 from src.gui import styles
@@ -26,11 +27,6 @@ from src.gui.tabs.tab_security import SecurityTab
 from src.gui.tabs.tab_settings import SettingsDialog
 from src.gui.tabs.tab_scanner import ScannerTab
 from src.gui.tabs.tab_split import SplitTab
-from src.ai.speech_recognizer import recognizer
-from src.ai.intent_parser import parse_intent
-from src.ai.action_runner import execute_intent
-from src.ai import text_speaker
-from src.ai.text_speaker import speak
 
 try:
     from tkinterdnd2 import DND_FILES
@@ -171,12 +167,10 @@ class MainWindow:
         self.root.after_idle(styles.style_title_bar, self.root)
         styles.follow_system_theme(self.root)
 
-        # The voice model is loaded on first use, not here: preloading cost
-        # ~330 MB of RAM and ~4 s of CPU on every launch, and a ~460 MB
-        # download on the first one, even if the assistant was never used.
-        self._model_loading = False
-        self._model_error = None
-        text_speaker.add_listener(self._show_assistant_reply)
+        # Typed and spoken commands; its state and replies come back here on
+        # the Tk thread. The voice model loads on first use, not at startup.
+        self.assistant = assistant.Assistant(post=self._post, on_state=self._show_assistant_state,
+                                             on_reply=self._show_assistant_reply)
 
     # ── Layout ────────────────────────────────────────────────────────────
 
@@ -568,6 +562,13 @@ class MainWindow:
 
     # ── Assistant ─────────────────────────────────────────────────────────
 
+    def _post(self, fn, *args):
+        """Run fn on the Tk thread; dropped once the window is gone."""
+        try:
+            self.root.after(0, fn, *args)
+        except (tk.TclError, RuntimeError):
+            pass
+
     def _show_assistant_reply(self, text):
         """Show an assistant reply on screen (called from worker threads)."""
         def _update():
@@ -586,102 +587,33 @@ class MainWindow:
         self.btn_mic.configure(text=text, style=style,
                                state="normal" if enabled else "disabled")
 
-    def _start_model_load(self, on_ready=None):
-        """Load the voice model on demand, keeping the button honest."""
-        if self._model_loading:
+    # What the microphone button shows for each assistant state.
+    _MIC_STATES = {
+        assistant.IDLE: ("voice_idle", True, "Voice.TButton"),
+        assistant.LOADING: ("voice_loading", False, "Voice.TButton"),
+        assistant.LISTENING: ("voice_listening", True, "VoiceActive.TButton"),
+        assistant.PROCESSING: ("voice_processing", True, "Voice.TButton"),
+        assistant.MISSING: ("voice_model_missing", True, "Voice.TButton"),
+    }
+
+    def _show_assistant_state(self, state, detail=""):
+        if state == assistant.HEARD:
+            self._set_mic_state(f"\"{detail[:40]}...\"" if len(detail) > 40 else f"\"{detail}\"")
             return
-
-        self._model_loading = True
-
-        def _started():
-            self.root.after(0, lambda: self._set_mic_state(_("voice_loading"), enabled=False))
-
-        def _ready():
-            self._model_loading = False
-            self._model_error = None
-            self.root.after(0, lambda: self._set_mic_state(_("voice_idle")))
-            if on_ready:
-                self.root.after(0, on_ready)
-
-        def _failed(exc):
-            self._model_loading = False
-            self._model_error = exc
-            # Say why, rather than leaving a live-looking button that does
-            # nothing; the reason only ever went to the console before.
-            self.root.after(0, lambda: self._set_mic_state(_("voice_model_missing")))
-            self.root.after(0, lambda: self._show_assistant_reply(
-                _("voice_model_error_body").format(error=exc)))
-
-        recognizer.load_model_async(on_start=_started, on_success=_ready, on_error=_failed)
+        key, enabled, style = self._MIC_STATES[state]
+        self._set_mic_state(_(key), enabled, style)
 
     def on_text_chat_submit(self, event=None):
         text = self.txt_chat.get().strip()
         if not text or text == self.chat_placeholder:
             return
-
         self.txt_chat.delete(0, "end")
-        self.btn_mic.configure(style="Voice.TButton", text=_("voice_processing"))
-        self.root.update_idletasks()
-
-        def _run():
-            intent = parse_intent(text)
-            execute_intent(intent)
-            self.root.after(0, lambda: self.btn_mic.configure(
-                style="Voice.TButton",
-                text=_("voice_idle")
-            ))
-
-        threading.Thread(target=_run, daemon=True).start()
+        self.assistant.submit(text)
 
     def on_mic_press(self, event):
         if str(self.btn_mic.cget("state")) == "disabled":
             return
-
-        if self._model_error is not None:
-            # Explain rather than sit there looking usable.
-            self._show_assistant_reply(
-                _("voice_model_error_body").format(error=self._model_error))
-            self._start_model_load()
-            return
-
-        if not recognizer.model_ready:
-            # First use: load now and tell the user it is happening.
-            self._start_model_load()
-            return
-
-        self.btn_mic.configure(style="VoiceActive.TButton", text=_("voice_listening"))
-        recognizer.start_recording()
+        self.assistant.press()
 
     def on_mic_release(self, event):
-        if not recognizer.is_recording:
-            return
-        self.btn_mic.configure(style="Voice.TButton", text=_("voice_processing"))
-        self.root.update_idletasks()
-
-        def _handle_speech(text):
-            def _update_ui():
-                if text:
-                    self.btn_mic.configure(text=f"\"{text[:40]}...\"" if len(text) > 40 else f"\"{text}\"")
-                    self.root.update_idletasks()
-
-                    intent = parse_intent(text)
-
-                    # Run the action off the Tk thread so the window stays responsive.
-                    def _run():
-                        execute_intent(intent)
-                        self.root.after(0, lambda: self.btn_mic.configure(
-                            style="Voice.TButton",
-                            text=_("voice_idle")
-                        ))
-                    threading.Thread(target=_run, daemon=True).start()
-                else:
-                    speak(_("assist_not_heard"))
-                    self.btn_mic.configure(
-                        style="Voice.TButton",
-                        text=_("voice_idle")
-                    )
-
-            # UI updates happen on the Tk thread.
-            self.root.after(0, _update_ui)
-
-        recognizer.stop_recording_and_recognize(_handle_speech)
+        self.assistant.release()
