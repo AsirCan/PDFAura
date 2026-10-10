@@ -1,22 +1,19 @@
 import os
-import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.core.batch import batch_compress_dir, batch_convert_dir, batch_rename_dir
+from src.app.tools import mode_from_label
 from src.core.lang_manager import _
-from src.core.task_manager import TaskContext, CancelledError
 from src.gui import styles
 from src.gui.styles import P
 from src.gui.widgets import SegmentedControl
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, follow_width, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, follow_width
 
 
 class BatchTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
-        self._task_ctx = None
 
         self.input_dir_var = tk.StringVar()
         self.output_dir_var = tk.StringVar()
@@ -94,6 +91,9 @@ class BatchTab:
         self.feedback = InlineFeedback(left)
         self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("batch_main_type"), _("batch_rename_hint"))
+        self.run = ToolRun(self.app_root, self.footer, self.feedback, self.status_var,
+                           on_progress=self._update_progress, on_done=self._finalize_job,
+                           on_cancelled=self._cancelled)
 
     def switch_mode(self):
         for frame in self.frames.values():
@@ -121,13 +121,11 @@ class BatchTab:
         self.log_text.config(state="disabled")
 
     def _update_progress(self, current, total, log_message=""):
-        def ui_update():
-            self.footer.update_progress(current, total, "")
-            pct = int((current / max(total, 1)) * 100)
-            self.status_var.set(_("batch_progress").format(pct=pct, cur=current, total=total))
-            if log_message:
-                self._append_log(log_message)
-        self.app_root.after(0, ui_update)
+        self.footer.update_progress(current, total, "")
+        pct = int((current / max(total, 1)) * 100)
+        self.status_var.set(_("batch_progress").format(pct=pct, cur=current, total=total))
+        if log_message:
+            self._append_log(log_message)
 
     def handle_external_drop(self, file_path):
         if os.path.isdir(file_path):
@@ -136,90 +134,33 @@ class BatchTab:
             elif not self.output_dir_var.get().strip():
                 self.output_dir_var.set(file_path)
 
-    def _cancel_task(self):
-        if self._task_ctx:
-            self._task_ctx.cancel()
-
     def start_action(self):
         inp = self.input_dir_var.get().strip()
-        out = self.output_dir_var.get().strip()
-
-        if not inp or not os.path.isdir(inp):
-            quick_error(_("err_select_valid_input_dir"), self.footer.action_button, None, self.status_var, self.feedback)
+        # Every setting is read here, on the main thread; the job gets values.
+        job = self.run.start("batch", {
+            "mode": mode_from_label("batch", self.action_var.get()),
+            "input_dir": inp,
+            "output_dir": self.output_dir_var.get().strip(),
+            "quality": self.compress_qual_var.get(),
+            "convert_mode": self.convert_mode_var.get(),
+            "rename_rule": self.rename_rule_var.get(),
+        })
+        if job is None:
             return
-        if not out or not os.path.isdir(out):
-            quick_error(_("err_select_valid_output_dir"), self.footer.action_button, None, self.status_var, self.feedback)
-            return
-
-        self._task_ctx = TaskContext(progress_callback=self._update_progress)
-        self.footer.start_busy(cancel_callback=self._cancel_task)
-        self.feedback.set_busy(_("str_processing"))
-
+        # The job's log lines arrive through after(), so they follow this.
         self.log_text.config(state="normal")
         self.log_text.delete("1.0", "end")
         self.log_text.config(state="disabled")
         self._append_log(_("batch_log_started").format(path=inp))
 
-        mode = self.action_var.get()
-        # Read the settings here; a worker must not touch Tk variables.
-        options = {
-            "quality": self.compress_qual_var.get(),
-            "convert_mode": self.convert_mode_var.get(),
-            "rename_rule": self.rename_rule_var.get(),
-        }
-        threading.Thread(target=self._run_job, args=(mode, inp, out, options),
-                         daemon=True).start()
-
-    def _run_job(self, mode, inp, out, options):
-        try:
-            if mode == _("batch_compress"):
-                succ, errs = batch_compress_dir(inp, out, options["quality"], None, ctx=self._task_ctx)
-            elif mode == _("batch_convert"):
-                succ, errs = batch_convert_dir(inp, out, options["convert_mode"], None, ctx=self._task_ctx)
-            else:
-                succ, errs = batch_rename_dir(inp, out, options["rename_rule"], None, ctx=self._task_ctx)
-            self.app_root.after(0, self._finalize_job, succ, errs, out)
-        except CancelledError:
-            self.app_root.after(0, self._cancelled)
-        except Exception as exc:
-            # Bind the text now: Python unbinds `exc` when the except block
-            # ends, so a closure reading it later raised NameError instead of
-            # showing the error.
-            message = str(exc)
-
-            def fail():
-                self.footer.stop_busy()
-                self.status_var.set(_("err_critical"))
-                self.feedback.set_error(_("err_critical"), message)
-            self.app_root.after(0, fail)
-
     def _cancelled(self):
-        self.footer.stop_busy()
-        self.status_var.set(_("perf_cancelled"))
-        self.feedback.set_cancelled()
         self._append_log("\n--- " + _("perf_cancelled") + " ---")
 
-    def _finalize_job(self, succ, errs, out):
-        """Report what actually happened: a run where every file failed used
-        to show the green DONE badge."""
-        self.footer.finish_success()
+    def _finalize_job(self, outcome):
+        """The panel shows the outcome (ToolRun); the log and the status
+        line say how many files made it."""
+        counts = outcome.details
         self._append_log(_("batch_log_ended"))
-        self._append_log(_("batch_success_count").format(succ=succ, errs=len(errs)))
-
-        message = _("batch_result").format(succ=succ, errs=len(errs))
-        if errs:
-            message += _("batch_result_errors").format(dir=out)
-
-        if succ == 0 and errs:
-            self.status_var.set(_("str_failed"))
-            self.feedback.set_error(_("batch_result_title"),
-                                    _("batch_result_all_failed").format(errs=len(errs)))
-        elif errs:
-            self.status_var.set(_("batch_done"))
-            self.feedback.set_warning(_("batch_result_title"), message, out)
-        elif succ == 0:
-            self.status_var.set(_("str_ready"))
-            self.feedback.set_info(_("batch_result_title"), _("batch_no_file_found"))
-        else:
-            self.status_var.set(_("batch_done"))
-            self.feedback.set_success(_("batch_result_title"), message, out)
+        self._append_log(_("batch_success_count").format(succ=counts["succeeded"], errs=counts["failed"]))
+        status = {"error": "str_failed", "info": "str_ready"}.get(outcome.tone, "batch_done")
+        self.status_var.set(_(status))

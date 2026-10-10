@@ -203,16 +203,19 @@ def test_missing_tesseract_gives_a_readable_message(tmp_path, monkeypatch):
 
 # ── Cancel button only where it works (#19.3) ─────────────────────────────
 
-def test_advanced_tab_only_offers_cancel_for_ocr():
-    with open("src/gui/tabs/tab_advanced.py", encoding="utf-8") as f:
-        text = f.read()
-    assert "cancel_callback=self._cancel_task if cancellable else None" in text
+@pytest.mark.parametrize("mode, cancellable", [("ocr", True), ("metadata", False), ("signature", False)])
+def test_advanced_tools_only_offer_cancel_for_ocr(mode, cancellable):
+    from src.app.tools import is_cancellable
+    assert is_cancellable("advanced", {"input": "a.pdf", "output": "b", "mode": mode}) is cancellable
 
 
-def test_convert_tab_hides_cancel_for_office_conversions():
-    with open("src/gui/tabs/tab_convert.py", encoding="utf-8") as f:
-        text = f.read()
-    assert "cancel_callback=self._cancel_task if cancellable else None" in text
+@pytest.mark.parametrize("mode, cancellable", [
+    ("pdf2img", True), ("img2pdf", True), ("pdf2txt", True),
+    ("pdf2word", False), ("word2pdf", False), ("ppt2pdf", False), ("excel2pdf", False),
+])
+def test_conversions_hide_cancel_where_the_library_cannot_stop(mode, cancellable):
+    from src.app.tools import is_cancellable
+    assert is_cancellable("convert", {"mode": mode}) is cancellable
 
 
 # ── Subprocess windows (#19.5) ────────────────────────────────────────────

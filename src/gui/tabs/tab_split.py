@@ -1,22 +1,17 @@
 import os
-import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
 from src.core.common import get_pdf_page_count
-from src.core.errors import friendly_error
 from src.core.lang_manager import _
-from src.core.split import split_pdf
-from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, follow_width, quick_error
-from src.utils.file_helper import format_size_mb, suggest_split_output_path
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview, follow_width
+from src.utils.file_helper import suggest_split_output_path
 
 
 class SplitTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
-        self._task_ctx = None
 
         self.split_input_var = tk.StringVar()
         self.split_output_var = tk.StringVar()
@@ -80,6 +75,7 @@ class SplitTab:
         self.feedback = InlineFeedback(left)
         self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("split_page_range"), _("output_action_hint").format(action=_("split_btn")))
+        self.run = ToolRun(self.app_root, self.footer, self.feedback, self.split_status_var)
 
         self.split_start_var.trace_add("write", lambda *_args: self.update_split_output_name())
         self.split_end_var.trace_add("write", lambda *_args: self.update_split_output_name())
@@ -135,62 +131,10 @@ class SplitTab:
             self._refresh_page_info(file_path)
             self.update_split_output_name()
 
-    def _cancel_task(self):
-        if self._task_ctx:
-            self._task_ctx.cancel()
-
     def start_split(self):
-        input_pdf = self.split_input_var.get().strip()
-        output_pdf = self.split_output_var.get().strip()
-        if not input_pdf or not os.path.isfile(input_pdf):
-            quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.split_status_var, self.feedback)
-            return
-        try:
-            start_page = int(self.split_start_var.get())
-            end_page = int(self.split_end_var.get())
-        except ValueError:
-            quick_error(_("err_enter_page_numbers"), self.footer.action_button, None, self.split_status_var, self.feedback)
-            return
-        if not output_pdf:
-            quick_error(_("err_set_output"), self.footer.action_button, None, self.split_status_var, self.feedback)
-            return
-
-        def _on_progress(current, total, message=""):
-            self.app_root.after(0, self.footer.update_progress, current, total, message)
-
-        self._task_ctx = TaskContext(progress_callback=_on_progress)
-        busy_text = _("split_running").format(start=start_page, end=end_page)
-        self.footer.start_busy(cancel_callback=self._cancel_task)
-        self.feedback.set_busy(busy_text)
-        self.split_status_var.set(busy_text)
-        threading.Thread(target=self._run_split, args=(input_pdf, output_pdf, start_page, end_page), daemon=True).start()
-
-    def _run_split(self, input_pdf, output_pdf, start_page, end_page):
-        try:
-            original_size = format_size_mb(input_pdf)
-            split_pdf(input_pdf, output_pdf, start_page, end_page, ctx=self._task_ctx)
-            if not os.path.isfile(output_pdf):
-                raise RuntimeError(_("err_output_not_created"))
-            result_size = format_size_mb(output_pdf)
-            page_count = end_page - start_page + 1
-            message = _("split_result").format(orig=original_size, result=result_size, start=start_page, end=end_page, count=page_count, output=output_pdf)
-            self.app_root.after(0, self._on_done, message, output_pdf)
-        except CancelledError:
-            self.app_root.after(0, self._on_cancelled)
-        except Exception as exc:
-            self.app_root.after(0, self._on_error, friendly_error(exc))
-
-    def _on_done(self, message, output_pdf):
-        self.footer.finish_success()
-        self.split_status_var.set(_("split_done"))
-        self.feedback.set_success(_("split_done"), message, output_pdf)
-
-    def _on_cancelled(self):
-        self.footer.stop_busy()
-        self.split_status_var.set(_("perf_cancelled"))
-        self.feedback.set_cancelled()
-
-    def _on_error(self, error_msg):
-        self.footer.stop_busy()
-        self.split_status_var.set(_("split_fail"))
-        self.feedback.set_error(_("split_fail"), error_msg)
+        self.run.start("split", {
+            "input": self.split_input_var.get().strip(),
+            "output": self.split_output_var.get().strip(),
+            "start": self.split_start_var.get(),
+            "end": self.split_end_var.get(),
+        })

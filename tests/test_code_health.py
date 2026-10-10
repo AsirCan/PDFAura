@@ -57,11 +57,14 @@ def test_no_worker_thread_reads_a_tk_variable(path):
 
 
 def test_the_scanner_snapshots_its_pages_before_exporting():
-    """_run_scan walked self.pages from the worker thread (see #12)."""
+    """The export walked the tab's live page list from the worker thread
+    (see #12). It now runs in src.app.scanner, which only gets a snapshot."""
+    import inspect
+    from src.app import scanner
+    assert list(inspect.signature(scanner.export_pdf).parameters) == ["ctx", "shots", "output_pdf", "mode"]
     source = read("src/gui/tabs/tab_scanner.py")
-    assert "def _run_scan(self, output_pdf, snapshot, mode):" in source
-    body = source.split("def _run_scan(")[1].split("\n    def ")[0]
-    assert "self.pages" not in body, "the worker still reads the live page list"
+    body = source.split("def start_scan(")[1].split("\n    def ")[0]
+    assert body.index("scanner.snapshot(self.pages)") < body.index("start_work(")
 
 
 # ── Dead code (#22.1) ─────────────────────────────────────────────────────

@@ -212,7 +212,7 @@ def test_compress_reports_an_error_without_input(app):
 
 def test_compress_success_offers_the_output_and_records_it(app, tmp_path, monkeypatch):
     root, window = app
-    import src.gui.tabs.tab_compress as tab_compress
+    import src.core.compress as compress
 
     def fake_compress(src, dst, quality, ctx=None):
         if ctx:
@@ -220,7 +220,7 @@ def test_compress_success_offers_the_output_and_records_it(app, tmp_path, monkey
         time.sleep(0.6)
         shutil.copyfile(src, dst)
 
-    monkeypatch.setattr(tab_compress, "compress_pdf", fake_compress)
+    monkeypatch.setattr(compress, "compress_pdf", fake_compress)
     window.show_page("compress")
     tab = window.get_active_tab()
     source = make_pdf(tmp_path / "report.pdf")
@@ -255,7 +255,7 @@ def test_compress_success_offers_the_output_and_records_it(app, tmp_path, monkey
 
 def test_cancel_stops_a_running_job(app, tmp_path, monkeypatch):
     root, window = app
-    import src.gui.tabs.tab_compress as tab_compress
+    import src.core.compress as compress
     from src.core.task_manager import CancelledError
 
     def slow_compress(src, dst, quality, ctx=None):
@@ -265,7 +265,7 @@ def test_cancel_stops_a_running_job(app, tmp_path, monkeypatch):
             time.sleep(0.01)
         shutil.copyfile(src, dst)
 
-    monkeypatch.setattr(tab_compress, "compress_pdf", slow_compress)
+    monkeypatch.setattr(compress, "compress_pdf", slow_compress)
     window.show_page("compress")
     tab = window.get_active_tab()
     tab.handle_external_drop(make_pdf(tmp_path / "a.pdf"))
@@ -779,23 +779,22 @@ def test_scanner_takes_photos_and_its_tools_work(app, tmp_path, monkeypatch):
 def test_batch_shows_the_error_of_a_failed_run(app, tmp_path, monkeypatch):
     """The error callback read `exc` after Python had unbound it, so a failed
     batch raised NameError instead of saying what went wrong."""
-    import threading
-    import src.gui.tabs.tab_batch as tab_batch
+    import src.core.batch as batch
     root, window = app
 
     def broken(*_args, **_kwargs):
         raise RuntimeError("disk full")
 
-    monkeypatch.setattr(tab_batch, "batch_compress_dir", broken)
+    monkeypatch.setattr(batch, "batch_compress_dir", broken)
     window.show_page("batch")
     tab = window.get_active_tab()
-    tab.footer.start_busy()
-    options = {"quality": "screen", "convert_mode": "pdf2img", "rename_rule": "x"}
-    threading.Thread(target=tab._run_job,
-                     args=(_("batch_compress"), str(tmp_path), str(tmp_path), options),
-                     daemon=True).start()
+    tab.action_var.set(_("batch_compress"))
+    tab.input_dir_var.set(str(tmp_path))
+    tab.output_dir_var.set(str(tmp_path))
+    tab.start_action()
     assert wait_for(root, lambda: tab.feedback.tone == "danger", timeout=5)
     assert tab.feedback.message_var.get() == "disk full"
+    assert tab.status_var.get() == _("err_critical")
 
 
 # ── Language setting ────────────────────────────────────────────────────────

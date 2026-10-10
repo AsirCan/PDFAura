@@ -1,16 +1,13 @@
 import os
-import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.core.errors import friendly_error
+from src.app.tools import metadata_fields, mode_from_label
 from src.core.lang_manager import _
-from src.core.metainfo import read_metadata, update_metadata
-from src.core.ocr import check_tesseract_availability, perform_ocr_to_text
-from src.core.signature import stamp_visual_signature
-from src.core.task_manager import TaskContext, CancelledError
+from src.core.metainfo import read_metadata
+from src.core.ocr import check_tesseract_availability
 from src.gui.widgets import SegmentedControl
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, follow_width, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview, follow_width, quick_error
 from src.gui.pdf_viewer import PDFViewerWindow
 
 
@@ -18,7 +15,6 @@ class AdvancedTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
-        self._task_ctx = None
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
@@ -116,6 +112,7 @@ class AdvancedTab:
         self.feedback = InlineFeedback(left)
         self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("adv_operation"), _("adv_preview_hint"))
+        self.run = ToolRun(self.app_root, self.footer, self.feedback, self.status_var)
 
     def _meta_row(self, parent, row, label_text, variable, button_command=None, button_text=None):
         ttk.Label(parent, text=label_text, style="Field.TLabel").grid(row=row, column=0, sticky="w", pady=(10, 0))
@@ -208,128 +205,26 @@ class AdvancedTab:
             self.input_var.set(file_path)
             self.load_metadata(quiet=True)
 
-    def _cancel_task(self):
-        if self._task_ctx:
-            self._task_ctx.cancel()
-
     def start_action(self):
         inp = self.input_var.get().strip()
-        out = self.output_var.get().strip()
-        mode = self.action_var.get()
+        mode = mode_from_label("advanced", self.action_var.get())
 
-        if not inp or not os.path.isfile(inp):
-            quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.status_var, self.feedback)
-            return
-
-        if mode == _("adv_preview"):
+        if mode == "preview":
+            if not inp or not os.path.isfile(inp):
+                quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.status_var, self.feedback)
+                return
             PDFViewerWindow(self.app_root, inp)
             self.feedback.set_info(_("adv_preview"), _("viewer_title"))
             return
 
-        if not out:
-            quick_error(_("err_set_output_file"), self.footer.action_button, None, self.status_var, self.feedback)
-            return
-
-        def _on_progress(current, total, message=""):
-            self.app_root.after(0, self.footer.update_progress, current, total, message)
-
-        self._task_ctx = TaskContext(progress_callback=_on_progress)
-        # Only OCR can actually be cancelled; showing Cancel for metadata and
-        # signature meant pressing it said "Cancelling..." and then
-        # "Succeeded" anyway.
-        cancellable = mode == _("adv_ocr")
-        self.footer.start_busy(cancel_callback=self._cancel_task if cancellable else None)
-        self.feedback.set_busy(_("str_processing"))
-        self.status_var.set(_("str_processing"))
-
-        # Every field is read here, on the main thread, and handed to the
-        # worker; workers must not touch Tk variables.
-        if mode == _("adv_ocr"):
-            threading.Thread(target=self._run_ocr, args=(inp, out), daemon=True).start()
-        elif mode == _("adv_metadata"):
-            clean = bool(self.meta_clean_var.get())
-            # Fields never loaded from this document must not overwrite it.
-            known = self._meta_loaded_for == inp
-            meta = {
-                "clean": clean,
-                "title": self.title_var.get() if not clean and known else None,
-                "author": self.author_var.get() if not clean and known else None,
-                "subject": self.subject_var.get() if not clean and known else None,
-                "creator": self.creator_var.get() if not clean and known else None,
-            }
-            threading.Thread(target=self._run_meta, args=(inp, out, meta), daemon=True).start()
-        elif mode == _("adv_signature"):
-            signature = {
-                "image": self.sig_image_var.get(),
-                "page": self.sig_page_var.get(),
-                "x": self.sig_x_var.get(),
-                "y": self.sig_y_var.get(),
-                "scale": self.sig_scale_var.get(),
-            }
-            threading.Thread(target=self._run_sig, args=(inp, out, signature), daemon=True).start()
-
-    def _finish(self, title, message, output_path):
-        def _do():
-            self.footer.finish_success()
-            self.status_var.set(title)
-            self.feedback.set_success(title, message, output_path)
-        self.app_root.after(0, _do)
-
-    def _fail(self, title, exc):
-        message = friendly_error(exc)
-        def _do():
-            self.footer.stop_busy()
-            self.status_var.set(title)
-            self.feedback.set_error(title, message)
-        self.app_root.after(0, _do)
-
-    def _cancelled(self):
-        def _do():
-            self.footer.stop_busy()
-            self.status_var.set(_("perf_cancelled"))
-            self.feedback.set_cancelled()
-        self.app_root.after(0, _do)
-
-    def _run_ocr(self, inp, out):
-        try:
-            perform_ocr_to_text(inp, out, ctx=self._task_ctx)
-            self._finish(_("str_success"), _("adv_result_ocr").format(output=out), out)
-        except CancelledError:
-            self._cancelled()
-        except Exception as exc:
-            self._fail(_("str_error"), exc)
-
-    def _run_meta(self, inp, out, meta):
-        try:
-            update_metadata(
-                inp,
-                out,
-                title=meta["title"],
-                author=meta["author"],
-                subject=meta["subject"],
-                creator=meta["creator"],
-                clean=meta["clean"],
-            )
-            self._finish(_("str_success"), _("adv_result_meta").format(output=out), out)
-        except CancelledError:
-            self._cancelled()
-        except Exception as exc:
-            self._fail(_("str_error"), exc)
-
-    def _run_sig(self, inp, out, signature):
-        try:
-            # The core parses the coordinates, so "100.5" and "100,5" work.
-            stamp_visual_signature(
-                inp,
-                out,
-                signature["image"],
-                int(float(signature["page"].strip().replace(",", "."))),
-                signature["x"],
-                signature["y"],
-                signature["scale"],
-            )
-            self._finish(_("str_success"), _("adv_result_sig").format(output=out), out)
-        except CancelledError:
-            self._cancelled()
-        except Exception as exc:
-            self._fail(_("str_error"), exc)
+        # Every field is read here, on the main thread; the job gets values.
+        params = {"input": inp, "output": self.output_var.get().strip(), "mode": mode}
+        if mode == "metadata":
+            params["metadata"] = metadata_fields(
+                self.meta_clean_var.get(), self._meta_loaded_for == inp, self.title_var.get(),
+                self.author_var.get(), self.subject_var.get(), self.creator_var.get())
+        elif mode == "signature":
+            params["signature"] = {"image": self.sig_image_var.get(), "page": self.sig_page_var.get(),
+                                   "x": self.sig_x_var.get(), "y": self.sig_y_var.get(),
+                                   "scale": self.sig_scale_var.get()}
+        self.run.start("advanced", params)

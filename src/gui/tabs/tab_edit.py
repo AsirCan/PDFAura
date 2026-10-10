@@ -1,22 +1,18 @@
 import os
-import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.core.common import get_pdf_page_count, parse_page_numbers, parse_page_order
-from src.core.edit import delete_pages_from_pdf, reorder_pages_in_pdf, rotate_pages_in_pdf
-from src.core.errors import friendly_error
+from src.app.tools import mode_from_label
+from src.core.common import get_pdf_page_count
 from src.core.lang_manager import _
-from src.core.task_manager import TaskContext, CancelledError
 from src.gui.widgets import SegmentedControl
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, follow_width, quick_error
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview, follow_width
 
 
 class EditTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
-        self._task_ctx = None
 
         self.edit_input_var = tk.StringVar()
         self.edit_output_var = tk.StringVar()
@@ -99,6 +95,7 @@ class EditTab:
         self.feedback = InlineFeedback(left)
         self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("edit_operation"), _("edit_delete_hint"))
+        self.run = ToolRun(self.app_root, self.footer, self.feedback, self.edit_status_var)
 
     def switch_edit_mode(self):
         for frame in self.edit_frames.values():
@@ -136,85 +133,14 @@ class EditTab:
             base, ext = os.path.splitext(file_path)
             self.edit_output_var.set(f"{base}{_('suffix_edited')}{ext}")
 
-    def _cancel_task(self):
-        if self._task_ctx:
-            self._task_ctx.cancel()
-
     def start_edit(self):
-        input_pdf = self.edit_input_var.get().strip()
-        output_pdf = self.edit_output_var.get().strip()
-        mode = self.edit_mode_var.get()
-        if not input_pdf or not os.path.isfile(input_pdf):
-            quick_error(_("err_select_valid_file"), self.footer.action_button, None, self.edit_status_var, self.feedback)
-            return
-        if not output_pdf:
-            quick_error(_("err_set_output"), self.footer.action_button, None, self.edit_status_var, self.feedback)
-            return
-
-        def _on_progress(current, total, message=""):
-            self.app_root.after(0, self.footer.update_progress, current, total, message)
-
-        # Read every field here, on the main thread; a worker must not touch
-        # Tk variables.
-        fields = {
+        # Every field is read here, on the main thread; the job gets values.
+        self.run.start("edit", {
+            "input": self.edit_input_var.get().strip(),
+            "output": self.edit_output_var.get().strip(),
+            "mode": mode_from_label("edit", self.edit_mode_var.get()),
             "delete_pages": self.edit_delete_pages_var.get().strip(),
             "rotate_pages": self.edit_rotate_pages_var.get().strip(),
             "angle": self.edit_angle_var.get(),
             "order": self.edit_order_var.get().strip(),
-        }
-
-        self._task_ctx = TaskContext(progress_callback=_on_progress)
-        busy_text = _("edit_running").format(mode=mode)
-        self.footer.start_busy(cancel_callback=self._cancel_task)
-        self.feedback.set_busy(busy_text)
-        self.edit_status_var.set(busy_text)
-        threading.Thread(target=self._run_edit, args=(input_pdf, output_pdf, mode, fields),
-                         daemon=True).start()
-
-    def _run_edit(self, input_pdf, output_pdf, mode, fields):
-        try:
-            total = get_pdf_page_count(input_pdf)
-            if mode == _("edit_mode_delete"):
-                pages_text = fields["delete_pages"]
-                if not pages_text:
-                    raise ValueError(_("edit_err_enter_delete"))
-                pages = parse_page_numbers(pages_text, total)
-                delete_pages_from_pdf(input_pdf, output_pdf, pages, ctx=self._task_ctx)
-                remaining = total - len(pages)
-                message = _("edit_result_delete").format(count=len(pages), remaining=remaining, output=output_pdf)
-            elif mode == _("edit_mode_rotate"):
-                pages_text = fields["rotate_pages"]
-                angle = int(fields["angle"])
-                pages = parse_page_numbers(pages_text, total) if pages_text else list(range(1, total + 1))
-                rotate_pages_in_pdf(input_pdf, output_pdf, pages, angle, ctx=self._task_ctx)
-                message = _("edit_result_rotate").format(count=len(pages), angle=angle, output=output_pdf)
-            elif mode == _("edit_mode_reorder"):
-                order_text = fields["order"]
-                if not order_text:
-                    raise ValueError(_("edit_err_enter_order"))
-                new_order = parse_page_order(order_text, total)
-                reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=self._task_ctx)
-                message = _("edit_result_reorder").format(count=len(new_order), output=output_pdf)
-            else:
-                raise ValueError(f"{_('err_unknown_op')}{mode}")
-
-            self.app_root.after(0, self._on_done, message, output_pdf)
-        except CancelledError:
-            self.app_root.after(0, self._on_cancelled)
-        except Exception as exc:
-            self.app_root.after(0, self._on_error, friendly_error(exc))
-
-    def _on_done(self, message, output_pdf):
-        self.footer.finish_success()
-        self.edit_status_var.set(_("edit_done"))
-        self.feedback.set_success(_("edit_done"), message, output_pdf)
-
-    def _on_cancelled(self):
-        self.footer.stop_busy()
-        self.edit_status_var.set(_("perf_cancelled"))
-        self.feedback.set_cancelled()
-
-    def _on_error(self, error_msg):
-        self.footer.stop_busy()
-        self.edit_status_var.set(_("edit_fail"))
-        self.feedback.set_error(_("edit_fail"), error_msg)
+        })

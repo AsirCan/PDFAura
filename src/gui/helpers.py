@@ -2,7 +2,6 @@ import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from src.core.config_manager import cfg
 from src.core.lang_manager import _
 from src.core.notify import play_error, play_success
 from src.gui import styles
@@ -369,11 +368,10 @@ class InlineFeedback(ttk.Frame):
         self.message_var.set(message)
         self._set_actions(output_path)
         # Every tool finishes through here, so this is where the "play a
-        # sound when a job finishes" setting and the recent-files list are
-        # actually honoured.
+        # sound when a job finishes" setting is honoured. The job itself was
+        # added to the recent files by src.app.api; show the list again.
         play_success()
         if output_path:
-            cfg.add_recent_file(output_path)
             refresh = getattr(self.winfo_toplevel(), "pdf_aura_refresh_recent", None)
             if refresh:
                 refresh()
@@ -450,3 +448,82 @@ def quick_error(msg, button, progress_bar, status_var, feedback=None):
     status_var.set(_("str_error"))
     if feedback:
         feedback.set_error(status_var.get(), msg)
+
+
+def app_api(root):
+    """The application layer for this window, created on first use. Its
+    callbacks arrive on the Tk thread through after()."""
+    api = getattr(root, "pdf_aura_api", None)
+    if api is None:
+        from src.app.api import Api
+        api = Api(post=lambda fn, *args: root.after(0, fn, *args))
+        root.pdf_aura_api = api
+    return api
+
+
+class ToolRun:
+    """Runs a src.app tool for a tab: the busy footer, the result panel and
+    the status line, the same way for every tool.
+
+    ``on_done``, ``on_failed`` and ``on_cancelled`` let a tab add to the
+    standard handling (the batch log); they are called after it.
+    ``on_progress`` replaces the footer's progress display.
+    """
+
+    def __init__(self, app_root, footer, feedback, status_var, *, on_progress=None, on_done=None,
+                 on_failed=None, on_cancelled=None):
+        self.app_root = app_root
+        self.footer = footer
+        self.feedback = feedback
+        self.status_var = status_var
+        self.job = None
+        self._on_progress = on_progress or footer.update_progress
+        self._hooks = {"done": on_done, "failed": on_failed, "cancelled": on_cancelled}
+
+    def start(self, tool, params, ask_overwrite=False):
+        """Check, optionally confirm replacing the output, then run. Returns
+        the Job, or None if nothing was started."""
+        api = app_api(self.app_root)
+        problem = api.check(tool, params)
+        if problem:
+            quick_error(problem, self.footer.action_button, None, self.status_var, self.feedback)
+            return None
+        # Only a suggested path needs asking; a dialog choice was confirmed there.
+        if ask_overwrite and not confirm_overwrite(api.existing_target(tool, params), self.app_root):
+            return None
+        busy = api.busy_text(tool, params)
+        self.job = api.start(tool, params, on_progress=self._on_progress, on_done=self._done,
+                             on_failed=self._failed, on_cancelled=self._cancelled)
+        self.footer.start_busy(cancel_callback=self.job.cancel if api.cancellable(tool, params) else None)
+        self.feedback.set_busy(busy)
+        self.status_var.set(busy)
+        return self.job
+
+    def _hook(self, name, *args):
+        hook = self._hooks[name]
+        if hook:
+            hook(*args)
+
+    def _done(self, outcome):
+        self.footer.finish_success()
+        self.status_var.set(outcome.title)
+        show = {"success": self.feedback.set_success, "warning": self.feedback.set_warning}.get(outcome.tone)
+        if show:
+            show(outcome.title, outcome.message, outcome.output_path)
+        elif outcome.tone == "error":
+            self.feedback.set_error(outcome.title, outcome.message)
+        else:
+            self.feedback.set_info(outcome.title, outcome.message)
+        self._hook("done", outcome)
+
+    def _failed(self, title, message):
+        self.footer.stop_busy()
+        self.status_var.set(title)
+        self.feedback.set_error(title, message)
+        self._hook("failed", title, message)
+
+    def _cancelled(self):
+        self.footer.stop_busy()
+        self.status_var.set(_("perf_cancelled"))
+        self.feedback.set_cancelled()
+        self._hook("cancelled")

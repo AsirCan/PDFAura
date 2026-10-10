@@ -106,12 +106,20 @@ def test_deleted_files_drop_out_of_the_list(tmp_path, monkeypatch):
     assert manager.get_recent_files() == []
 
 
-def test_the_success_panel_records_a_recent_file():
-    """Every tool finishes through InlineFeedback.set_success."""
-    import inspect
-    from src.gui import helpers
-    source = inspect.getsource(helpers.InlineFeedback.set_success)
-    assert "add_recent_file" in source
+def test_a_finished_job_is_added_to_the_recent_files(tmp_path, monkeypatch):
+    """Every tool finishes through src.app.api, whichever UI started it."""
+    from src.app.api import Api
+    from src.app.tools import Outcome
+    recorded = []
+    monkeypatch.setattr(cfg, "add_recent_file", recorded.append)
+    target = tmp_path / "out.pdf"
+    target.write_bytes(b"%PDF")
+
+    job = Api().start_work(lambda ctx: Outcome("t", "m", str(target)), fail_title="str_error")
+    assert job.finished.wait(5)
+    failed = Api().start_work(lambda ctx: Outcome("t", "m", str(target), tone="warning"), fail_title="str_error")
+    assert failed.finished.wait(5)
+    assert recorded == [str(target)]
 
 
 # ── Default output folder (#18.1) ─────────────────────────────────────────

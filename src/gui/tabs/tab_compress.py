@@ -1,21 +1,17 @@
 import os
-import threading
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.core.compress import VALID_QUALITIES, compress_pdf
-from src.core.errors import friendly_error
+from src.core.compress import VALID_QUALITIES
 from src.core.lang_manager import _
-from src.core.task_manager import TaskContext, CancelledError
-from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, bind_preview, confirm_overwrite, quick_error
-from src.utils.file_helper import format_size_mb, suggest_output_path
+from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview
+from src.utils.file_helper import suggest_output_path
 
 
 class CompressTab:
     def __init__(self, parent, app_root):
         self.parent = parent
         self.app_root = app_root
-        self._task_ctx = None
 
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
@@ -70,6 +66,7 @@ class CompressTab:
         self.feedback = InlineFeedback(left)
         self.feedback.pack(fill="x", pady=(16, 0))
         self.feedback.set_info(_("compress_settings"), _("compress_quality_hint"))
+        self.run = ToolRun(self.app_root, self.footer, self.feedback, self.status_var)
 
     def choose_input_pdf(self):
         selected = filedialog.askopenfilename(title=_("compress_dialog_input"), filetypes=[("PDF", "*.pdf")])
@@ -107,69 +104,11 @@ class CompressTab:
             self.input_var.set(file_path)
             self._refresh_suggestion(file_path)
 
-    def _cancel_task(self):
-        if self._task_ctx:
-            self._task_ctx.cancel()
-
     def start_compression(self):
-        input_pdf = self.input_var.get().strip()
-        output_pdf = self.output_var.get().strip()
-        # The combo shows a descriptive label; map it back to the gs preset.
-        quality = self._quality_by_label.get(self.quality_var.get().strip(),
-                                             self.quality_var.get().strip().lower())
-
-        if quality not in VALID_QUALITIES:
-            quick_error(f"{_('err_select_quality')}{', '.join(VALID_QUALITIES)}", self.footer.action_button, None, self.status_var, self.feedback)
-            return
-        if not input_pdf or not os.path.isfile(input_pdf):
-            quick_error(_("err_select_valid_pdf"), self.footer.action_button, None, self.status_var, self.feedback)
-            return
-        if not output_pdf:
-            quick_error(_("err_set_output"), self.footer.action_button, None, self.status_var, self.feedback)
-            return
-        # Only a suggested path needs asking; a dialog choice was confirmed there.
-        if not self._output_chosen and not confirm_overwrite(output_pdf, self.app_root):
-            return
-
-        def _on_progress(current, total, message=""):
-            self.app_root.after(0, self.footer.update_progress, current, total, message)
-
-        self._task_ctx = TaskContext(progress_callback=_on_progress)
-        self.footer.start_busy(cancel_callback=self._cancel_task)
-        self.feedback.set_busy(_("compress_running"))
-        self.status_var.set(_("compress_running"))
-        threading.Thread(target=self._run_compress, args=(input_pdf, output_pdf, quality), daemon=True).start()
-
-    def _run_compress(self, input_pdf, output_pdf, quality):
-        try:
-            original_size = format_size_mb(input_pdf)
-            compress_pdf(input_pdf, output_pdf, quality, ctx=self._task_ctx)
-            if not os.path.isfile(output_pdf):
-                raise RuntimeError(_("err_output_not_created"))
-            compressed_size = format_size_mb(output_pdf)
-            message = (
-                f"{_('compress_result_original')}{original_size:.2f} MB\n"
-                f"{_('compress_result_compressed')}{compressed_size:.2f} MB\n"
-                f"{_('compress_result_quality')}{quality}\n"
-                f"{_('compress_result_saved')}{output_pdf}"
-            )
-            self.app_root.after(0, self._on_done, message, output_pdf)
-        except CancelledError:
-            self.app_root.after(0, self._on_cancelled)
-        except Exception as exc:
-            self.app_root.after(0, self._on_error, friendly_error(exc))
-
-    def _on_done(self, message, output_pdf):
-        self.footer.finish_success()
-        self.status_var.set(_("compress_done"))
-        self.feedback.set_success(_("compress_done"), message, output_pdf)
-
-    def _on_cancelled(self):
-        self.footer.stop_busy()
-        self.status_var.set(_("perf_cancelled"))
-        self.feedback.set_cancelled()
-
-    def _on_error(self, error_msg):
-        self.footer.stop_busy()
-        self.status_var.set(_("compress_fail"))
-        self.feedback.set_error(_("compress_fail"), error_msg)
+        # The radio buttons show a descriptive label; map it back to the preset.
+        label = self.quality_var.get().strip()
+        self.run.start("compress", {
+            "input": self.input_var.get().strip(),
+            "output": self.output_var.get().strip(),
+            "quality": self._quality_by_label.get(label, label.lower()),
+        }, ask_overwrite=not self._output_chosen)
