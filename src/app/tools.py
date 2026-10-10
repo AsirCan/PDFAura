@@ -350,22 +350,31 @@ def _plain(key):
     return lambda **_params: _(key)
 
 
+def _writes_output(output="", **_params):
+    return output
+
+
+def _convert_writes(mode, output="", **_params):
+    # PDF -> Images fills a folder; asking about the folder itself means nothing.
+    return None if mode == "pdf2img" else output
+
+
 TOOLS = {tool.name: tool for tool in (
     Tool("compress", _compress_check, _compress_run, "compress_fail", _plain("compress_running"),
-         writes=lambda output, **_p: output),
-    Tool("split", _split_check, _split_run, "split_fail", _split_busy),
+         writes=_writes_output),
+    Tool("split", _split_check, _split_run, "split_fail", _split_busy, writes=_writes_output),
     Tool("merge", _merge_check, _merge_run, "merge_fail",
-         lambda files, **_p: _("merge_running").format(count=len(files))),
+         lambda files, **_p: _("merge_running").format(count=len(files)), writes=_writes_output),
     Tool("edit", _edit_check, _edit_run, "edit_fail",
-         lambda mode, **_p: _("edit_running").format(mode=mode_label("edit", mode))),
+         lambda mode, **_p: _("edit_running").format(mode=mode_label("edit", mode)), writes=_writes_output),
     Tool("security", _security_check, _security_run, "str_failed",
          lambda mode, **_p: _("security_running").format(mode=mode_label("security", mode)),
-         writes=lambda output, **_p: output),
+         writes=_writes_output),
     Tool("convert", _convert_check, _convert_run, "convert_fail",
          lambda mode, **_p: _("convert_running").format(mode=mode_label("convert", mode)),
-         cancellable=lambda mode, **_p: mode not in _UNCANCELLABLE_CONVERSIONS),
+         cancellable=lambda mode, **_p: mode not in _UNCANCELLABLE_CONVERSIONS, writes=_convert_writes),
     Tool("advanced", _advanced_check, _advanced_run, "str_error", _plain("str_processing"),
-         cancellable=lambda mode, **_p: mode == "ocr"),
+         cancellable=lambda mode, **_p: mode == "ocr", writes=_writes_output),
     Tool("batch", _batch_check, _batch_run, "err_critical", _plain("str_processing"), log_progress=True),
 )}
 

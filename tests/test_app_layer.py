@@ -394,3 +394,22 @@ def test_a_failure_carries_the_tools_title():
 def test_outcome_defaults():
     outcome = Outcome("t", "m")
     assert outcome.tone == "success" and outcome.output_path is None and outcome.details == {}
+
+
+@pytest.mark.parametrize("tool, params", [
+    ("split", {"input": "a.pdf", "start": "1", "end": "1"}),
+    ("merge", {"files": ["a.pdf", "b.pdf"]}),
+    ("edit", {"input": "a.pdf", "mode": "delete"}),
+    ("convert", {"mode": "pdf2word", "input": "a.pdf"}),
+    ("advanced", {"input": "a.pdf", "mode": "ocr"}),
+])
+def test_every_tool_that_writes_a_file_names_it_so_the_ui_can_ask(tmp_path, tool, params):
+    """Only Compress and Security did; the web window asks before replacing
+    any suggested file."""
+    target = tmp_path / "out.pdf"
+    target.write_bytes(b"%PDF")
+    assert tools.existing_target(tool, {**params, "output": str(target)}) == str(target)
+
+
+def test_a_folder_of_images_is_not_asked_about(tmp_path):
+    assert tools.existing_target("convert", {"mode": "pdf2img", "input": "a.pdf", "output": str(tmp_path)}) is None

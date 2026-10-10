@@ -4,6 +4,7 @@
   import { api } from "../lib/bridge";
   import { app, previewFile } from "../lib/app.svelte";
   import { t } from "../lib/i18n.svelte";
+  import { OutputPath } from "../lib/output.svelte";
   import { Feedback, ToolRun } from "../lib/run.svelte";
   import FeedbackPanel from "../components/Feedback.svelte";
   import FileField from "../components/FileField.svelte";
@@ -13,17 +14,15 @@
   const QUALITIES = ["screen", "ebook", "printer", "prepress"] as const;
 
   let input = $state("");
-  let output = $state("");
   let quality = $state<(typeof QUALITIES)[number]>("ebook");
-  // A suggested output follows the input; one the user picked does not.
-  let chosen = $state(false);
+  const output = new OutputPath("compress");
   const feedback = new Feedback(t("compress_settings"), t("compress_quality_hint"));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {
     input = path;
     previewFile(path);
-    if (!chosen) output = await api().suggest_output("compress", path);
+    await output.suggest(path);
   }
 
   async function browseInput() {
@@ -31,18 +30,9 @@
     if (file) await setInput(file.path);
   }
 
-  async function browseOutput() {
-    const suggested = output || (input ? await api().suggest_output("compress", input) : "");
-    const path = await api().pick_save("pdf", suggested);
-    if (path) {
-      output = path;
-      chosen = true;
-    }
-  }
-
   function start() {
-    void run.start("compress", { input: input.trim(), output: output.trim(), quality },
-                   { askOverwrite: !chosen });
+    void run.start("compress", { input: input.trim(), output: output.value.trim(), quality },
+                   { askOverwrite: output.ask });
   }
 
   onMount(() => app.acceptDrops("compress", (files) => {
@@ -57,8 +47,8 @@
   <div class="fields">
     <FileField id="compress-input" label={t("str_input_pdf")} button={t("str_browse")} bind:value={input}
                onbrowse={browseInput} oninput={(value) => previewFile(value.trim())} />
-    <FileField id="compress-output" label={t("str_output_pdf")} button={t("str_save_as")} bind:value={output}
-               onbrowse={browseOutput} />
+    <FileField id="compress-output" label={t("str_output_pdf")} button={t("str_save_as")} bind:value={output.value}
+               onbrowse={() => output.browse(input)} oninput={() => output.typed()} />
   </div>
 
   <fieldset class="panel-card settings">
