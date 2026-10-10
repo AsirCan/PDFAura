@@ -1,9 +1,9 @@
 <script lang="ts">
   // The scanner's pages as thumbnails, in PDF order: drag one to reorder,
-  // double-click or F2 to name it,
+  // double-click or F2 to name it, hover for rotate and remove,
   // right-click for more. Arrow keys select, Alt+arrows move the page,
   // Delete removes it.
-  import { t } from "../../lib/i18n.svelte";
+  import { language, t } from "../../lib/i18n.svelte";
   import { thumbUrl, type ScanBoard } from "../../lib/scanner.svelte";
   import type { ScanPage } from "../../lib/types";
   import ContextMenu, { type MenuItem } from "../ContextMenu.svelte";
@@ -34,6 +34,18 @@
     return board.page.label ? `${text} · ${board.page.label}` : text;
   });
   let ghost = $derived(dragging ? board.pages.find((page) => page.uid === dragging) ?? null : null);
+  let stripW = $state(0);
+  let stripH = $state(0);
+  /** Thumbnails in a row; with more than one the page moves sideways. */
+  let across = $state(1);
+
+  $effect(() => {
+    void stripW;
+    void board.pages.length;
+    across = columns();
+  });
+  let backKey = $derived(across > 1 ? (language.rtl ? "Alt+→" : "Alt+←") : "Alt+↑");
+  let forthKey = $derived(across > 1 ? (language.rtl ? "Alt+←" : "Alt+→") : "Alt+↓");
 
   function rtl() {
     return document.documentElement.dir === "rtl";
@@ -85,7 +97,7 @@
   }
 
   function pressed(event: PointerEvent, index: number) {
-    if (event.button !== 0 || (event.target as Element).closest("input")) return;
+    if (event.button !== 0 || (event.target as Element).closest("input, [data-action]")) return;
     finishRename();
     list?.focus();
     void board.select(index);
@@ -188,6 +200,27 @@
     node.select();
   }
 
+  // ── Hover actions ──────────────────────────────────────────────────
+  // Mouse shortcuts for what the toolbar, the menu and Delete already do.
+  // An option may not hold buttons (ARIA listbox), so they are marks the
+  // page's click reads.
+  function clicked(event: MouseEvent, index: number) {
+    const action = (event.target as Element).closest<HTMLElement>("[data-action]")?.dataset.action;
+    const page = board.pages[index];
+    if (!action || !page || board.locked) return;
+    if (action === "remove") {
+      // A double click would take the next page too, which slid under the pointer.
+      if (event.detail < 2) void board.remove(page);
+    } else {
+      void board.select(index);
+      void board.rotate(page, action === "cw" ? 90 : -90);
+    }
+  }
+
+  function doubleClicked(event: MouseEvent, page: ScanPage) {
+    if (!(event.target as Element).closest("[data-action]")) startRename(page);
+  }
+
   // ── Menu and keys ──────────────────────────────────────────────────
   function openMenu(event: MouseEvent, index: number) {
     event.preventDefault();
@@ -245,9 +278,11 @@
     event.stopPropagation();
   }
 
-  // The selected page stays in view.
+  // The selected page stays in view, also when the window is resized.
   $effect(() => {
     const index = board.current;
+    void stripW;
+    void stripH;
     if (!dragging) cells()[index]?.scrollIntoView?.({ block: "nearest" });
   });
 </script>
@@ -258,25 +293,43 @@
   <!-- Narrow strip: one hint per line; wide: both on one. -->
   <p class="hint"><span>{t("scanner_strip_hint_drag")} ·</span>
     <span>{t("scanner_strip_hint_name")}</span></p>
-  <div class="scroller" bind:this={scroller}>
+  <div class="scroller" bind:this={scroller} bind:clientWidth={stripW} bind:clientHeight={stripH}>
     <ul bind:this={list} role="listbox" tabindex="0" aria-label={t("scanner_pages")} onkeydown={key}
+        class:dragging={dragging !== null}
         aria-activedescendant={board.page ? `scan-page-${board.page.uid}` : undefined}>
       {#each board.pages as page, index (page.uid)}
+        <!-- The click is for the hover actions; their keys are the listbox's (Delete, the menu key). -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <li id="scan-page-{page.uid}" role="option" aria-selected={index === board.current}
             class:selected={index === board.current} class:moving={dragging === page.uid} title={page.name}
-            onpointerdown={(event) => pressed(event, index)} ondblclick={() => startRename(page)}
-            oncontextmenu={(event) => openMenu(event, index)}>
+            onpointerdown={(event) => pressed(event, index)} onclick={(event) => clicked(event, index)}
+            ondblclick={(event) => doubleClicked(event, page)} oncontextmenu={(event) => openMenu(event, index)}>
           <div class="thumb">
             <img src={thumbUrl(page)} alt="" draggable="false" />
+            {#if !board.locked}
+              <span class="actions" aria-hidden="true">
+                <span class="action ccw" data-action="ccw" title={t("scanner_rotate_ccw")}>
+                  <Icon name="ROTATE_CW" size={12} />
+                </span>
+                <span class="action" data-action="cw" title={t("scanner_rotate_cw")}>
+                  <Icon name="ROTATE_CW" size={12} />
+                </span>
+                <span class="action danger" data-action="remove" title="{t('scanner_remove_photo')} (Del)">
+                  <Icon name="DELETE" size={12} />
+                </span>
+              </span>
+            {/if}
           </div>
-          {#if renaming === page.uid}
-            <input class="rename" type="text" dir="auto" maxlength="60" spellcheck="false" bind:value={draft}
-                   aria-label={t("scanner_page_rename")} use:focusAndSelect
-                   onkeydown={(event) => renameKey(event, index)}
-                   onblur={() => renaming === page.uid && finishRename()} />
-          {:else}
-            <span class="caption small ellipsis" dir="auto">{index + 1}{page.label ? ` · ${page.label}` : ""}</span>
-          {/if}
+          <div class="name">
+            {#if renaming === page.uid}
+              <input class="rename" type="text" dir="auto" maxlength="60" spellcheck="false" bind:value={draft}
+                     aria-label={t("scanner_page_rename")} use:focusAndSelect
+                     onkeydown={(event) => renameKey(event, index)}
+                     onblur={() => renaming === page.uid && finishRename()} />
+            {:else}
+              <span class="caption small ellipsis" dir="auto">{index + 1}{page.label ? ` · ${page.label}` : ""}</span>
+            {/if}
+          </div>
         </li>
       {/each}
     </ul>
@@ -286,14 +339,15 @@
     {/if}
   </div>
   <div class="buttons">
-    <button class="btn btn-secondary btn-small" type="button" title="Alt+↑"
+    <!-- The arrows point the way the page goes: sideways in a grid. -->
+    <button class="btn btn-secondary btn-small" type="button" title={backKey}
             disabled={board.locked || board.current <= 0} onclick={() => moveCurrent(-1)}>
-      <Icon name="UP" size={12} />{t("scanner_move_up")}
+      <Icon name={across > 1 ? "LEFT" : "UP"} size={12} flip />{t("scanner_move_up")}
     </button>
-    <button class="btn btn-secondary btn-small" type="button" title="Alt+↓"
+    <button class="btn btn-secondary btn-small" type="button" title={forthKey}
             disabled={board.locked || board.current < 0 || board.current >= board.pages.length - 1}
             onclick={() => moveCurrent(1)}>
-      <Icon name="DOWN" size={12} />{t("scanner_move_down")}
+      {t("scanner_move_down")}<Icon name={across > 1 ? "RIGHT" : "DOWN"} size={12} flip />
     </button>
   </div>
 </div>
@@ -348,11 +402,16 @@
     overflow-y: auto;
     background: var(--sunken);
     border-radius: var(--radius);
+    /* Its height (cqh) caps the cards' size. */
+    container-type: size;
   }
   ul {
+    /* The widest card that is seen whole in the strip's height: the ul's
+       padding, the card's frame and name, then the page at A4's ratio. */
+    --fit: max(64px, calc((100cqh - 58px) * 0.707 + 14px));
     display: grid;
-    /* auto-fit: a few pages get fewer, bigger thumbnails. */
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    /* auto-fit: a few pages get fewer, bigger cards; every card is the same size. */
+    grid-template-columns: repeat(auto-fit, minmax(min(104px, var(--fit)), 1fr));
     gap: 12px;
     margin: 0;
     padding: 10px 8px;
@@ -368,36 +427,95 @@
   li {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 4px;
     min-width: 0;
-    max-width: 180px;
+    max-width: min(180px, var(--fit));
     width: 100%;
     justify-self: center;
+    padding: 6px 6px 2px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    background: var(--surface);
+    transition: border-color 100ms ease-out;
   }
+  li:hover {
+    border-color: var(--border-strong);
+  }
+  li.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+    background: var(--accent-subtle);
+  }
+  /* A fixed frame: a long receipt or a wide photo is fitted inside it and
+     never changes the card's size. */
   .thumb {
+    position: relative;
     width: 100%;
     aspect-ratio: 2480 / 3508;
-    display: grid;
-    place-items: center;
-    border-radius: var(--radius-sm);
-    outline: 2px solid transparent;
-    outline-offset: 3px;
-  }
-  .selected .thumb {
-    outline-color: var(--accent);
   }
   .thumb img {
+    position: absolute;
+    inset: 0;
+    margin: auto;
     max-width: 100%;
     max-height: 100%;
     display: block;
     background: var(--surface);
-    box-shadow: 0 1px 3px color-mix(in srgb, var(--stage) 25%, transparent);
+    box-shadow: 0 0 0 1px var(--border-subtle), 0 1px 3px color-mix(in srgb, var(--stage) 25%, transparent);
     pointer-events: none;
   }
-  .moving .thumb {
+  .moving {
     opacity: 0.4;
-    outline: 1px dashed var(--text-tertiary);
+    border-style: dashed;
+  }
+  .actions {
+    position: absolute;
+    top: 4px;
+    inset-inline-end: 4px;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--stage) 30%, transparent);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 100ms ease-out, visibility 100ms;
+  }
+  li:hover .actions {
+    visibility: visible;
+    opacity: 1;
+  }
+  ul.dragging .actions {
+    visibility: hidden;
+    opacity: 0;
+  }
+  .action {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+  }
+  .action:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .action.danger:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+  /* Turning left: the clockwise arrow, mirrored. */
+  .ccw :global(.icon) {
+    transform: scaleX(-1);
+  }
+  .name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    min-width: 0;
   }
   .caption {
     max-width: 100%;
@@ -409,8 +527,8 @@
   }
   .rename {
     width: 100%;
-    min-width: 96px;
-    padding: 2px 6px;
+    min-width: 0;
+    padding: 1px 4px;
     border: 2px solid var(--accent);
     border-radius: var(--radius-sm);
     background: var(--field);
