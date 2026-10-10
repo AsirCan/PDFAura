@@ -85,6 +85,9 @@ class Shell:
             return 1
 
         webview.settings["ALLOW_FILE_URLS"] = False
+        # A web link opens in the system browser, never in this window
+        # (web/src/lib/links.ts sends every outside link there).
+        webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
         webview.settings["SHOW_DEFAULT_MENUS"] = False
         webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
         if self.debug_port:
