@@ -256,7 +256,7 @@
   <h3 class="section-title">{t("scanner_pages")}</h3>
   <p class="caption-line small muted ellipsis" title={caption}>{caption}</p>
   <!-- Narrow strip: one hint per line; wide: both on one. -->
-  <p class="hint"><span>{t("scanner_strip_hint_drag")}<span class="dot"> · </span></span>
+  <p class="hint"><span>{t("scanner_strip_hint_drag")}{" · "}</span>
     <span>{t("scanner_strip_hint_name")}</span></p>
   <div class="scroller" bind:this={scroller}>
     <ul bind:this={list} role="listbox" tabindex="0" aria-label={t("scanner_pages")} onkeydown={key}
