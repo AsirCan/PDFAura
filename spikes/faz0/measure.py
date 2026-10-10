@@ -11,6 +11,7 @@ Variants:
     exe             the PyInstaller build of the spike (run build_exe.py first)
     exe-core        the same build loading src/core + src/ai first
     tk-exe          today's app, built from PDFAura.spec by build_exe.py
+    web-app         the real web window (main.py --web, Faz 2)
 
 "visible" is when a window titled "PDF Aura" appears; "ready" (web only) is
 when the page has loaded and called back through the bridge. Memory is
@@ -52,6 +53,7 @@ VARIANTS = {
     "exe": ([EXE, "--minimal"], True),
     "exe-core": ([EXE, "--minimal", "--import-core"], True),
     "tk-exe": ([TK_EXE], False),
+    "web-app": ([sys.executable, os.path.join(ROOT, "main.py"), "--web"], True),
 }
 
 
@@ -124,7 +126,8 @@ def window_visible(pid):
 
 def run_once(variant):
     cmd, web = VARIANTS[variant]
-    env = dict(os.environ, PYTHONUNBUFFERED="1")
+    # PDFAURA_TIMING: the web app prints READY when the page has booted.
+    env = dict(os.environ, PYTHONUNBUFFERED="1", PDFAURA_TIMING="1")
     env.pop("OPENBLAS_NUM_THREADS", None)
     started = time.time()
     proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
