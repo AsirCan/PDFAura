@@ -57,7 +57,15 @@ SUGGESTIONS = [
     (("convert", "tablo.xlsx", "excel2pdf"), "tablo.pdf"),
     (("convert", "rapor.pdf", "pdf2txt"), "rapor.txt"),
     (("scanner", "foto.jpg"), "foto_scanned.pdf"),
+    (("advanced", "rapor.pdf", "ocr"), "rapor.txt"),
+    (("advanced", "rapor.pdf", "metadata"), "rapor_metadata.pdf"),
+    (("advanced", "rapor.pdf", "signature"), "rapor_signed.pdf"),
 ]
+
+
+def test_a_preview_writes_nothing():
+    """Advanced's preview opens the viewer; there is no output to suggest."""
+    assert suggest_for("advanced", "C:/in/rapor.pdf", "preview") == ""
 
 
 @pytest.mark.parametrize("args, name", SUGGESTIONS)

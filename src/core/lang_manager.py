@@ -302,6 +302,8 @@ _STRINGS = {
         "suffix_images":            "_resimler",
         "suffix_scanned":           "_tarandi",
         "suffix_split":             "_kesilmis",
+        "suffix_metadata":          "_bilgileri_duzenlenmis",
+        "suffix_signed":            "_imzali",
 
         # ── Gelişmiş (Advanced) Sekmesi ──
         "adv_operation":            "Gelişmiş İşlem",
@@ -879,6 +881,8 @@ _STRINGS = {
         "suffix_images":            "_images",
         "suffix_scanned":           "_scanned",
         "suffix_split":             "_split",
+        "suffix_metadata":          "_metadata",
+        "suffix_signed":            "_signed",
 
         # ── Advanced Tab ──
         "adv_operation":            "Advanced Operation",

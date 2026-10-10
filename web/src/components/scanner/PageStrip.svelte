@@ -260,7 +260,6 @@
     <span>{t("scanner_strip_hint_name")}</span></p>
   <div class="scroller" bind:this={scroller}>
     <ul bind:this={list} role="listbox" tabindex="0" aria-label={t("scanner_pages")} onkeydown={key}
-        title="{t('scanner_strip_hint_drag')} · {t('scanner_strip_hint_name')}"
         aria-activedescendant={board.page ? `scan-page-${board.page.uid}` : undefined}>
       {#each board.pages as page, index (page.uid)}
         <li id="scan-page-{page.uid}" role="option" aria-selected={index === board.current}

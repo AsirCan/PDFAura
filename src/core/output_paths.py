@@ -23,6 +23,8 @@ SUFFIX_KEYS = {
     "images": "suffix_images",
     "scanned": "suffix_scanned",
     "split": "suffix_split",
+    "metadata": "suffix_metadata",
+    "signed": "suffix_signed",
 }
 
 

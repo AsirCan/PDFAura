@@ -446,6 +446,9 @@ _OUTPUT_NAMES = {
     ("convert", "excel2pdf"): (None, ".pdf"),
     ("convert", "pdf2txt"): (None, ".txt"),
     ("scanner", None): ("scanned", ".pdf"),
+    ("advanced", "ocr"): (None, ".txt"),
+    ("advanced", "metadata"): ("metadata", None),
+    ("advanced", "signature"): ("signed", None),
 }
 
 
@@ -459,8 +462,9 @@ def suggest_output(tool, source, mode=None, start=None, end=None):
     range, as '_<start>-<end>'. "" when there is no source yet.
     """
     from src.core.output_paths import suggest_output as suggest
-    if not source:
-        return ""
-    kind, ext = _OUTPUT_NAMES.get((tool, mode)) or _OUTPUT_NAMES[(tool, None)]
+    names = _OUTPUT_NAMES.get((tool, mode)) or _OUTPUT_NAMES.get((tool, None))
+    if not source or names is None:
+        return ""        # nothing to write (Advanced's preview)
+    kind, ext = names
     tail = f"_{start}-{end}" if tool == "split" else ""
     return suggest(source, kind, ext, tail=tail)

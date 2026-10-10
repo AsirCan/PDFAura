@@ -34,7 +34,7 @@
   async function setInput(path: string) {
     input = path;
     previewFile(path);
-    await loadMetadata(true);
+    await Promise.all([loadMetadata(true), output.suggest(path, mode)]);
   }
 
   async function browse() {
@@ -62,6 +62,7 @@
     feedback.info(() => t("adv_operation"), () => t(MODE_LABELS[next]));
     // The save dialog offers .txt for OCR and .pdf otherwise.
     output.kind = next === "ocr" ? "text" : "pdf";
+    await output.suggest(input.trim(), next);
     if (next === "ocr") tesseract = await api().tesseract_available();
   }
 
@@ -71,8 +72,7 @@
   }
 
   function browseOutput() {
-    // Advanced has no suggested name: the dialog starts empty.
-    void output.browse();
+    void output.browse(input.trim(), mode);
   }
 
   function start() {
