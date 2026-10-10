@@ -1,10 +1,9 @@
 import os
-import threading
 import webbrowser
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from src.ai.model_manager import ModelManager
+from src.app.models import Models
 from src.core.config_manager import cfg
 from src.core.lang_manager import LANGUAGES, _
 from src.gui import styles
@@ -31,11 +30,18 @@ class SettingsPanel(ttk.Frame):
         self.tray_var = tk.BooleanVar(value=cfg.get("close_to_tray", True))
         self.sound_var = tk.BooleanVar(value=cfg.get("sound_enabled", True))
         self.out_dir_var = tk.StringVar(value=cfg.get("default_output_dir", ""))
-        self.model_manager = ModelManager()
-        self.ai_root_var = tk.StringVar(value=str(self.model_manager.model_root))
+        self.models = Models(post=self._post)
+        self.ai_root_var = tk.StringVar(value=self.models.root)
         self.ai_detail_var = tk.StringVar(value="")
-        self._download_running = False
+        self._download = None
         self.build_ui()
+
+    def _post(self, fn, *args):
+        """Model jobs report here, on the Tk thread; dropped once the panel is gone."""
+        try:
+            self.after(0, fn, *args)
+        except (tk.TclError, RuntimeError):
+            pass
 
     def build_ui(self):
         intro = ttk.Label(self, text=_("settings_intro"), style="PageBody.TLabel", justify="left")
@@ -202,8 +208,7 @@ class SettingsPanel(ttk.Frame):
             justify="left",
         ).pack(anchor="w", pady=(12, 0))
 
-        self.model_manager.ensure_directories()
-        self.ai_root_var.set(str(self.model_manager.model_root))
+        self.ai_root_var.set(self.models.root)
         self.refresh_ai_models()
 
     def pick_dir(self):
@@ -215,33 +220,32 @@ class SettingsPanel(ttk.Frame):
         selected = filedialog.askdirectory(title=_("settings_ai_model_root"))
         if selected:
             self.ai_root_var.set(selected)
-            self.model_manager.set_model_root(selected)
+            self.models.save_root(selected)
             self.refresh_ai_models()
             self.feedback.set_success(_("str_success"), _("settings_ai_root_saved"))
 
     def open_ai_root(self):
         try:
-            self.model_manager.set_model_root(self.ai_root_var.get())
-            os.startfile(str(self.model_manager.model_root))
+            self.models.save_root(self.ai_root_var.get())
+            os.startfile(self.models.root)
             self.feedback.set_success(_("str_success"), _("settings_ai_folder_ready"))
         except Exception as exc:
             self.feedback.set_error(_("str_error"), str(exc))
 
     def refresh_ai_models(self):
-        self.model_manager = ModelManager(self.ai_root_var.get())
-        self.model_manager.ensure_directories()
+        self.models.use_root(self.ai_root_var.get())
+        selected = self._selected_model_id()
         for item in self.model_tree.get_children():
             self.model_tree.delete(item)
 
-        for status in self.model_manager.all_statuses():
-            label = _("settings_ai_ready") if status.installed else _("settings_ai_missing")
-            size = f"{status.size_mb:.1f} MB" if status.size_mb else f"~{status.spec.size_mb:.0f} MB"
-            self.model_tree.insert(
-                "",
-                "end",
-                iid=status.spec.id,
-                values=(label, status.spec.name, status.spec.category, size, status.spec.hardware_profile),
-            )
+        for row in self.models.rows():
+            label = _("settings_ai_ready") if row.installed else _("settings_ai_missing")
+            self.model_tree.insert("", "end", iid=row.id,
+                                   values=(label, row.name, row.category, row.size, row.hardware))
+        # Keep the selection: refreshing after a download or test used to
+        # drop it, and the detail text went back to "select a model".
+        if selected and self.model_tree.exists(selected):
+            self.model_tree.selection_set(selected)
         self._update_ai_detail()
 
     def _selected_model_id(self):
@@ -257,15 +261,14 @@ class SettingsPanel(ttk.Frame):
             self.ai_detail_var.set(_("settings_ai_no_selection"))
             return
 
-        status = self.model_manager.status(model_id)
-        spec = status.spec
+        row = self.models.row(model_id)
         detail = "\n".join([
-            spec.name,
-            spec.description,
-            f"{_('model_detail_status')}: {status.message}",
-            f"{_('model_detail_path')}: {status.path or '-'}",
-            f"{_('model_detail_license')}: {spec.license_name or '-'}",
-            f"{_('model_detail_notes')}: {spec.notes or '-'}",
+            row.name,
+            row.description,
+            f"{_('model_detail_status')}: {row.message}",
+            f"{_('model_detail_path')}: {row.path or '-'}",
+            f"{_('model_detail_license')}: {row.license or '-'}",
+            f"{_('model_detail_notes')}: {row.notes or '-'}",
         ])
         self.ai_detail_var.set(detail)
 
@@ -287,7 +290,7 @@ class SettingsPanel(ttk.Frame):
         if not selected:
             return
 
-        self.model_manager.set_model_path(model_id, selected)
+        self.models.set_path(model_id, selected)
         self.refresh_ai_models()
         self.feedback.set_success(_("str_success"), _("settings_ai_path_saved"))
 
@@ -296,47 +299,34 @@ class SettingsPanel(ttk.Frame):
         if not model_id:
             self.feedback.set_info(_("settings_local_ai_title"), _("settings_ai_no_selection"))
             return
-        if self._download_running:
+        if self._download is not None and self._download.running:
             return
 
-        spec = self.model_manager.get_spec(model_id)
-        if not spec:
-            return
-        if not spec.download_url:
-            if spec.source_url:
-                webbrowser.open(spec.source_url)
+        row = self.models.row(model_id)
+        if not row.downloadable:
+            if row.source_url:
+                webbrowser.open(row.source_url)
             self.feedback.set_info(_("settings_local_ai_title"), _("settings_ai_download_unavailable"))
             return
 
-        self._download_running = True
+        def progress(done, total, _message=""):
+            if total:
+                self.ai_detail_var.set(f"{row.name}\n{_('model_detail_downloading')}: {int(done * 100 / total)}%")
+
         self.ai_download_btn.config(state="disabled")
         self.feedback.set_busy(_("settings_ai_download_started"))
+        self._download = self.models.download(model_id, on_progress=progress, on_done=self._download_done,
+                                              on_failed=self._download_failed)
 
-        def _progress(downloaded, total):
-            if total:
-                pct = int(downloaded * 100 / total)
-                self.after(0, self.ai_detail_var.set,
-                           f"{spec.name}\n{_('model_detail_downloading')}: {pct}%")
-
-        def _worker():
-            try:
-                path = self.model_manager.download_model(model_id, progress=_progress)
-                self.after(0, self._download_done, str(path), None)
-            except Exception as exc:
-                # Catch everything: any other error used to escape the thread
-                # and leave the Download button disabled for good.
-                self.after(0, self._download_done, "", str(exc))
-
-        threading.Thread(target=_worker, daemon=True).start()
-
-    def _download_done(self, path, error):
-        self._download_running = False
+    def _download_done(self, outcome):
         self.ai_download_btn.config(state="normal")
         self.refresh_ai_models()
-        if error:
-            self.feedback.set_error(_("str_error"), error)
-        else:
-            self.feedback.set_success(_("str_success"), _("settings_ai_download_done").format(path=path))
+        self.feedback.set_success(outcome.title, outcome.message)
+
+    def _download_failed(self, title, message):
+        self.ai_download_btn.config(state="normal")
+        self.refresh_ai_models()
+        self.feedback.set_error(title, message)
 
     def test_selected_model(self):
         model_id = self._selected_model_id()
@@ -345,15 +335,7 @@ class SettingsPanel(ttk.Frame):
             return
 
         self.ai_test_btn.config(state="disabled")
-
-        def _worker():
-            try:
-                ok, message = self.model_manager.test_model(model_id)
-            except Exception as exc:
-                ok, message = False, str(exc)
-            self.after(0, self._test_done, ok, message)
-
-        threading.Thread(target=_worker, daemon=True).start()
+        self.models.test(model_id, on_done=self._test_done)
 
     def _test_done(self, ok, message):
         self.ai_test_btn.config(state="normal")
@@ -379,7 +361,7 @@ class SettingsPanel(ttk.Frame):
         cfg.set("sound_enabled", self.sound_var.get())
         cfg.set("default_output_dir", self.out_dir_var.get())
         if self.ai_root_var.get().strip():
-            self.model_manager.set_model_root(self.ai_root_var.get().strip())
+            self.models.save_root(self.ai_root_var.get().strip())
         self.refresh_ai_models()
         if language != self._ui_language:
             self._offer_restart()

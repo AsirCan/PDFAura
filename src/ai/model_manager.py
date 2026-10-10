@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 from src.core.config_manager import cfg
+from src.core.task_manager import CancelledError
 from src.core.lang_manager import _
 
 
@@ -369,12 +370,16 @@ class ModelManager:
                             progress(downloaded, total)
             part.replace(destination)
             return destination
-        except Exception as exc:
+        except BaseException as exc:
             try:
                 if part.exists():
                     part.unlink()
             except OSError:
                 pass
+            # A cancel from the progress callback stays a cancel, not a
+            # failed download.
+            if isinstance(exc, CancelledError) or not isinstance(exc, Exception):
+                raise
             raise ModelDownloadError(str(exc)) from exc
 
     def test_model(self, model_id: str) -> tuple[bool, str]:
