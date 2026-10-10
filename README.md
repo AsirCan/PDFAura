@@ -34,9 +34,9 @@ Belgeleriniz hiçbir sunucuya yüklenmez; her işlem kendi bilgisayarınızda ya
 
 <br />
 
-https://github.com/user-attachments/assets/d833ff09-a121-4ea8-9124-70190dd4c518
+https://github.com/user-attachments/assets/69b6c403-c3e8-44f5-a4e7-e962c4745e03
 
-<p align="center"><sub>Yedi araç tek pencerede. Açık, koyu ve sistem teması anında değişir; yeniden başlatma gerekmez.</sub></p>
+<p align="center"><sub>Yedi araç tek pencerede. Tema ve dil anında değişir; yeniden başlatma gerekmez.</sub></p>
 
 ---
 
@@ -100,7 +100,7 @@ Aşağıdaki videolar uygulamanın güncel sürümünden kaydedildi. Her işlem 
 
 Fotoğrafları pencereye sürükleyin. PDF Aura kâğıdın sınırlarını bulur; yanlış yakaladığı köşeyi büyüteçle tutup doğru yere çekebilirsiniz. **Temiz Belge** filtresi arka planı beyazlatır ve gölgeleri siler. Sayfaları sürükleyerek sıralayabilir, çift tıklayarak adlandırabilirsiniz. Çalışmanız otomatik kaydedilir; uygulama kapansa bile kaldığınız yerden devam edersiniz.
 
-https://github.com/user-attachments/assets/be5c3994-be5e-45b8-8060-7a71e89c27cd
+https://github.com/user-attachments/assets/3c7046e0-02d4-46d9-84ea-adf2d5f187df
 
 ### 2. PDF sıkıştırma
 
@@ -108,7 +108,7 @@ https://github.com/user-attachments/assets/be5c3994-be5e-45b8-8060-7a71e89c27cd
 
 E-posta için `screen`, günlük kullanım için `ebook`, baskı için `printer` ya da matbaa için `prepress`. Görseller profile uygun çözünürlüğe indirilip yeniden kodlanır, yazı tipleri yalnızca kullanılan karakterlere indirgenir; metin metin olarak kalır. Sıkıştırma uygulamanın içinde yapılır, Ghostscript gibi ayrı bir program gerekmez. Sonuç özgün dosyadan büyük çıkarsa özgün dosya korunur. İşlem bitince özgün ve yeni boyut yan yana gösterilir; çıktıyı ya da klasörünü tek tıkla açabilirsiniz.
 
-https://github.com/user-attachments/assets/0690e03b-9bdd-4cb7-97bf-0c48254090bc
+https://github.com/user-attachments/assets/3c140a51-589b-491f-bbd2-dc0c5b5863c4
 
 ### 3. Sayfa yönetimi: kes, birleştir, düzenle
 
@@ -116,7 +116,7 @@ https://github.com/user-attachments/assets/0690e03b-9bdd-4cb7-97bf-0c48254090bc
 
 Bir rapordan yalnızca ihtiyacınız olan sayfaları ayırın, birden fazla PDF'i istediğiniz sırada tek dosyada toplayın. Düzenle sekmesinde sayfa silebilir, döndürebilir ve sayfa sırasını değiştirebilirsiniz.
 
-https://github.com/user-attachments/assets/1c75293f-c691-4e5d-91b5-ef3d576b7d12
+https://github.com/user-attachments/assets/0a3c7d6d-ff58-4bde-b2dd-aab1fbc5e70c
 
 ### 4. Format dönüştürücü
 
@@ -124,7 +124,7 @@ https://github.com/user-attachments/assets/1c75293f-c691-4e5d-91b5-ef3d576b7d12
 
 PDF'i düzenlenebilir bir Word belgesine çevirin, Word, Excel ve PowerPoint dosyalarını PDF yapın, sayfaları yüksek çözünürlüklü PNG/JPG olarak dışa aktarın ya da metni `.txt` olarak alın. Microsoft Office kurulu değilse LibreOffice otomatik devreye girer.
 
-https://github.com/user-attachments/assets/a75e6bba-afbb-485d-924c-3fc2a2b549c8
+https://github.com/user-attachments/assets/0010c333-fc48-4951-bdb3-5547d34adf95
 
 ### 5. Güvenlik ve filigran
 
@@ -132,7 +132,7 @@ https://github.com/user-attachments/assets/a75e6bba-afbb-485d-924c-3fc2a2b549c8
 
 Sayfalara "GİZLİ" gibi bir filigran ekleyin, ardından belgeyi AES-256 ile şifreleyin. Parolasını bildiğiniz bir PDF'in korumasını da aynı yerden kaldırabilirsiniz.
 
-https://github.com/user-attachments/assets/a72b5b86-19ac-427d-a977-80ec6d4f359d
+https://github.com/user-attachments/assets/4247ff39-6775-4c29-82f6-95443cc05561
 
 ### 6. Gelişmiş araçlar: önizleme, OCR, meta veri, imza
 
@@ -140,7 +140,7 @@ https://github.com/user-attachments/assets/a72b5b86-19ac-427d-a977-80ec6d4f359d
 
 Dahili önizleyicide sayfalar arasında gezinin ve yakınlaştırın. Tesseract OCR ile taranmış PDF'lerdeki metni çıkarın (Tesseract'ı uygulama içinden kurabilirsiniz). Başlık, yazar, konu ve oluşturan bilgilerini düzenleyin ya da tamamen temizleyin. İmza görselinizi seçtiğiniz sayfaya ve konuma yerleştirin.
 
-https://github.com/user-attachments/assets/55a8d18c-2a89-4952-8e2e-b026bdafc797
+https://github.com/user-attachments/assets/86de8cc3-d30f-45af-a1d2-6057a29d2d49
 
 ### 7. Toplu işlemler
 
@@ -148,7 +148,7 @@ https://github.com/user-attachments/assets/55a8d18c-2a89-4952-8e2e-b026bdafc797
 
 Klasörü pencereye bırakın; içindeki tüm PDF'leri sıkıştırın, resme ya da PDF'e dönüştürün veya `Fatura_[TARIH]_[ORIJINAL_AD]_[SIRA]` gibi bir şablonla yeniden adlandırın. Şablonda `[ORIJINAL_AD]`, `[SAYFA_SAYISI]`, `[BOYUT]`, `[SIRA]` ve `[TARIH]` kullanılabilir. Kaç dosyanın başarıyla işlendiği günlükte görünür.
 
-https://github.com/user-attachments/assets/561fd51f-515a-4f68-a22d-c58d80d3913b
+https://github.com/user-attachments/assets/b3820c41-da50-4bec-a2f9-13538d9acdbc
 
 ### 8. Aura Asistan: yazılı ve sesli komutlar
 
@@ -156,7 +156,7 @@ https://github.com/user-attachments/assets/561fd51f-515a-4f68-a22d-c58d80d3913b
 
 Sağ üstteki komut çubuğuna yazın (<kbd>Ctrl</kbd>+<kbd>K</kbd>) ya da mikrofon düğmesine basılı tutup konuşun. Asistan dosyayı Masaüstü, Belgeler ve İndirilenler klasörlerinde bulur, işlemi yapar; yanıtı hem ekranda gösterir hem sesli okur.
 
-https://github.com/user-attachments/assets/c48b10e6-c294-4e4e-af67-bb5b85ee8185
+https://github.com/user-attachments/assets/b58a1591-12c0-4911-ae4b-38f51585a589
 
 Çalışan örnek komutlar:
 - *"rapor.pdf dosyasını sıkıştır"*
@@ -465,8 +465,6 @@ Hata bildirimleri, öneriler ve pull request'ler memnuniyetle karşılanır.
 PDF Aura [MIT lisansı](LICENSE) ile dağıtılır; kişisel ve ticari amaçlarla özgürce kullanılabilir, değiştirilebilir ve dağıtılabilir.
 
 PDF Aura şu açık kaynak projelerin üzerine kuruludur: [pypdf](https://github.com/py-pdf/pypdf), [PyMuPDF](https://github.com/pymupdf/PyMuPDF), [OpenCV](https://opencv.org/), [ONNX Runtime](https://onnxruntime.ai/), [U2-Net](https://github.com/xuebinqin/U-2-Net), [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Tesseract](https://github.com/tesseract-ocr/tesseract), [pdf2docx](https://github.com/ArtifexSoftware/pdf2docx), [ReportLab](https://www.reportlab.com/), [pywebview](https://github.com/r0x0r/pywebview), [Svelte](https://svelte.dev/) ve [Vite](https://vite.dev/). Pencereyi Microsoft Edge WebView2 çizer. LibreOffice ve Tesseract ayrı programlar olarak çağrılır ve kendi lisanslarıyla dağıtılır.
-
-Tanıtım videolarındaki fiş fotoğrafları Wikimedia Commons'taki CC0 / kamu malı görsellerdir (Sarah Stierch, Mattes, Grandmaster Huon).
 
 <div align="center">
 
