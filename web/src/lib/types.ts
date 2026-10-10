@@ -86,6 +86,44 @@ export interface ModelList {
 
 export type Params = Record<string, unknown>;
 
+// The document scanner (src/app/scanboard.py). Corners are photo pixels,
+// clockwise from the top-left, in the photo as it is turned.
+export type Point = [number, number];
+export type ScanMode = "original" | "clean_doc" | "bw" | "grayscale" | "sharp";
+
+export interface ScanPage {
+  uid: string;
+  label: string;
+  name: string;
+  width: number;
+  height: number;
+  rotation: number;
+  corners: Point[];
+  /** Changes whenever the page's straightened picture would. */
+  version: number;
+}
+
+export interface ScanNotice {
+  tone: Tone;
+  title: string;
+  message: string;
+}
+
+export interface ScanState {
+  pages: ScanPage[];
+  current: number;
+  mode: ScanMode;
+  output: string;
+  busy: "restoring" | "exporting" | "detecting" | null;
+  notice: ScanNotice | null;
+  progress: { current: number; total: number } | null;
+}
+
+export interface ScanOpen extends ScanState {
+  /** The strip's width the user chose; 0 fits it beside the photo. */
+  strip: number;
+}
+
 export interface Metadata {
   title: string;
   author: string;
@@ -118,6 +156,21 @@ export interface Api {
   tesseract_available(): Promise<boolean>;
   install_tesseract(): Promise<void>;
   read_metadata(path: string): Promise<Metadata & { error?: string }>;
+  scanner_open(): Promise<ScanOpen>;
+  scanner_add(paths: string[]): Promise<ScanState>;
+  scanner_remove(uid: string): Promise<ScanState>;
+  scanner_clear(): Promise<ScanState>;
+  scanner_select(index: number): Promise<ScanState>;
+  scanner_move(uid: string, index: number): Promise<ScanState>;
+  scanner_rename(uid: string, label: string): Promise<ScanState>;
+  scanner_rotate(uid: string, step: 90 | -90): Promise<ScanState>;
+  scanner_corners(uid: string, corners: Point[]): Promise<ScanState>;
+  scanner_reset(uid: string): Promise<ScanState>;
+  scanner_detect(uid: string): Promise<ScanState>;
+  scanner_mode(mode: ScanMode): Promise<ScanState>;
+  scanner_output(path: string): Promise<ScanState>;
+  scanner_strip(width: number): Promise<number>;
+  scanner_export(): Promise<Started>;
   assistant_submit(text: string): Promise<boolean>;
   assistant_press(): Promise<void>;
   assistant_release(): Promise<void>;
@@ -145,4 +198,5 @@ export interface Events {
   drop: { files: FileInfo[] };
   "model-test": { id: string; ok: boolean; message: string };
   tesseract: { ok: boolean; message: string };
+  scanner: ScanState;
 }

@@ -2,7 +2,8 @@
 // the page in a plain browser (npm run dev). It answers like Python would,
 // without touching any file; jobs "run" on timers.
 import { emit } from "./bridge";
-import type { Api, Boot, FileInfo, ModelList, Params, Settings, ThemePreference } from "./types";
+import type { Api, Boot, FileInfo, ModelList, Params, Point, ScanPage, ScanState, Settings, ThemePreference }
+  from "./types";
 
 export interface FakeOptions {
   strings?: Record<string, string>;
@@ -48,6 +49,17 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
         installed: false, description: "", message: "", path: "", license: "", notes: "", downloadable: false,
         source_url: "https://example.invalid" },
     ],
+  };
+
+  // The scanner's board: photos are 1200 x 1600 and nothing is detected.
+  const scan: ScanState = { pages: [], current: -1, mode: "clean_doc", output: "", busy: null, notice: null,
+                            progress: null };
+  let uids = 0;
+  const board = (): ScanState => ({ ...scan, pages: scan.pages.map((page) => ({ ...page })) });
+  const find = (uid: string) => scan.pages.findIndex((page) => page.uid === uid);
+  const square = (w: number, h: number): Point[] => [[20, 20], [w - 21, 20], [w - 21, h - 21], [20, h - 21]];
+  const touched = (page: ScanPage) => {
+    page.version += 1;
   };
 
   const bridge: Api & { calls: typeof calls } = {
@@ -163,6 +175,114 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
     async read_metadata(path) {
       record("read_metadata", [path]);
       return { title: "Faaliyet Raporu", author: "Örnek A.Ş.", subject: "", creator: "" };
+    },
+    async scanner_open() {
+      record("scanner_open", []);
+      return { ...board(), strip: 0 };
+    },
+    async scanner_add(paths) {
+      record("scanner_add", [paths]);
+      const added = paths.filter((path) => /\.(png|jpe?g|bmp|tiff?|webp)$/i.test(path)).map((path) => ({
+        uid: `p${++uids}`, label: "", name: path.split(/[\\/]/).pop() ?? path, width: 1200, height: 1600,
+        rotation: 0, corners: square(1200, 1600), version: 0,
+      }));
+      if (!added.length) return board();
+      scan.pages.push(...added);
+      scan.current = scan.pages.length - added.length;
+      if (!scan.output) scan.output = paths[0].replace(/\.[^.\\]+$/, "_taranmis.pdf");
+      return board();
+    },
+    async scanner_remove(uid) {
+      record("scanner_remove", [uid]);
+      const index = find(uid);
+      if (index >= 0) scan.pages.splice(index, 1);
+      scan.current = Math.min(scan.current, scan.pages.length - 1);
+      return board();
+    },
+    async scanner_clear() {
+      record("scanner_clear", []);
+      scan.pages = [];
+      scan.current = -1;
+      scan.output = "";
+      return board();
+    },
+    async scanner_select(index) {
+      if (index >= 0 && index < scan.pages.length) scan.current = index;
+      return board();
+    },
+    async scanner_move(uid, index) {
+      record("scanner_move", [uid, index]);
+      const from = find(uid);
+      const to = Math.max(0, Math.min(scan.pages.length - 1, index));
+      if (from >= 0 && from !== to) {
+        scan.pages.splice(to, 0, ...scan.pages.splice(from, 1));
+        scan.current = to;
+      }
+      return board();
+    },
+    async scanner_rename(uid, label) {
+      record("scanner_rename", [uid, label]);
+      const page = scan.pages[find(uid)];
+      if (page) page.label = label.trim().slice(0, 60);
+      return board();
+    },
+    async scanner_rotate(uid, step) {
+      record("scanner_rotate", [uid, step]);
+      const page = scan.pages[find(uid)];
+      if (page) {
+        page.rotation = (page.rotation + step + 360) % 360;
+        [page.width, page.height] = [page.height, page.width];
+        page.corners = square(page.width, page.height);
+        touched(page);
+      }
+      return board();
+    },
+    async scanner_corners(uid, corners) {
+      record("scanner_corners", [uid, corners]);
+      const page = scan.pages[find(uid)];
+      if (page) {
+        page.corners = corners.map(([x, y]) => [Math.round(x), Math.round(y)]);
+        touched(page);
+      }
+      return board();
+    },
+    async scanner_reset(uid) {
+      record("scanner_reset", [uid]);
+      const page = scan.pages[find(uid)];
+      if (page) {
+        page.corners = square(page.width, page.height);
+        touched(page);
+      }
+      return board();
+    },
+    async scanner_detect(uid) {
+      record("scanner_detect", [uid]);
+      return board();
+    },
+    async scanner_mode(mode) {
+      record("scanner_mode", [mode]);
+      scan.mode = mode;
+      return board();
+    },
+    async scanner_output(path) {
+      record("scanner_output", [path]);
+      scan.output = path;
+      return board();
+    },
+    async scanner_strip(width) {
+      record("scanner_strip", [width]);
+      return width;
+    },
+    async scanner_export() {
+      record("scanner_export", []);
+      if (!scan.pages.length) return { problem: "no pages" };
+      const output = scan.output;
+      const started = await bridge.start("scanner", { output });
+      setTimeout(() => {
+        scan.output = "";
+        emit("scanner", board());
+      }, (options.jobMs ?? 600) + 1);
+      return started;
     },
     async assistant_submit(text) {
       record("assistant_submit", [text]);

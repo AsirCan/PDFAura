@@ -18,7 +18,7 @@
   let tray = $state(app.settings.close_to_tray);
   let sound = $state(app.settings.sound_enabled);
   let folder = $state(app.settings.default_output_dir);
-  let feedback = new Feedback(t("txt_settings"), t("settings_intro_web"));
+  let feedback = new Feedback(() => t("txt_settings"), () => t("settings_intro_web"));
 
   const THEMES: { value: ThemePreference; label: string }[] = [
     { value: "paper", label: "settings_theme_light" },
@@ -31,9 +31,9 @@
       app.settings = await api().save_settings({ close_to_tray: tray, sound_enabled: sound,
                                                  default_output_dir: folder.trim() });
       if (root.trim() && root.trim() !== models?.root) await saveRoot(root.trim());
-      feedback.success(t("str_success"), t("settings_saved"));
+      feedback.success(() => t("str_success"), () => t("settings_saved"));
     } catch {
-      feedback.error(t("str_error"), t("settings_folder_missing"));
+      feedback.error(() => t("str_error"), () => t("settings_folder_missing"));
     }
   }
 
@@ -45,7 +45,7 @@
   async function clearHistory() {
     await api().clear_recent();
     await refreshRecent();
-    feedback.success(t("str_success"), t("settings_cleared"));
+    feedback.success(() => t("str_success"), () => t("settings_cleared"));
   }
 
   // ── Local AI ──────────────────────────────────────────────────────
@@ -70,24 +70,24 @@
     const chosen = await api().pick_folder(root);
     if (!chosen) return;
     await saveRoot(chosen.path);
-    feedback.success(t("str_success"), t("settings_ai_root_saved"));
+    feedback.success(() => t("str_success"), () => t("settings_ai_root_saved"));
   }
 
   async function pickModelPath() {
-    if (!selected) return feedback.info(t("settings_local_ai_title"), t("settings_ai_no_selection"));
+    if (!selected) return feedback.info(() => t("settings_local_ai_title"), () => t("settings_ai_no_selection"));
     const updated = await api().models_pick_path(selected);
     if (updated) {
       models = updated;
-      feedback.success(t("str_success"), t("settings_ai_path_saved"));
+      feedback.success(() => t("str_success"), () => t("settings_ai_path_saved"));
     }
   }
 
   async function download() {
-    if (!selected) return feedback.info(t("settings_local_ai_title"), t("settings_ai_no_selection"));
+    if (!selected) return feedback.info(() => t("settings_local_ai_title"), () => t("settings_ai_no_selection"));
     if (downloading) return;
     const result = await api().models_download(selected);
     if (result.job === undefined) {
-      feedback.info(t("settings_local_ai_title"), t("settings_ai_download_unavailable"));
+      feedback.info(() => t("settings_local_ai_title"), () => t("settings_ai_download_unavailable"));
       return;
     }
     downloading = { job: result.job, percent: 0 };
@@ -95,7 +95,7 @@
   }
 
   function test() {
-    if (!selected) return feedback.info(t("settings_local_ai_title"), t("settings_ai_no_selection"));
+    if (!selected) return feedback.info(() => t("settings_local_ai_title"), () => t("settings_ai_no_selection"));
     testing = true;
     void api().models_test(selected);
   }
@@ -115,8 +115,8 @@
     }),
     on("model-test", (event) => {
       testing = false;
-      if (event.ok) feedback.success(t("settings_ai_test_ok"), event.message);
-      else feedback.error(t("settings_ai_test_fail"), event.message);
+      if (event.ok) feedback.success(() => t("settings_ai_test_ok"), event.message);
+      else feedback.error(() => t("settings_ai_test_fail"), event.message);
       void loadModels(root);
     }),
   ];

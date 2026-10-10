@@ -34,8 +34,9 @@ def assets_root():
     return os.path.join(_base(), "assets")
 
 
-def make_app(token, images, pages, root=None):
-    """A WSGI app serving the page from ``root`` and images from the caches."""
+def make_app(token, images, pages, scans=None, root=None):
+    """A WSGI app serving the page from ``root``, images from the caches and
+    the scanner's pages from ``scans`` (a ScannerBoard)."""
     import bottle
 
     root = root or web_root()
@@ -75,6 +76,25 @@ def make_app(token, images, pages, root=None):
             bottle.abort(400)
         try:
             data = pages.render(doc_id, index, width)
+        except Exception:
+            data = None
+        if data is None:
+            bottle.abort(404)
+        return _image(data, "image/jpeg")
+
+    @app.get("/scan/<tok>/<uid>/<kind>")
+    def scan(tok, uid, kind):
+        # The URL carries the page's version (or rotation, or scan mode), so
+        # a URL always shows the same picture and may be kept.
+        if scans is None or not _authorised(tok):
+            bottle.abort(404)
+        try:
+            width = int(bottle.request.query.get("w", 800))
+            height = int(bottle.request.query.get("h", width))
+        except ValueError:
+            bottle.abort(400)
+        try:
+            data = scans.render(uid, kind, width, height)
         except Exception:
             data = None
         if data is None:

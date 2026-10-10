@@ -38,13 +38,13 @@
   let images = $state<FileInfo[]>([]);
   let selectedImage = $state(-1);
   let pageSize = $state("original");
-  const feedback = new Feedback(t("convert_type"), t("convert_running", { mode: t("convert_pdf2img") }));
+  const feedback = new Feedback(() => t("convert_type"), () => t("convert_running", { mode: t("convert_pdf2img") }));
   const run = new ToolRun(feedback);
 
   let single = $derived(mode === "img2pdf" ? null : SINGLE[mode]);
 
   function switchMode(next: Mode) {
-    feedback.info(t("convert_type"), t("convert_running", { mode: t(`convert_${next}`) }));
+    feedback.info(() => t("convert_type"), () => t("convert_running", { mode: t(`convert_${next}`) }));
     if (next === "img2pdf" || SINGLE[next as Single].input !== "pdf") previewFile(null);
     else previewFile(inputs[next as Single] || null);
   }
@@ -89,7 +89,7 @@
       const fits = mode === "img2pdf" ? file.kind === "image" : file.kind === ACCEPTS[mode as Single];
       if (!fits) {
         // A file that does not suit the mode used to be ignored without a word.
-        feedback.info(t("convert_dialog_pdf"), t("convert_drop_mismatch", { name: file.name }));
+        feedback.info(() => t("convert_dialog_pdf"), () => t("convert_drop_mismatch", { name: file.name }));
         continue;
       }
       if (mode === "img2pdf") await addImages([file]);

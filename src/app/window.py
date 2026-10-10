@@ -17,6 +17,7 @@ from src.app import native
 from src.app.bridge import Bridge, file_info
 from src.app.events import EventBus
 from src.app.images import ImageCache, PdfPages
+from src.app.scanboard import ScannerBoard
 from src.core.config_manager import cfg
 from src.core.lang_manager import _
 
@@ -62,6 +63,7 @@ class Shell:
         self.images = ImageCache()
         self.pages = PdfPages()
         self.events = EventBus()
+        self.scans = ScannerBoard(self.events.emit)
         self.version = _app_version()
         self.window = None
         self.bridge = Bridge(self)
@@ -94,7 +96,7 @@ class Shell:
         # A WSGI app as the url: pywebview serves it on 127.0.0.1 and a
         # random port, and adds none of its own routes.
         self.window = webview.create_window(
-            "PDF Aura", url=make_app(self.token, self.images, self.pages), js_api=self.bridge,
+            "PDF Aura", url=make_app(self.token, self.images, self.pages, self.scans), js_api=self.bridge,
             width=width, height=height, min_size=(960, 640), background_color=theme.palette.canvas)
         self.events.attach(self.window.run_js)
         self.window.events.closing += self._on_closing
@@ -111,6 +113,7 @@ class Shell:
                       debug=bool(self.debug_port))
         self._stop_tray()
         self.pages.close()
+        self._keep_scanner_session()
         return 0
 
     def quit(self):
@@ -126,9 +129,19 @@ class Shell:
         if self._quitting or not cfg.get("close_to_tray", True) or not self._ensure_tray():
             self._stop_tray()
             return True
+        # The app may never be opened again (log off, shut down): write the
+        # scanner's pages now rather than after the debounce.
+        self.scans.save_now()
         self.window.hide()
         self._notify_running_in_tray()
         return False
+
+    def _keep_scanner_session(self):
+        """The window is gone; wait until the scanner's pages are on disk."""
+        try:
+            self.scans.flush(timeout=10.0)
+        except Exception:
+            logging.getLogger(__name__).exception("Scanner session could not be flushed on exit")
 
     def _on_loaded(self):
         self._listen_for_drops()

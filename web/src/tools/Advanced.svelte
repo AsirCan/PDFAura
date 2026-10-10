@@ -28,7 +28,7 @@
   let tesseract = $state<boolean | null>(null);
   let installing = $state(false);
   const output = new OutputPath("advanced", "pdf");
-  const feedback = new Feedback(t("adv_operation"), t("adv_preview_hint"));
+  const feedback = new Feedback(() => t("adv_operation"), () => t("adv_preview_hint"));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {
@@ -48,18 +48,18 @@
     if (result.error) {
       loadedFor = null;
       if (!quiet) {
-        feedback.error(t("str_error"), result.error === "missing" ? t("err_select_valid_file")
+        feedback.error(() => t("str_error"), result.error === "missing" ? t("err_select_valid_file")
           : `${t("err_metadata_read")} ${result.error}`);
       }
       return;
     }
     meta = { title: result.title, author: result.author, subject: result.subject, creator: result.creator };
     loadedFor = path;
-    if (!quiet) feedback.info(t("str_info"), t("adv_meta_read_ok"));
+    if (!quiet) feedback.info(() => t("str_info"), () => t("adv_meta_read_ok"));
   }
 
   async function switchMode(next: Mode) {
-    feedback.info(t("adv_operation"), t(MODE_LABELS[next]));
+    feedback.info(() => t("adv_operation"), () => t(MODE_LABELS[next]));
     // The save dialog offers .txt for OCR and .pdf otherwise.
     output.kind = next === "ocr" ? "text" : "pdf";
     if (next === "ocr") tesseract = await api().tesseract_available();
@@ -79,11 +79,11 @@
     const path = input.trim();
     if (mode === "preview") {
       if (!path) {
-        feedback.error(t("str_error"), t("err_select_valid_file"));
+        feedback.error(() => t("str_error"), () => t("err_select_valid_file"));
         return;
       }
       app.viewer = path;
-      feedback.info(t("adv_preview"), t("viewer_title"));
+      feedback.info(() => t("adv_preview"), () => t("viewer_title"));
       return;
     }
     const params: Record<string, unknown> = { input: path, output: output.value.trim(), mode };
@@ -103,9 +103,9 @@
     installing = false;
     if (event.ok) {
       tesseract = true;
-      feedback.success(t("adv_tess_install_title"), t("adv_tess_install_ok"));
+      feedback.success(() => t("adv_tess_install_title"), () => t("adv_tess_install_ok"));
     } else {
-      feedback.error(t("str_error"), event.message);
+      feedback.error(() => t("str_error"), event.message);
     }
   });
 

@@ -32,7 +32,7 @@ MODES = [
 DEFAULT_MODE = MODE_CLEAN_DOC
 A4_ASPECT = 3508 / 2480            # height / width; see document_scanner.A4_*_PX
 PAGE_LABEL_MAX = 60
-IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
 
 
 def mode_label(mode):
@@ -340,6 +340,20 @@ def thumbnail(page, thumb_w, thumb_h, background_hex):
     left = (thumb_w - warp_w) // 2
     cell[top:top + warp_h, left:left + warp_w] = small
     return to_pil(cell)
+
+
+def fitted(page, box_w, box_h):
+    """The page as it will be exported (straightened, at its own
+    proportions), fitted into box_w x box_h, without a background around it:
+    the web window letterboxes it with CSS in the theme's colour."""
+    import cv2
+    from src.core.document_scanner import perspective_warp, target_size_from_corners
+    full_w, full_h = target_size_from_corners(page.corners)
+    scale = min(box_w / full_w, box_h / full_h)
+    warp_w = max(1, int(round(full_w * scale)))
+    warp_h = max(1, int(round(full_h * scale)))
+    warped = perspective_warp(page.display_image, page.corners, warp_w * 2, warp_h * 2)
+    return to_pil(cv2.resize(warped, (warp_w, warp_h), interpolation=cv2.INTER_AREA))
 
 
 def drag_ghost(page, width, height):

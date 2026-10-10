@@ -5,51 +5,68 @@
 import { api, on } from "./bridge";
 import { dialogs } from "./dialog.svelte";
 import { t } from "./i18n.svelte";
-import type { JobEvent, Outcome, Params } from "./types";
+import type { JobEvent, Outcome, Params, Started } from "./types";
 
 export type Tone = "neutral" | "info" | "busy" | "success" | "warning" | "danger";
+
+/** Words for the result panel: fixed (what a run reported), or a function
+ * that is asked again when the language changes (the panel's own texts). */
+export type Text = string | (() => string);
+
+const words = (text: Text) => (typeof text === "function" ? text() : text);
 
 /** The result panel's state (InlineFeedback in helpers.py). */
 export class Feedback {
   tone = $state<Tone>("neutral");
-  badge = $state("");
-  title = $state("");
-  message = $state("");
   output = $state<string | null>(null);
+  private badgeKey = $state("feedback_ready_badge");
+  private titleText = $state.raw<Text>("");
+  private messageText = $state.raw<Text>("");
 
-  constructor(title?: string, message?: string) {
+  constructor(title?: Text, message?: Text) {
     if (title !== undefined) this.info(title, message ?? "");
     else this.idle();
   }
 
-  private set(tone: Tone, badge: string, title: string, message: string, output: string | null = null) {
+  get badge() {
+    return t(this.badgeKey);
+  }
+  get title() {
+    return words(this.titleText);
+  }
+  get message() {
+    return words(this.messageText);
+  }
+
+  private set(tone: Tone, badge: string, title: Text, message: Text, output: string | null = null) {
     this.tone = tone;
-    this.badge = t(badge);
-    this.title = title;
-    this.message = message;
+    this.badgeKey = badge;
+    this.titleText = title;
+    this.messageText = message;
     this.output = output;
   }
 
-  idle(title?: string, message?: string) {
-    this.set("neutral", "feedback_ready_badge", title ?? t("feedback_ready_title"), message ?? t("feedback_ready_body"));
+  idle(title?: Text, message?: Text) {
+    this.set("neutral", "feedback_ready_badge", title ?? (() => t("feedback_ready_title")),
+             message ?? (() => t("feedback_ready_body")));
   }
-  busy(message: string) {
-    this.set("busy", "feedback_busy_badge", t("feedback_busy_title"), message);
+  busy(message: Text) {
+    this.set("busy", "feedback_busy_badge", () => t("feedback_busy_title"), message);
   }
-  success(title: string, message: string, output: string | null = null) {
+  success(title: Text, message: Text, output: string | null = null) {
     this.set("success", "feedback_done_badge", title, message, output);
   }
-  warning(title: string, message: string, output: string | null = null) {
+  warning(title: Text, message: Text, output: string | null = null) {
     this.set("warning", "feedback_warning_badge", title, message, output);
   }
-  error(title: string, message: string) {
+  error(title: Text, message: Text) {
     this.set("danger", "feedback_error_badge", title, message);
   }
-  info(title: string, message: string) {
+  info(title: Text, message: Text) {
     this.set("info", "feedback_info_badge", title, message);
   }
   cancelled() {
-    this.set("warning", "perf_cancelled_badge", t("perf_cancelled"), t("perf_cancelled_msg"));
+    this.set("warning", "perf_cancelled_badge", () => t("perf_cancelled"), () => t("perf_cancelled_msg"));
   }
   show(outcome: Outcome) {
     if (outcome.tone === "success") this.success(outcome.title, outcome.message, outcome.output);
@@ -103,11 +120,21 @@ export class ToolRun {
         if (!replace) return false;
       }
     }
+    return this.begin(() => bridge.start(tool, params));
+  }
+
+  /** Follow the job ``launch`` starts: start() for a tool, or a page's own
+   * call (the scanner's export). False if nothing was started. */
+  async begin(launch: () => Promise<Started>): Promise<boolean> {
+    if (this.busy) return false;
     this.stop?.();
-    this.stop = on("job", (event) => this.event(event));
-    const started = await bridge.start(tool, params);
+    // A short job can report before its id is back; keep those events.
+    const early: JobEvent[] = [];
+    this.stop = on("job", (event) => (this.job === null ? early.push(event) : this.event(event)));
+    const started = await launch();
     if (started.problem || started.job === undefined) {
       this.stop();
+      this.stop = null;
       this.feedback.error(t("str_error"), started.problem ?? "");
       return false;
     }
@@ -119,6 +146,7 @@ export class ToolRun {
     this.cancellable = Boolean(started.cancellable);
     this.cancelling = false;
     this.feedback.busy(started.busy ?? t("str_processing"));
+    for (const event of early) this.event(event);
     return true;
   }
 

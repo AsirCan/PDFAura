@@ -16,7 +16,7 @@
   let input = $state("");
   let quality = $state<(typeof QUALITIES)[number]>("ebook");
   const output = new OutputPath("compress");
-  const feedback = new Feedback(t("compress_settings"), t("compress_quality_hint"));
+  const feedback = new Feedback(() => t("compress_settings"), () => t("compress_quality_hint"));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {

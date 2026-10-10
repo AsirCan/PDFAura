@@ -17,7 +17,8 @@
   let end = $state<number | null>(null);
   let info = $state("");
   const output = new OutputPath("split");
-  const feedback = new Feedback(t("split_page_range"), t("output_action_hint", { action: t("split_btn") }));
+  const feedback = new Feedback(() => t("split_page_range"),
+                                () => t("output_action_hint", { action: t("split_btn") }));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {

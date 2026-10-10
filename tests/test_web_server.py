@@ -80,6 +80,37 @@ def test_pdf_pages_are_drawn_on_request(site, tmp_path):
     assert get(app, "/pdf/secret/nope/0")[0] == 404
 
 
+JPEG = b"\xff\xd8jpeg"
+
+
+class Board:
+    """What the /scan route needs from scanboard.ScannerBoard."""
+
+    def __init__(self):
+        self.asked = []
+
+    def render(self, uid, kind, width, height):
+        self.asked.append((uid, kind, width, height))
+        return JPEG if uid == "page" and kind in ("photo", "thumb", "preview") else None
+
+
+def test_scanner_pictures_need_the_token_and_a_page(tmp_path):
+    board = Board()
+    app = make_app("secret", ImageCache(), PdfPages(), board, root=str(tmp_path))
+    status, headers, body = get(app, "/scan/secret/page/thumb", "w=180&h=255&v=3")
+    assert status == 200 and headers["Content-Type"] == "image/jpeg" and body == JPEG
+    assert "immutable" in headers["Cache-Control"]
+    assert board.asked == [("page", "thumb", 180, 255)]
+    assert get(app, "/scan/guess/page/thumb")[0] == 404
+    assert get(app, "/scan/secret/other/thumb")[0] == 404
+    assert get(app, "/scan/secret/page/photo", "w=big")[0] == 400
+    assert get(app, "/scan/secret/page/photo")[0] == 200 and board.asked[-1][2:] == (800, 800)
+
+
+def test_without_a_scanner_there_are_no_scanner_pictures(site):
+    assert get(site[0], "/scan/secret/page/photo")[0] == 404
+
+
 def test_a_previewed_pdf_can_still_be_replaced(tmp_path):
     """A document opened from the file keeps it open, and Windows then
     refuses to write over it."""

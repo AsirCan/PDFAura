@@ -23,7 +23,7 @@
   let renameRule = $state(t("batch_rename_default"));
   let log = $state<string[]>([]);
   let logBox: HTMLElement | undefined = $state();
-  const feedback = new Feedback(t("batch_main_type"), t("batch_rename_hint"));
+  const feedback = new Feedback(() => t("batch_main_type"), () => t("batch_rename_hint"));
   const run: ToolRun = new ToolRun(feedback, {
     progress: (current, total, message) => {
       const pct = Math.floor((current / Math.max(1, total)) * 100);
@@ -78,7 +78,7 @@
 
   <p class="field-label spaced">{t("batch_main_type")}</p>
   <Segmented label={t("batch_main_type")} bind:value={mode}
-             onchange={(next) => feedback.info(t("batch_main_type"), t(MODE_LABELS[next]))} options={[
+             onchange={(next) => feedback.info(() => t("batch_main_type"), () => t(MODE_LABELS[next]))} options={[
     { value: "compress", label: t("batch_compress") },
     { value: "convert", label: t("batch_convert") },
     { value: "rename", label: t("batch_rename") },

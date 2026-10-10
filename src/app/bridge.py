@@ -20,7 +20,7 @@ from dataclasses import asdict
 from src.app.api import Api
 from src.app.jobs import call_now
 from src.core.config_manager import cfg
-from src.core.lang_manager import LANGUAGES, RTL_LANGUAGES, strings_for
+from src.core.lang_manager import LANGUAGES, RTL_LANGUAGES, _, strings_for
 
 THEMES = ("system", "paper", "night")
 
@@ -29,6 +29,8 @@ THEMES = ("system", "paper", "night")
 FILE_TYPES = {
     "pdf": ("PDF (*.pdf)",),
     "image": ("Images (*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.gif;*.webp)",),
+    # What the scanner can read (no GIF: OpenCV cannot).
+    "photo": ("Images (*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp)",),
     "word": ("Word (*.doc;*.docx)",),
     "powerpoint": ("PowerPoint (*.ppt;*.pptx)",),
     "excel": ("Excel (*.xls;*.xlsx)",),
@@ -306,6 +308,68 @@ class Bridge:
         version = int(os.path.getmtime(info["path"]))
         return {**info, **details, "id": doc_id, "version": version,
                 "base": f"/pdf/{self._shell.token}/{doc_id}/"}
+
+    # ── Scanner (Belge Tara) ──────────────────────────────────────────
+    # The board (scanboard.py) owns the pages and their photos. Each call
+    # returns the board's new state; what it changes on its own (corner
+    # detection, the session coming back) arrives as a "scanner" event.
+    # Pictures are /scan/<token>/<uid>/<kind> URLs (server.py).
+    def scanner_open(self):
+        """The board, plus the strip width the user chose (0 = fit). The
+        first call also brings back the last session, on a thread."""
+        return {**self._shell.scans.restore(), "strip": int(cfg.get("scanner_strip_width", 0) or 0)}
+
+    def scanner_add(self, paths):
+        return self._shell.scans.add([str(path) for path in paths if isinstance(path, str)])
+
+    def scanner_remove(self, uid):
+        return self._shell.scans.remove(str(uid))
+
+    def scanner_clear(self):
+        return self._shell.scans.clear()
+
+    def scanner_select(self, index):
+        return self._shell.scans.select(int(index))
+
+    def scanner_move(self, uid, index):
+        return self._shell.scans.move(str(uid), int(index))
+
+    def scanner_rename(self, uid, label):
+        return self._shell.scans.rename(str(uid), str(label))
+
+    def scanner_rotate(self, uid, step):
+        return self._shell.scans.rotate(str(uid), int(step))
+
+    def scanner_corners(self, uid, corners):
+        return self._shell.scans.set_corners(str(uid), corners)
+
+    def scanner_reset(self, uid):
+        return self._shell.scans.reset(str(uid))
+
+    def scanner_detect(self, uid):
+        return self._shell.scans.detect(str(uid))
+
+    def scanner_mode(self, mode):
+        return self._shell.scans.set_mode(str(mode))
+
+    def scanner_output(self, path):
+        return self._shell.scans.set_output(str(path or ""))
+
+    def scanner_strip(self, width):
+        """Remember the strip's width; 0 goes back to fitting it to the photo."""
+        width = max(0, min(int(width), 2000))
+        cfg.set("scanner_strip_width", width)
+        return width
+
+    def scanner_export(self):
+        """Write the PDF; like start(), its progress and result arrive as
+        "job" events."""
+        events = JobEvents(self._events.emit)
+        job = self._shell.scans.export(self._api.start_work, events.callbacks())
+        if isinstance(job, dict):
+            return job
+        events.bind(job)
+        return {"job": job.id, "busy": _("scanner_running"), "cancellable": True}
 
     # ── Assistant ─────────────────────────────────────────────────────
     def _helper(self):

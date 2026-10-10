@@ -11,8 +11,14 @@ from conftest import make_pdf
 from src.app import bridge as bridge_module
 from src.app.bridge import Bridge, JobEvents, file_info
 from src.app.images import ImageCache, PdfPages
+from src.app.scanboard import ScannerBoard
 from src.core.config_manager import cfg
 from src.core.lang_manager import _
+
+
+def _no_session():
+    from src.core.scanner_session import ScannerSessionStore
+    return ScannerSessionStore("unused", enabled=False)
 
 
 class Shell:
@@ -25,6 +31,7 @@ class Shell:
         self.pages = PdfPages()
         self.events = self
         self.sent = []
+        self.scans = ScannerBoard(self.emit, store=_no_session())
         self.ready_called = False
         self.title_bars = []
         self.languages = 0
@@ -67,7 +74,8 @@ def bridge(shell):
 
 @pytest.fixture(autouse=True)
 def keep_config():
-    keys = ("language", "theme", "close_to_tray", "sound_enabled", "default_output_dir", "recent_files")
+    keys = ("language", "theme", "close_to_tray", "sound_enabled", "default_output_dir", "recent_files",
+            "scanner_strip_width")
     saved = {key: cfg.config.get(key) for key in keys}
     cfg.config["sound_enabled"] = False
     yield
@@ -212,6 +220,45 @@ def test_an_unreadable_pdf_reports_why(bridge, tmp_path):
     broken.write_bytes(b"%PDF-1.4 not really")
     doc = bridge.document(str(broken))
     assert doc["error"] and doc["error"] != "not-a-pdf"
+
+
+# ── Scanner ───────────────────────────────────────────────────────────────
+
+def test_the_scanner_opens_with_its_strip_width(bridge):
+    cfg.config["scanner_strip_width"] = 240
+    state = bridge.scanner_open()
+    assert state["pages"] == [] and state["strip"] == 240
+    assert bridge.scanner_strip(-5) == 0 and cfg.get("scanner_strip_width") == 0
+
+
+def test_scanner_pages_are_added_by_path_and_exported_as_a_job(bridge, shell, tmp_path):
+    import cv2
+    import numpy as np
+    photo = tmp_path / "fiş.jpg"
+    cv2.imencode(".jpg", np.full((400, 300, 3), 200, np.uint8))[1].tofile(str(photo))
+    state = bridge.scanner_add([str(photo), 42])
+    assert [p["name"] for p in state["pages"]] == ["fiş.jpg"]
+    assert bridge.scanner_export() == {"problem": _("scanner_detect_busy")}
+
+    def idle():
+        return any(name == "scanner" and data["busy"] is None for name, data in shell.sent)
+    for _i in range(200):
+        if idle():
+            break
+        threading.Event().wait(0.05)
+    output = tmp_path / "tarama.pdf"
+    bridge.scanner_output(str(output))
+    started = bridge.scanner_export()
+    assert started["busy"] == _("scanner_running") and started["cancellable"]
+    jobs = shell.wait_job()
+    assert jobs[-1]["id"] == started["job"] and jobs[-1]["type"] == "done"
+    assert os.path.isfile(output)
+
+
+def test_scanner_calls_check_what_the_page_sends(bridge):
+    with pytest.raises(ValueError):
+        bridge.scanner_move("uid", "first")
+    assert bridge.scanner_rotate("missing", 90)["pages"] == []
 
 
 # ── Assistant and models ──────────────────────────────────────────────────

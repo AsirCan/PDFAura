@@ -22,7 +22,7 @@
   let angle = $state("90");
   let order = $state("");
   const output = new OutputPath("edit");
-  const feedback = new Feedback(t("edit_operation"), t("edit_delete_hint"));
+  const feedback = new Feedback(() => t("edit_operation"), () => t("edit_delete_hint"));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {

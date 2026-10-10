@@ -19,7 +19,7 @@
   let confirm = $state("");
   let watermark = $state("GIZLI");
   const output = new OutputPath("security");
-  const feedback = new Feedback(t("security_op_type"), t("security_watermark_text"));
+  const feedback = new Feedback(() => t("security_op_type"), () => t("security_watermark_text"));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {

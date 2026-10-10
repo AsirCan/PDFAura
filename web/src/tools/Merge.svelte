@@ -16,7 +16,7 @@
   let files = $state<FileInfo[]>([]);
   let selected = $state(-1);
   const output = new OutputPath("merge");
-  const feedback = new Feedback(t("merge_pdf_files"), t("str_drag_drop_hint"));
+  const feedback = new Feedback(() => t("merge_pdf_files"), () => t("str_drag_drop_hint"));
   const run = new ToolRun(feedback);
 
   async function append(added: FileInfo[]) {
