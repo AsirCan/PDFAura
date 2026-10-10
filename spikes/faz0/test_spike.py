@@ -6,6 +6,7 @@ Not part of the main suite (pytest.ini only collects tests/). Each test
 starts spikes/faz0/app.py with the DevTools port open and drives it with
 Playwright over CDP, the way the E2E layer in #25 would.
 """
+import ctypes
 import os
 import socket
 import subprocess
@@ -195,27 +196,41 @@ def _file_name_box(dialog):
     return found[0] if found else None
 
 
-def _fill_file_dialog(pid, text):
-    """Type into the dialog's file name box and press its OK button."""
+def _box_length(box):
+    # WM_GETTEXTLENGTH needs no buffer, so unlike WM_GETTEXT it answers
+    # correctly across processes whatever the text's encoding.
+    return ctypes.windll.user32.SendMessageW(box, win32con.WM_GETTEXTLENGTH, 0, 0)
+
+
+def _fill_file_dialog(pid, text, default=""):
+    """Type into the dialog's file name box and press its OK button.
+
+    A save dialog fills in its default name a moment after its box
+    appears -- on the CI runner, after the test had typed, so it saved to
+    Documents. Wait for the default first (by its length), then type until
+    the box holds the text."""
     dialog = wait_for(lambda: top_windows(pid, cls="#32770"))[0]
     box = wait_for(lambda: _file_name_box(dialog))     # its controls appear after the window
+    if default:
+        try:
+            wait_for(lambda: _box_length(box) == len(default), timeout=10)
+        except TimeoutError:
+            pass
 
-    # On a slow machine (the CI runner) the dialog fills in its default name
-    # a moment after the box appears, over what was typed; type again once it
-    # has. (Reading the box back cannot tell: another process's edit text
-    # does not survive the round trip intact.)
-    for pause in (0.8, 0.4):
+    def typed():
         win32gui.SendMessage(box, win32con.WM_SETTEXT, 0, text)
-        time.sleep(pause)
+        time.sleep(0.3)
+        return _box_length(box) == len(text)
+    wait_for(typed, timeout=10, step=0)
     win32gui.SendMessage(win32gui.GetDlgItem(dialog, 1), win32con.BM_CLICK, 0, 0)    # IDOK
 
 
-def _pick(spike, call, text):
+def _pick(spike, call, text, default=""):
     # The trailing 0: page.evaluate would otherwise wait on the promise,
     # which only settles once the dialog this test has to fill is closed.
     spike.page.evaluate(f"window.__done = false; pywebview.api.{call}()"
                         ".then(v => { window.__picked = v; window.__done = true; }); 0")
-    _fill_file_dialog(spike.proc.pid, text)
+    _fill_file_dialog(spike.proc.pid, text, default)
     spike.wait_js("window.__done")
     return spike.page.evaluate("window.__picked")
 
@@ -235,7 +250,7 @@ def test_folder_dialog_returns_the_folder(spike, tmp_path):
 
 def test_save_dialog_returns_the_target(spike, tmp_path):
     target = tmp_path / "çıktı.pdf"
-    picked = _pick(spike, "pick_save", str(target))
+    picked = _pick(spike, "pick_save", str(target), default="cikti.pdf")     # app.py's save_filename
     assert os.path.normcase(picked) == os.path.normcase(str(target))
 
 
