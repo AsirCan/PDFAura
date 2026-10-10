@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "Mengonversi...",
     "progress_pages_done":      "{count} halaman dikonversi.",
     "progress_saving":          "Menyimpan...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "Perubahan diterapkan saat Anda menekan Simpan; tema dan bahasa langsung berubah.",
+    "settings_folder_missing": "Folder keluaran default tidak ditemukan. Pilih folder yang ada atau biarkan kosong.",
+    "overwrite_replace":       "Timpa",
+    "webview2_missing":        "Jendela PDF Aura memerlukan Microsoft Edge WebView2 Runtime, yang belum terpasang di komputer ini. Anda dapat mengunduhnya di sini:\n{url}",
+    "web_build_missing":       "Antarmuka web belum dibangun (web/dist tidak ada). Jalankan dulu 'npm ci' dan 'npm run build' di folder web, atau mulai tanpa --web.",
 }

@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "جارٍ التحويل...",
     "progress_pages_done":      "تم تحويل {count} صفحة.",
     "progress_saving":          "جارٍ الحفظ...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "تُطبَّق التغييرات عند الضغط على حفظ؛ أما السمة واللغة فتتغيران فورًا.",
+    "settings_folder_missing": "لم يُعثر على مجلد الإخراج الافتراضي. اختر مجلدًا موجودًا أو اتركه فارغًا.",
+    "overwrite_replace":       "استبدال",
+    "webview2_missing":        "تحتاج نافذة PDF Aura إلى Microsoft Edge WebView2 Runtime، وهو غير مثبت على هذا الكمبيوتر. يمكنك تنزيله من هنا:\n{url}",
+    "web_build_missing":       "لم يتم بناء واجهة الويب (المجلد web/dist غير موجود). شغّل أولًا 'npm ci' و'npm run build' في مجلد web، أو ابدأ بدون --web.",
 }

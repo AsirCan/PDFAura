@@ -488,7 +488,7 @@ _STRINGS = {
         "feedback_info_badge": "BİLGİ",
         "feedback_warning_badge": "KISMEN TAMAMLANDI",
         "overwrite_title":          "Dosya zaten var",
-        "overwrite_body":           "Su dosya zaten var:\n{path}\n\nUzerine yazilsin mi?",
+        "overwrite_body":           "Şu dosya zaten var:\n{path}\n\nÜzerine yazılsın mı?",
         "feedback_open_output": "Çıktıyı Aç",
         "feedback_open_folder": "Klasörü Aç",
         "preview_title": "Önizleme",
@@ -569,6 +569,13 @@ _STRINGS = {
         "progress_converting":      "Dönüştürülüyor...",
         "progress_pages_done":      "{count} sayfa dönüştürüldü.",
         "progress_saving":          "Kaydediliyor...",
+
+        # ── Web window (#25) ──
+        "settings_intro_web":      "Değişiklikler Kaydet'e bastığınızda uygulanır; tema ve dil ise hemen değişir.",
+        "settings_folder_missing": "Varsayılan çıktı klasörü bulunamadı. Var olan bir klasör seçin ya da boş bırakın.",
+        "overwrite_replace":       "Üzerine yaz",
+        "webview2_missing":        "PDF Aura'nın penceresi için Microsoft Edge WebView2 çalışma zamanı gerekiyor ve bu bilgisayarda kurulu değil. Buradan indirebilirsiniz:\n{url}",
+        "web_build_missing":       "Web arayüzü derlenmemiş (web/dist yok). Önce web klasöründe 'npm ci' ve 'npm run build' çalıştırın ya da --web olmadan başlatın.",
     },
 
     "en": {
@@ -1139,6 +1146,13 @@ _STRINGS = {
         "progress_converting":      "Converting...",
         "progress_pages_done":      "{count} page(s) converted.",
         "progress_saving":          "Saving...",
+
+        # ── Web window (#25) ──
+        "settings_intro_web":      "Changes are applied when you press Save; the theme and language change right away.",
+        "settings_folder_missing": "The default output folder was not found. Choose an existing folder or leave it empty.",
+        "overwrite_replace":       "Replace",
+        "webview2_missing":        "PDF Aura's window needs the Microsoft Edge WebView2 Runtime, which is not installed on this computer. You can download it here:\n{url}",
+        "web_build_missing":       "The web interface has not been built (web/dist is missing). Run 'npm ci' and 'npm run build' in the web folder first, or start without --web.",
     }
 }
 
@@ -1226,3 +1240,15 @@ def get_text(key):
 def _(key):
     """Shorthand for get_text(key)"""
     return get_text(key)
+
+
+def strings_for(language):
+    """Every string in *language*, English where it has none, as plain text.
+
+    For the web window: the browser lays right-to-left text out itself
+    (dir="rtl"), so these carry none of the direction marks and line
+    splitting get_text() adds for Tk.
+    """
+    if language not in _STRINGS:
+        language = "en"
+    return {**_STRINGS["en"], **_STRINGS[language]}

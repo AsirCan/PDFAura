@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "কনভার্ট হচ্ছে...",
     "progress_pages_done":      "{count}টি পেজ কনভার্ট হয়েছে।",
     "progress_saving":          "সেভ হচ্ছে...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "সংরক্ষণ চাপলে পরিবর্তন প্রযোজ্য হয়; থিম ও ভাষা সঙ্গে সঙ্গে বদলে যায়।",
+    "settings_folder_missing": "ডিফল্ট আউটপুট ফোল্ডার পাওয়া যায়নি। একটি বিদ্যমান ফোল্ডার বেছে নিন বা খালি রাখুন।",
+    "overwrite_replace":       "প্রতিস্থাপন",
+    "webview2_missing":        "PDF Aura-র উইন্ডোর জন্য Microsoft Edge WebView2 রানটাইম প্রয়োজন, যা এই কম্পিউটারে ইনস্টল করা নেই। এখান থেকে ডাউনলোড করতে পারেন:\n{url}",
+    "web_build_missing":       "ওয়েব ইন্টারফেস বিল্ড করা হয়নি (web/dist নেই)। আগে web ফোল্ডারে 'npm ci' ও 'npm run build' চালান, অথবা --web ছাড়া চালু করুন।",
 }

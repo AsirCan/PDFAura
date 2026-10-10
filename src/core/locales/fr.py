@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "Conversion...",
     "progress_pages_done":      "{count} page(s) convertie(s).",
     "progress_saving":          "Enregistrement...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "Les modifications s'appliquent quand vous appuyez sur Enregistrer ; le thème et la langue changent immédiatement.",
+    "settings_folder_missing": "Le dossier de sortie par défaut est introuvable. Choisissez un dossier existant ou laissez le champ vide.",
+    "overwrite_replace":       "Remplacer",
+    "webview2_missing":        "La fenêtre de PDF Aura a besoin de Microsoft Edge WebView2 Runtime, qui n'est pas installé sur cet ordinateur. Vous pouvez le télécharger ici :\n{url}",
+    "web_build_missing":       "L'interface web n'a pas été compilée (web/dist est absent). Lancez d'abord « npm ci » et « npm run build » dans le dossier web, ou démarrez sans --web.",
 }

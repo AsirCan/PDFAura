@@ -20,6 +20,7 @@ numpy>=1.24,<3
 pytesseract>=0.3.10,<0.4
 
 # Windows integration
+pywebview==6.2.1          # the web window (main.py --web, #25); pulls pythonnet and bottle
 pystray>=0.19,<0.20       # system tray icon
 pywin32>=306              # COM for the Office conversions
 tkinterdnd2>=0.3,<0.7     # drag and drop

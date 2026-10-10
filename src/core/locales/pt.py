@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "Convertendo...",
     "progress_pages_done":      "{count} página(s) convertida(s).",
     "progress_saving":          "Salvando...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "As alterações são aplicadas ao clicar em Salvar; o tema e o idioma mudam na hora.",
+    "settings_folder_missing": "A pasta de saída padrão não foi encontrada. Escolha uma pasta existente ou deixe o campo vazio.",
+    "overwrite_replace":       "Substituir",
+    "webview2_missing":        "A janela do PDF Aura precisa do Microsoft Edge WebView2 Runtime, que não está instalado neste computador. Você pode baixá-lo aqui:\n{url}",
+    "web_build_missing":       "A interface web não foi compilada (web/dist não existe). Execute primeiro 'npm ci' e 'npm run build' na pasta web, ou inicie sem --web.",
 }

@@ -14,13 +14,40 @@ if sys.stderr is None:
 # set before anything imports numpy; a value the user set still wins.
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
-import tkinter as tk
-from tkinterdnd2 import TkinterDnD
-
-from src.gui.main_window import MainWindow
 
 def main():
+    args = sys.argv[1:]
+    if "--web" in args:
+        sys.exit(run_web(_debug_port(args)))
+    run_tk()
+
+
+def _debug_port(args):
+    """--debug-port N opens the DevTools protocol on 127.0.0.1:N (tests only)."""
+    if "--debug-port" in args:
+        try:
+            return int(args[args.index("--debug-port") + 1])
+        except (IndexError, ValueError):
+            pass
+    return None
+
+
+def run_web(debug_port=None):
+    """The web window (#25). Tk is never loaded on this path."""
     try:
+        from src.app.window import run
+        return run(debug_port=debug_port)
+    except Exception:
+        _report_crash()
+        raise
+
+
+def run_tk():
+    try:
+        # Loaded here, not at the top, so --web starts without Tk.
+        from tkinterdnd2 import TkinterDnD
+        from src.gui.main_window import MainWindow
+
         # Use TkinterDnD for drag and drop support
         root = TkinterDnD.Tk()
         app = MainWindow(root)

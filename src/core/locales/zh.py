@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "正在转换...",
     "progress_pages_done":      "已转换 {count} 页。",
     "progress_saving":          "正在保存...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "按“保存”后更改生效；主题和语言会立即切换。",
+    "settings_folder_missing": "找不到默认输出文件夹。请选择一个现有文件夹，或将其留空。",
+    "overwrite_replace":       "替换",
+    "webview2_missing":        "PDF Aura 的窗口需要 Microsoft Edge WebView2 运行时，但此电脑上尚未安装。可在此处下载：\n{url}",
+    "web_build_missing":       "网页界面尚未构建（缺少 web/dist）。请先在 web 文件夹中运行“npm ci”和“npm run build”，或不带 --web 启动。",
 }

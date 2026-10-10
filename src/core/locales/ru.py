@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "Преобразование...",
     "progress_pages_done":      "Преобразовано страниц: {count}.",
     "progress_saving":          "Сохранение...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "Изменения применяются после нажатия «Сохранить»; тема и язык меняются сразу.",
+    "settings_folder_missing": "Папка вывода по умолчанию не найдена. Выберите существующую папку или оставьте поле пустым.",
+    "overwrite_replace":       "Заменить",
+    "webview2_missing":        "Для окна PDF Aura нужна среда выполнения Microsoft Edge WebView2, но она не установлена на этом компьютере. Скачать её можно здесь:\n{url}",
+    "web_build_missing":       "Веб-интерфейс не собран (нет web/dist). Сначала выполните «npm ci» и «npm run build» в папке web или запустите без --web.",
 }
