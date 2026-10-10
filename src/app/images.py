@@ -79,7 +79,12 @@ class PdfPages:
         over the PDF on screen would fail.
         """
         import fitz
-        mtime = os.path.getmtime(path)
+        # Not the time alone: Windows' clock ticks every ~15 ms, so a file
+        # replaced right after it was written could keep the same time. A
+        # replaced file is another file (st_ino), and a rewrite rarely keeps
+        # the size.
+        stat = os.stat(path)
+        mtime = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
         cached = self._open.get(path)
         if cached is not None and cached[0] == mtime:
             self._open.move_to_end(path)

@@ -305,7 +305,10 @@ class Bridge:
             details = pages.info(info["path"])
         except Exception as exc:
             return {**info, "error": str(exc)}
-        version = int(os.path.getmtime(info["path"]))
+        # Goes in the page URLs, which the window keeps: it must change
+        # whenever the file does, even twice within a second (images.py).
+        stat = os.stat(info["path"])
+        version = hash((stat.st_mtime_ns, stat.st_size, stat.st_ino)) & (2 ** 53 - 1)
         return {**info, **details, "id": doc_id, "version": version,
                 "base": f"/pdf/{self._shell.token}/{doc_id}/"}
 

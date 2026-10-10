@@ -208,6 +208,17 @@ def test_a_pdf_document_gets_an_id_and_page_urls(bridge, tmp_path):
     assert source not in doc["base"]
 
 
+def test_a_replaced_pdf_gets_a_new_version_at_once(bridge, tmp_path):
+    """The page keeps page pictures by URL, and the URL carries the version:
+    a file replaced within the same second must not show its old pages."""
+    path = make_pdf(tmp_path / "a.pdf", pages=2)
+    first = bridge.document(path)
+    make_pdf(tmp_path / "b.pdf", pages=4)
+    os.replace(tmp_path / "b.pdf", path)
+    second = bridge.document(path)
+    assert second["pages"] == 4 and second["version"] != first["version"]
+
+
 def test_not_a_pdf_is_said_plainly(bridge, tmp_path):
     other = tmp_path / "a.txt"
     other.write_text("x")
