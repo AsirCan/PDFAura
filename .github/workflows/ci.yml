@@ -1,7 +1,8 @@
 name: ci
 
 # #25's test layers: Python (core, app layer, contract), the web page
-# (lint, types, components, build) and the real window end to end.
+# (lint, types, components, build), the real window end to end, and the
+# packaged app: built, measured, opened, and wrapped into the installer.
 on:
   push:
     branches: [main, web-ui]
@@ -84,3 +85,66 @@ jobs:
 
       - name: The real window, over CDP
         run: python -m pytest -m e2e -q -p no:cacheprovider
+
+  package:
+    runs-on: windows-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Build the app
+        run: pyinstaller --noconfirm PDFAura.spec
+
+      - name: Size budget
+        # #25: at most 25 MB more than the Tk build (451.6 MB, spikes/faz0/RAPOR.md).
+        shell: python
+        run: |
+          import os
+          total = sum(os.path.getsize(os.path.join(folder, name))
+                      for folder, _dirs, files in os.walk(r"dist\PDFAura") for name in files)
+          mb = total / 2**20
+          print(f"dist/PDFAura: {mb:.1f} MB")
+          assert mb <= 477, f"the build grew to {mb:.1f} MB (budget 477 MB)"
+
+      - name: Make sure the WebView2 runtime is there
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          if (Test-Path $key) { "WebView2 $((Get-ItemProperty $key).pv)"; exit 0 }
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile "$env:RUNNER_TEMP\wv2.exe"
+          Start-Process "$env:RUNNER_TEMP\wv2.exe" -ArgumentList '/silent /install' -Wait
+
+      - name: The built app opens and works
+        env:
+          PDFAURA_EXE: ${{ github.workspace }}\dist\PDFAura\PDFAura.exe
+        run: python -m pytest -m e2e -q -p no:cacheprovider -k "opens_with_every_tool or compress_runs or nothing_leaves"
+
+      - name: Installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc setup.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "{0:N1} MB" -f ((Get-Item dist\PDFAura-Setup.exe).Length / 1MB)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PDFAura-Setup
+          path: dist/PDFAura-Setup.exe
+          retention-days: 7

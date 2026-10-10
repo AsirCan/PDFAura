@@ -17,9 +17,12 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
 def main():
     args = sys.argv[1:]
-    if "--web" in args:
-        sys.exit(run_web(_debug_port(args)))
-    run_tk()
+    if "--tk" in args:
+        # The old Tk window, kept for one release in case WebView2 fails
+        # somewhere (#25). --web is the default and still accepted.
+        run_tk()
+        return
+    sys.exit(run_web(_debug_port(args)))
 
 
 def _debug_port(args):
@@ -33,7 +36,7 @@ def _debug_port(args):
 
 
 def run_web(debug_port=None):
-    """The web window (#25). Tk is never loaded on this path."""
+    """The window: Edge WebView2 drawing web/ (#25). Tk is never loaded."""
     try:
         from src.app.window import run
         return run(debug_port=debug_port)
@@ -85,14 +88,12 @@ def _report_crash():
     except Exception:
         pass   # nowhere to write; still show the dialog below
 
-    try:
-        from tkinter import messagebox
-        message = details.strip().splitlines()[-1] if details.strip() else ""
-        if path:
-            message = f"{message}\n\n{path}"
-        messagebox.showerror("PDF Aura", message)
-    except Exception:
-        print(details)
+    message = details.strip().splitlines()[-1] if details.strip() else ""
+    if path:
+        message = f"{message}\n\n{path}"
+    # A native message box: there may be no window left to show it in.
+    from src.app.native import show_error
+    show_error("PDF Aura", message)
 
 if __name__ == "__main__":
     main()

@@ -9,6 +9,9 @@ window. Needs web/dist (cd web && npm ci && npm run build) and Playwright
 Drag and drop itself cannot be automated (synthetic mouse input never
 drives Windows' DoDragDrop, see spikes/faz0/RAPOR.md); the tests hand the
 page the same "drop" event Python sends after a real drop.
+
+With PDFAURA_EXE set to a PyInstaller build's PDFAura.exe the same tests
+drive that instead of the source (ci.yml's package job).
 """
 import json
 import os
@@ -25,7 +28,8 @@ from conftest import ROOT, make_pdf
 pytestmark = pytest.mark.e2e
 playwright = pytest.importorskip("playwright.sync_api")
 
-if not os.path.isfile(os.path.join(ROOT, "web", "dist", "index.html")):
+EXE = os.environ.get("PDFAURA_EXE")
+if not EXE and not os.path.isfile(os.path.join(ROOT, "web", "dist", "index.html")):
     pytest.skip("web/dist is not built (cd web && npm ci && npm run build)", allow_module_level=True)
 
 
@@ -44,8 +48,10 @@ class Window:
         self.port = free_port()
         # APPDATA moved, so pip's --user packages must be pointed at again.
         env = dict(os.environ, APPDATA=appdata, PYTHONUSERBASE=site.getuserbase(), PYTHONUNBUFFERED="1")
-        self.proc = subprocess.Popen([sys.executable, "main.py", "--web", "--debug-port", str(self.port)],
-                                     cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        command = [EXE] if EXE else [sys.executable, "main.py"]
+        self.proc = subprocess.Popen([*command, "--debug-port", str(self.port)],
+                                     cwd=os.path.dirname(EXE) if EXE else ROOT, env=env,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._pw = playwright.sync_playwright().start()
         self.requests = []
         try:

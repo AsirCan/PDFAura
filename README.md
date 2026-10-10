@@ -13,7 +13,7 @@ Belgeleriniz hiçbir sunucuya yüklenmez; her işlem kendi bilgisayarınızda ya
 
 <a href="#-kurulum"><img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10 ve 11" /></a>
 <a href="#-kurulum"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+" /></a>
-<a href="https://github.com/AsirCan/PDFAura/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/AsirCan/PDFAura/tests.yml?branch=main&style=for-the-badge&label=testler&logo=githubactions&logoColor=white" alt="Testler" /></a>
+<a href="https://github.com/AsirCan/PDFAura/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/AsirCan/PDFAura/ci.yml?branch=main&style=for-the-badge&label=testler&logo=githubactions&logoColor=white" alt="Testler" /></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/Lisans-MIT-4F6BFF?style=for-the-badge" alt="MIT lisansı" /></a>
 <br />
 <a href="#-gizlilik"><img src="https://img.shields.io/badge/Belgeler-yerelde%20kal%C4%B1r-059669?style=for-the-badge&logo=shieldsdotio&logoColor=white" alt="Belgeler yerelde kalır" /></a>
@@ -70,7 +70,7 @@ https://github.com/user-attachments/assets/d833ff09-a121-4ea8-9124-70190dd4c518
     </td>
     <td width="33%" valign="top">
       <h3>🎨 Modern arayüz</h3>
-      Açık, koyu ve sistem teması, 14 arayüz dili, sürükle-bırak, canlı önizleme ve klavye kısayolları.
+      Açık, koyu ve sistem teması, anında değişen 14 arayüz dili, sürükle-bırak, canlı önizleme ve klavye kısayolları.
     </td>
   </tr>
 </table>
@@ -177,10 +177,11 @@ Arayüz İngilizceyken İngilizce komutlar da anlaşılır (*"compress report.pd
 
 - **Kenar çubuğunda yedi araç.** <kbd>Ctrl</kbd>+<kbd>1</kbd> … <kbd>Ctrl</kbd>+<kbd>7</kbd> ile araçlar arasında geçersiniz. Son üretilen dosyalar da kenar çubuğunda listelenir.
 - **Açık, koyu ve sistem teması.** Sistem seçeneği Windows'un uygulama modunu izler; değişiklik anında uygulanır.
-- **14 arayüz dili:** Türkçe, English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, اردو, Bahasa Indonesia, Deutsch, 日本語. İlk açılışta Windows dilinize göre seçilir.
+- **14 arayüz dili:** Türkçe, English, 中文, हिन्दी, Español, العربية, Français, বাংলা, Português, Русский, اردو, Bahasa Indonesia, Deutsch, 日本語. İlk açılışta Windows dilinize göre seçilir; değiştirdiğinizde yeniden başlatmadan uygulanır. Arapça ve Urduca sağdan sola gösterilir.
 - **Sürükle-bırak her yerde.** PDF'leri, fotoğrafları ve klasörleri doğrudan pencereye bırakın.
 - **Canlı önizleme paneli.** Seçtiğiniz PDF'in ilk sayfası, sayfa sayısı ve boyutu hemen görünür.
 - **Sistem tepsisi.** İsterseniz pencereyi kapatınca uygulama tepside çalışmaya devam eder.
+- **Klavyeyle de kullanılır.** Her denetime <kbd>Tab</kbd> ile gidilir; odak halkası yalnızca klavye kullanırken görünür.
 
 ### Klavye kısayolları
 
@@ -192,17 +193,25 @@ Arayüz İngilizceyken İngilizce komutlar da anlaşılır (*"compress report.pd
 | <kbd>←</kbd> <kbd>→</kbd> · <kbd>PgUp</kbd> <kbd>PgDn</kbd> | Önizleyicide önceki / sonraki sayfa |
 | <kbd>Home</kbd> · <kbd>End</kbd> | Önizleyicide ilk / son sayfa |
 | <kbd>+</kbd> · <kbd>-</kbd> | Önizleyicide yakınlaştır / uzaklaştır |
-| <kbd>Esc</kbd> | Önizleyiciyi ya da Ayarlar penceresini kapat |
+| <kbd>Esc</kbd> | Önizleyiciyi, tam ekran kırpmayı ya da Ayarlar'ı kapat |
+| <kbd>F2</kbd> | Belge Tara: seçili sayfaya ad ver (<kbd>Tab</kbd> ile sonrakine geçer) |
+| <kbd>Alt</kbd>+<kbd>←</kbd> <kbd>→</kbd> · <kbd>Del</kbd> | Belge Tara: sayfayı öne / arkaya taşı · kaldır |
+| <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> | Belge Tara: seçili köşe noktasını 1 piksel kaydır (<kbd>Shift</kbd> ile 10) |
 
 ---
 
 ## 🧠 Nasıl çalışır?
 
-PDF Aura bir Python masaüstü uygulamasıdır. Arayüz Tkinter/ttk üzerine kurulu, token tabanlı bir tema sistemi kullanır. Uzun işlemler arka planda çalışır; bu sırada arayüz donmaz ve çoğu işlemi yarıda iptal edebilirsiniz.
+PDF Aura bir masaüstü uygulamasıdır: belgeler üzerindeki her işi Python yapar, pencereyi Windows'ta hazır bulunan **Microsoft Edge WebView2** çizer. Arayüz Svelte ve TypeScript ile yazılmıştır ve uygulamanın içinde gelir; internetten hiçbir şey yüklenmez. Pencere ile Python arasındaki tek yol [pywebview](https://pywebview.flowrl.com/)'in köprüsüdür: arayüz bir aracı adıyla başlatır, Python girdiyi denetler, işi arka planda yapar ve ilerlemeyi pencereye bildirir. Bu sırada arayüz donmaz ve çoğu işlemi yarıda iptal edebilirsiniz.
 
 ```mermaid
 flowchart TB
-    UI["Arayüz<br/>Tkinter · ttk · TkinterDnD"]
+    subgraph W["Pencere · Microsoft Edge WebView2"]
+        direction LR
+        UI["Arayüz<br/>Svelte · TypeScript"]
+        BR["Köprü · pywebview<br/>araç başlat, ilerleme, sonuç"]
+        UI <--> BR
+    end
     subgraph CORE["Çekirdek araçlar"]
         direction LR
         P1["PyMuPDF<br/>sıkıştır, önizle, tara"]
@@ -217,9 +226,11 @@ flowchart TB
         A2["Faster-Whisper<br/>ses tanıma"]
         A3["Komut ayrıştırıcı<br/>cümle → işlem zinciri"]
     end
-    UI --> CORE
-    UI --> AI
+    BR --> CORE
+    BR --> AI
 ```
+
+Sayfa önizlemeleri ve tarayıcıdaki fotoğraflar da Python'da çizilir ve pencereye yalnızca bu bilgisayarın içinden (`127.0.0.1`) verilir.
 
 ### Belge tarayıcının köşe tespiti
 
@@ -253,6 +264,7 @@ Tarama filtreleri: **Temiz Belge** (arka plan bölme), **Siyah-Beyaz** (adaptif 
 ## 🔒 Gizlilik
 
 - Belgeleriniz hiçbir sunucuya gönderilmez; tüm PDF işlemleri bilgisayarınızda yapılır.
+- Pencerenin sayfası ve önizlemeler yalnızca bu bilgisayarın içinden (`127.0.0.1`), her açılışta değişen bir anahtarla verilir; sıkı bir içerik güvenlik politikası (CSP) pencerenin dışarıdan hiçbir şey yüklemesine izin vermez. Pencereden bilgisayar dışına istek gitmediğini her değişiklikte otomatik bir test denetler.
 - Uygulamada reklam, hesap, telemetri ya da üçüncü taraf izleyici yoktur.
 - İnternet yalnızca sizin başlattığınız indirmeler için kullanılır: sesli asistanın ilk kullanımında Whisper modeli, `download_models.py` ya da Ayarlar üzerinden indirilen yapay zekâ modelleri ve Gelişmiş sekmesinden başlatılan Tesseract kurulumu.
 - Ayarlar ve son dosyalar listesi `%APPDATA%\PDFAura` klasöründe tutulur. Son dosyalar listesini Ayarlar'dan temizleyebilirsiniz.
@@ -269,7 +281,9 @@ Tarama filtreleri: **Temiz Belge** (arka plan bölme), **Siyah-Beyaz** (adaptif 
 | **İşlemci** | Intel Core i3 / AMD Ryzen 3 | Intel Core i5 / AMD Ryzen 5 veya üzeri |
 | **Bellek** | 4 GB | 8 GB veya üzeri |
 | **Disk alanı** | ~500 MB (temel kurulum) | ~1 GB (tüm yapay zekâ modelleriyle) |
+| **Microsoft Edge WebView2** | Windows 11'de ve güncel Windows 10'da hazır gelir | Yoksa kurulum dosyası indirip kurar |
 | **Python** *(kaynak koddan çalıştırmak için)* | Python 3.10 | Python 3.12 (64-bit) |
+| **Node.js** *(kaynak koddan çalıştırmak için)* | Node.js 22 | Node.js 24 |
 
 ### Seçenek A: Kurulum dosyası
 
@@ -290,14 +304,20 @@ python -m venv venv
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 4. Belge tarayıcının yapay zekâ modelini indirin (~4.7 MB)
+# 4. Arayüzü derleyin (Node.js yalnızca derlerken gerekir, uygulamaya girmez)
+cd web
+npm ci
+npm run build
+cd ..
+
+# 5. Belge tarayıcının yapay zekâ modelini indirin (~4.7 MB)
 python download_models.py --skip-optional
 
-# 5. Uygulamayı başlatın
+# 6. Uygulamayı başlatın
 python main.py
 ```
 
-Sonraki açılışlarda proje klasöründeki `baslat.bat` dosyasına çift tıklamanız yeterlidir.
+Sonraki açılışlarda proje klasöründeki `baslat.bat` dosyasına çift tıklamanız yeterlidir. Arayüzün kaynağını (`web/src`) değiştirirseniz `npm run build` ile yeniden derleyin.
 
 ### Harici bileşenler
 
@@ -321,10 +341,11 @@ Modeller `models/` klasörüne indirilir ([ayrıntılar](models/README.md)). Tar
 
 <br />
 
-1. Uygulamayı paketleyin:
+1. Arayüzü derleyip uygulamayı paketleyin:
 
    ```powershell
    pip install -r requirements-dev.txt
+   cd web; npm ci; npm run build; cd ..
    pyinstaller --noconfirm PDFAura.spec
    ```
 
@@ -336,7 +357,7 @@ Modeller `models/` klasörüne indirilir ([ayrıntılar](models/README.md)). Tar
    iscc setup.iss
    ```
 
-   Çıktı: `dist\PDFAura-Setup.exe`
+   Çıktı: `dist\PDFAura-Setup.exe`. Bilgisayarda WebView2 çalışma zamanı yoksa kurulum, Microsoft'un küçük kurucusunu indirip çalıştırır.
 
 </details>
 
@@ -385,7 +406,16 @@ Köşe noktalarını sürükleyerek kâğıdın köşelerine oturtun; sürükler
 
 <br />
 
-Ayarlar (<kbd>Ctrl</kbd>+<kbd>,</kbd>) → **Uygulama Dili**'nden dili seçip kaydedin. Yeni dil uygulama yeniden başlatıldığında uygulanır; PDF Aura bunu sizin için yapmayı önerir.
+Ayarlar (<kbd>Ctrl</kbd>+<kbd>,</kbd>) → **Uygulama Dili**'nden dili seçin. Yeni dil hemen uygulanır; uygulamayı yeniden başlatmanız gerekmez.
+
+</details>
+
+<details>
+<summary><b>Açılışta "WebView2 bulunamadı" uyarısı çıkıyor.</b></summary>
+
+<br />
+
+PDF Aura'nın penceresini Microsoft Edge WebView2 çalışma zamanı çizer. Windows 11'de ve güncel Windows 10'da hazır gelir; eksikse kurulum dosyası kendisi kurar. Kaynak koddan çalıştırıyorsanız ya da kurulumu bir şirket ağı engellediyse çalışma zamanını [Microsoft'un sayfasından](https://developer.microsoft.com/microsoft-edge/webview2/) (Evergreen Bootstrapper) kurun.
 
 </details>
 
@@ -394,7 +424,7 @@ Ayarlar (<kbd>Ctrl</kbd>+<kbd>,</kbd>) → **Uygulama Dili**'nden dili seçip ka
 
 <br />
 
-**"X (Kapat) tuşuna basıldığında Sistem Tepsisine küçült"** ayarı açıksa PDF Aura tepside çalışmaya devam eder. Tepsi simgesine sağ tıklayıp **Aç** ile pencereyi geri getirebilir, **Çıkış** ile uygulamayı tamamen kapatabilirsiniz. Bu davranışı Ayarlar'dan kapatabilirsiniz.
+**"X (Kapat) tuşuna basıldığında Sistem Tepsisine küçült"** ayarı açıksa PDF Aura tepside çalışmaya devam eder. Tepsi simgesine tıklayarak (ya da sağ tıklayıp **Aç**) pencereyi geri getirebilir, sağ tık → **Çıkış** ile uygulamayı tamamen kapatabilirsiniz. Bu davranışı Ayarlar'dan kapatabilirsiniz.
 
 </details>
 
@@ -402,7 +432,7 @@ Ayarlar (<kbd>Ctrl</kbd>+<kbd>,</kbd>) → **Uygulama Dili**'nden dili seçip ka
 
 ## 🧭 Yol haritası
 
-- [x] Modern ttk / TkinterDnD arayüzü ve canlı PDF önizleme
+- [x] Canlı PDF önizleme ve tam ekran önizleyici
 - [x] Token tabanlı tasarım sistemiyle yenilenen arayüz
 - [x] Açık / koyu tema (Windows ayarını izleyen *Sistem* seçeneğiyle)
 - [x] 14 arayüz dili
@@ -411,6 +441,7 @@ Ayarlar (<kbd>Ctrl</kbd>+<kbd>,</kbd>) → **Uygulama Dili**'nden dili seçip ka
 - [x] Windows sistem tepsisi entegrasyonu
 - [x] Microsoft Office yoksa LibreOffice ile Office dönüştürme
 - [x] Ghostscript gerektirmeyen, uygulama içi PDF sıkıştırma
+- [x] WebView2 + Svelte ile yeniden yazılan arayüz: dil ve tema anında değişir, uzun işlerde pencere donmaz
 - [ ] Windows Gezgini sağ tık menüsü (*"PDF Aura ile Sıkıştır / Dönüştür"*)
 - [ ] İsteğe bağlı yerel LLM entegrasyonu (Ollama / llama.cpp ile belge özeti)
 
@@ -423,9 +454,9 @@ Bir fikriniz mi var? [Issue açarak](https://github.com/AsirCan/PDFAura/issues/n
 Hata bildirimleri, öneriler ve pull request'ler memnuniyetle karşılanır.
 
 1. Depoyu fork'layın ve bir dal açın.
-2. Geliştirme bağımlılıklarını yükleyin: `pip install -r requirements-dev.txt`
-3. Değişikliğinizi yapın ve testleri çalıştırın: `pytest`
-4. Pull request açın. Testler her push'ta GitHub Actions üzerinde Windows'ta otomatik çalışır.
+2. Geliştirme bağımlılıklarını yükleyin: `pip install -r requirements-dev.txt`, ardından `web` klasöründe `npm ci`
+3. Değişikliğinizi yapın ve testleri çalıştırın: `pytest`; arayüz için `web` klasöründe `npm run lint`, `npm run check` ve `npm test`. Gerçek pencereyi uçtan uca deneyen testler `npm run build` sonrasında `pytest -m e2e` ile çalışır.
+4. Pull request açın. Testler her push'ta GitHub Actions üzerinde otomatik çalışır.
 
 ---
 
@@ -433,7 +464,7 @@ Hata bildirimleri, öneriler ve pull request'ler memnuniyetle karşılanır.
 
 PDF Aura [MIT lisansı](LICENSE) ile dağıtılır; kişisel ve ticari amaçlarla özgürce kullanılabilir, değiştirilebilir ve dağıtılabilir.
 
-PDF Aura şu açık kaynak projelerin üzerine kuruludur: [pypdf](https://github.com/py-pdf/pypdf), [PyMuPDF](https://github.com/pymupdf/PyMuPDF), [OpenCV](https://opencv.org/), [ONNX Runtime](https://onnxruntime.ai/), [U2-Net](https://github.com/xuebinqin/U-2-Net), [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Tesseract](https://github.com/tesseract-ocr/tesseract), [pdf2docx](https://github.com/ArtifexSoftware/pdf2docx), [ReportLab](https://www.reportlab.com/) ve [tkinterdnd2](https://github.com/Eliav2/tkinterdnd2). LibreOffice ve Tesseract ayrı programlar olarak çağrılır ve kendi lisanslarıyla dağıtılır.
+PDF Aura şu açık kaynak projelerin üzerine kuruludur: [pypdf](https://github.com/py-pdf/pypdf), [PyMuPDF](https://github.com/pymupdf/PyMuPDF), [OpenCV](https://opencv.org/), [ONNX Runtime](https://onnxruntime.ai/), [U2-Net](https://github.com/xuebinqin/U-2-Net), [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [Tesseract](https://github.com/tesseract-ocr/tesseract), [pdf2docx](https://github.com/ArtifexSoftware/pdf2docx), [ReportLab](https://www.reportlab.com/), [pywebview](https://github.com/r0x0r/pywebview), [Svelte](https://svelte.dev/) ve [Vite](https://vite.dev/). Pencereyi Microsoft Edge WebView2 çizer. LibreOffice ve Tesseract ayrı programlar olarak çağrılır ve kendi lisanslarıyla dağıtılır.
 
 Tanıtım videolarındaki fiş fotoğrafları Wikimedia Commons'taki CC0 / kamu malı görsellerdir (Sarah Stierch, Mattes, Grandmaster Huon).
 

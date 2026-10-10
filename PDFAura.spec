@@ -1,15 +1,23 @@
 # PyInstaller spec for PDF Aura.
 #
-# Build with:  pyinstaller --noconfirm PDFAura.spec
+# Build with:  cd web && npm ci && npm run build && cd ..
+#              pyinstaller --noconfirm PDFAura.spec
 # The result is dist\PDFAura\, which setup.iss packages into the installer.
+# pywebview brings its own hook (its JavaScript and the WebView2 loader
+# DLLs) and pyinstaller-hooks-contrib covers pythonnet.
 import os
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
+# The window's page, built from web/ by Vite. It is not in git.
+if not os.path.isfile(os.path.join("web", "dist", "index.html")):
+    raise SystemExit("web/dist is missing: run  cd web && npm ci && npm run build  first")
+
 datas = [
     ("assets", "assets"),
+    ("web/dist", "web/dist"),
 ]
 
 # models/ holds only READMEs in a clean clone; ship it if it has content.
