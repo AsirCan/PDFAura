@@ -1,4 +1,4 @@
-"""Issue #22: dead code, no tests, Tk access from worker threads, loose pins."""
+"""Issue #22: dead code, no tests, UI access from worker threads, loose pins."""
 import ast
 import os
 import re
@@ -7,63 +7,49 @@ import pytest
 
 from conftest import ROOT
 
-GUI_FILES = sorted(
-    [os.path.join("src", "gui", "tabs", n) for n in os.listdir(os.path.join(ROOT, "src", "gui", "tabs"))
-     if n.startswith("tab_") and n.endswith(".py")]
-    + [os.path.join("src", "gui", "main_window.py")]
-)
-
-
 def read(path):
     with open(os.path.join(ROOT, path), encoding="utf-8") as f:
         return f.read()
 
 
-def thread_targets(tree):
-    """Method names passed as threading.Thread(target=...)."""
-    targets = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "Thread":
-            for keyword in node.keywords:
-                if keyword.arg == "target":
-                    value = keyword.value
-                    name = getattr(value, "attr", None) or getattr(value, "id", None)
-                    if name:
-                        targets.add(name)
-    return targets
+# ── Worker threads reach the page only through events (#22.3, #25) ──────
+
+APP_FILES = sorted(os.path.join("src", "app", n) for n in os.listdir(os.path.join(ROOT, "src", "app"))
+                   if n.endswith(".py"))
 
 
-# ── Worker threads must not touch Tk (#22.3) ──────────────────────────────
-
-@pytest.mark.parametrize("path", GUI_FILES)
-def test_no_worker_thread_reads_a_tk_variable(path):
-    """Tkinter marshals cross-thread access while the mainloop runs, but it is
-    fragile; values are read on the main thread and passed in instead."""
+@pytest.mark.parametrize("path", APP_FILES)
+def test_only_the_window_touches_pywebview(path):
+    """The tools and their jobs know nothing of the window; window.py owns
+    it and bridge.py only opens its dialogs."""
+    if os.path.basename(path) in ("window.py", "bridge.py"):
+        return
     tree = ast.parse(read(path))
-    targets = thread_targets(tree)
+    imported = {alias.name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import)
+                for alias in node.names}
+    imported |= {(node.module or "").split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
+    assert "webview" not in imported
 
-    offenders = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.FunctionDef) or node.name not in targets:
-            continue
-        for sub in ast.walk(node):
-            if (isinstance(sub, ast.Call)
-                    and getattr(sub.func, "attr", "") == "get"
-                    and isinstance(sub.func.value, ast.Attribute)
-                    and sub.func.value.attr.endswith("_var")):
-                offenders.append(f"{node.name} reads {sub.func.value.attr} (line {sub.lineno})")
 
-    assert offenders == [], f"{path}: {offenders}"
+@pytest.mark.parametrize("path", APP_FILES)
+def test_scripts_reach_the_page_only_through_the_event_bus(path):
+    """A worker that ran a script in the page itself would skip the queue
+    that holds events until the page is listening (events.py)."""
+    if os.path.basename(path) in ("events.py", "window.py"):
+        return
+    source = read(path)
+    assert not re.search(r"\b(run_js|evaluate_js)\(", source), path
 
 
 def test_the_scanner_snapshots_its_pages_before_exporting():
     """The export walked the tab's live page list from the worker thread
-    (see #12). It now runs in src.app.scanner, which only gets a snapshot."""
+    (see #12). It runs in src.app.scanner, which only gets a snapshot that
+    the board takes before the job starts."""
     import inspect
     from src.app import scanner
     assert list(inspect.signature(scanner.export_pdf).parameters) == ["ctx", "shots", "output_pdf", "mode"]
-    source = read("src/gui/tabs/tab_scanner.py")
-    body = source.split("def start_scan(")[1].split("\n    def ")[0]
+    source = read("src/app/scanboard.py")
+    body = source.split("def export(")[1].split("\n    def ")[0]
     assert body.index("scanner.snapshot(self.pages)") < body.index("start_work(")
 
 
@@ -81,7 +67,6 @@ REMOVED = {
     ],
     "src/core/document_scanner_ml.py": ["_detect_with_grabcut", "_detect_with_watershed"],
     "src/core/task_manager.py": ["run_parallel", "is_large_file"],
-    "src/gui/helpers.py": ["operation_done", "build_file_picker_row"],
 }
 
 
@@ -167,10 +152,18 @@ def test_pytest_is_not_a_runtime_dependency():
 # ── CI (#22.2) ────────────────────────────────────────────────────────────
 
 def test_a_ci_workflow_runs_the_tests_on_windows():
-    workflow = read(".github/workflows/tests.yml")
-    assert "windows-latest" in workflow
-    assert "pytest" in workflow
-    assert "requirements-dev.txt" in workflow
+    workflow = read(".github/workflows/ci.yml")
+    python = workflow.split("  python:")[1].split("\n  web:")[0]
+    assert "windows-latest" in python
+    assert "pytest" in python
+    assert "requirements-dev.txt" in python
+
+
+def test_ci_checks_the_page_and_the_packaged_app():
+    workflow = read(".github/workflows/ci.yml")
+    for step in ("npm run lint", "npm run check", "npm test", "npm run build", "pytest -m e2e",
+                 "pyinstaller --noconfirm PDFAura.spec", "setup.iss"):
+        assert step in workflow, step
 
 
 def test_test_fixtures_are_generated_not_committed():

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Edit pages (tab_edit.py): delete, rotate or reorder pages of a PDF.
+  // Edit pages: delete, rotate or reorder pages of a PDF.
   import { onDestroy } from "svelte";
   import { api } from "../lib/bridge";
   import { previewFile } from "../lib/app.svelte";

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Belge Tara (tab_scanner.py): photos in, each straightened into one page
+  // Belge Tara: photos in, each straightened into one page
   // of a PDF. The pages and their photos live in Python (scanboard.py); this
   // page shows them, lets the corners be dragged without asking Python, and
   // sends each change once it is made.

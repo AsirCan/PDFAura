@@ -1,6 +1,6 @@
 <script lang="ts">
-  // The photo with the four corner handles (the crop canvas of
-  // tab_scanner.py). A handle follows the pointer without asking Python;
+  // The photo with the four corner handles. A handle follows the pointer
+  // without asking Python;
   // the corners go to Python once, when it is let go. While a handle moves,
   // a loupe shows the photo around it at twice the size, drawn here from
   // the same picture.

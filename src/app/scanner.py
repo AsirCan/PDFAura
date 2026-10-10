@@ -1,10 +1,11 @@
 """The document scanner's model: pages, corners, rotation, the saved session
 and the PDF export -- everything the scanner screen does that is not drawing.
 
-It lived inside the 1,900-line Tk tab; moved here (#25) so it can be tested
-on its own and the web window gets the same behaviour. Images are BGR
-numpy arrays, OpenCV's order. Nothing heavy is imported at module level:
-building the app's window must not load OpenCV before a photo is added.
+It used to live inside the 1,900-line Tk tab; it was moved here (#25) so
+it can be tested on its own. scanboard.py keeps the window's pages with it.
+Images are BGR numpy arrays, OpenCV's order. Nothing heavy is imported at
+module level: opening the window must not load OpenCV before a photo is
+added.
 """
 import logging
 import math
@@ -30,24 +31,8 @@ MODES = [
     (MODE_SHARP, "scanner_mode_sharp"),
 ]
 DEFAULT_MODE = MODE_CLEAN_DOC
-A4_ASPECT = 3508 / 2480            # height / width; see document_scanner.A4_*_PX
 PAGE_LABEL_MAX = 60
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp")
-
-
-def mode_label(mode):
-    """The localised label for a scan mode id, or None."""
-    for known, key in MODES:
-        if known == mode:
-            return _(key)
-    return None
-
-
-def mode_from_label(label):
-    for mode, key in MODES:
-        if _(key) == label:
-            return mode
-    return MODE_ORIGINAL
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────
@@ -306,7 +291,7 @@ def export_pdf(ctx, shots, output_pdf, mode):
     return Outcome(_("scanner_done"), message, output_pdf)
 
 
-# ── Pictures for the screen (PIL images; the UI wraps them) ───────────────
+# ── Pictures for the window (PIL images; scanboard.py encodes them) ──────
 
 def to_pil(image_bgr, size=None, nearest=False):
     """A BGR array as an RGB PIL image, optionally resized."""
@@ -316,30 +301,6 @@ def to_pil(image_bgr, size=None, nearest=False):
     if size is not None:
         picture = picture.resize(size, Image.NEAREST if nearest else Image.LANCZOS)
     return picture
-
-
-def thumbnail(page, thumb_w, thumb_h, background_hex):
-    """The page as exported, letterboxed into a thumb_w x thumb_h cell.
-
-    Warped at the page's real proportions: squeezing a landscape page into
-    the A4-shaped cell made the strip disagree with the exported PDF.
-    """
-    import cv2
-    import numpy as np
-    from src.core.document_scanner import perspective_warp, target_size_from_corners
-    full_w, full_h = target_size_from_corners(page.corners)
-    scale = min(thumb_w / full_w, thumb_h / full_h)
-    warp_w = max(1, int(round(full_w * scale)))
-    warp_h = max(1, int(round(full_h * scale)))
-    warped = perspective_warp(page.display_image, page.corners, warp_w * 2, warp_h * 2)
-    small = cv2.resize(warped, (warp_w, warp_h), interpolation=cv2.INTER_AREA)
-
-    back = background_hex.lstrip("#")
-    cell = np.full((thumb_h, thumb_w, 3), [int(back[i:i + 2], 16) for i in (4, 2, 0)], dtype=np.uint8)
-    top = (thumb_h - warp_h) // 2
-    left = (thumb_w - warp_w) // 2
-    cell[top:top + warp_h, left:left + warp_w] = small
-    return to_pil(cell)
 
 
 def fitted(page, box_w, box_h):
@@ -356,14 +317,6 @@ def fitted(page, box_w, box_h):
     return to_pil(cv2.resize(warped, (warp_w, warp_h), interpolation=cv2.INTER_AREA))
 
 
-def drag_ghost(page, width, height):
-    """A small picture of the page that follows the pointer while dragging."""
-    import cv2
-    from src.core.document_scanner import perspective_warp
-    warped = perspective_warp(page.display_image, page.corners, width * 2, height * 2)
-    return to_pil(cv2.resize(warped, (width, height), interpolation=cv2.INTER_AREA))
-
-
 def preview(page, mode, box_w, box_h):
     """The exported page with its scan mode applied, fitted into the box."""
     from src.core.document_scanner import apply_scan_mode, perspective_warp, target_size_from_corners
@@ -375,22 +328,3 @@ def preview(page, mode, box_w, box_h):
     rh, rw = result.shape[:2]
     scale = min(box_w / rw, box_h / rh)
     return to_pil(result, (int(rw * scale), int(rh * scale)))
-
-
-def magnifier(page, corner_index, scale, size=200):
-    """A zoomed square around one corner (2x the on-screen size), or None."""
-    import cv2
-    cx, cy = page.corners[corner_index]
-    crop = int(100 / scale)
-    x1, y1 = int(cx - crop / 2), int(cy - crop / 2)
-    x2, y2 = int(cx + crop / 2), int(cy + crop / 2)
-    ih, iw = page.display_shape
-    pad_x1, pad_y1 = max(0, -x1), max(0, -y1)
-    pad_x2, pad_y2 = max(0, x2 - iw), max(0, y2 - ih)
-    cropped = page.display_image[max(0, y1):min(ih, y2), max(0, x1):min(iw, x2)]
-    if cropped.size == 0:
-        return None
-    if pad_x1 or pad_y1 or pad_x2 or pad_y2:
-        cropped = cv2.copyMakeBorder(cropped, pad_y1, pad_y2, pad_x1, pad_x2, cv2.BORDER_REPLICATE)
-    # NEAREST gives a sharp, zoomed-pixel look.
-    return to_pil(cropped, (size, size), nearest=True)

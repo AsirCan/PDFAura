@@ -1186,37 +1186,9 @@ LANGUAGES = {
     "ja": "日本語",
 }
 
-# Written right to left. Tk lays text out left to right, so without an
-# explicit embedding a trailing ":" or "..." lands on the wrong side.
+# Written right to left: the page sets dir="rtl" and the browser lays the
+# text out itself.
 RTL_LANGUAGES = {"ar", "ur"}
-_RLE, _PDF = "\u202b", "\u202c"
-
-
-# Tk on Windows draws a line in pieces of about 200 UTF-8 bytes, and each
-# piece is laid out on its own, so a longer right-to-left line comes out
-# with its pieces in the wrong order. Arabic letters take two bytes each.
-_RTL_LINE_BYTES = 180
-
-
-def _short_lines(line):
-    """Break *line* at spaces so no piece exceeds _RTL_LINE_BYTES."""
-    budget = _RTL_LINE_BYTES - len((_RLE + _PDF).encode("utf-8"))
-    pieces, current = [], ""
-    for word in line.split(" "):
-        candidate = f"{current} {word}" if current else word
-        if current and len(candidate.encode("utf-8")) > budget:
-            pieces.append(current)
-            current = word
-        else:
-            current = candidate
-    pieces.append(current)
-    return pieces
-
-
-def _right_to_left(text):
-    # A line break ends a bidi embedding, so every line is wrapped on its own.
-    lines = [piece for line in text.split("\n") for piece in _short_lines(line)]
-    return "\n".join(_RLE + line + _PDF if line else line for line in lines)
 
 
 def get_text(key):
@@ -1230,11 +1202,7 @@ def get_text(key):
 
     text = _STRINGS[lang].get(key)
     if text is None:
-        # English fallbacks are not wrapped: they include file-name suffixes,
-        # where an invisible direction mark would end up in the name.
         return _STRINGS["en"].get(key, key)
-    if lang in RTL_LANGUAGES:
-        return _right_to_left(text)
     return text
 
 def _(key):
@@ -1243,12 +1211,8 @@ def _(key):
 
 
 def strings_for(language):
-    """Every string in *language*, English where it has none, as plain text.
-
-    For the web window: the browser lays right-to-left text out itself
-    (dir="rtl"), so these carry none of the direction marks and line
-    splitting get_text() adds for Tk.
-    """
+    """Every string in *language*, English where it has none: what the page
+    gets at start-up and whenever the language changes."""
     if language not in _STRINGS:
         language = "en"
     return {**_STRINGS["en"], **_STRINGS[language]}

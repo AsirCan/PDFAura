@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Security (tab_security.py): encrypt, decrypt or watermark a PDF.
+  // Security: encrypt, decrypt or watermark a PDF.
   import { onDestroy, onMount } from "svelte";
   import { api } from "../lib/bridge";
   import { app, previewFile } from "../lib/app.svelte";

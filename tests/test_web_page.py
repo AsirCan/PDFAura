@@ -1,6 +1,6 @@
 """#25 Faz 2: the web page's sources against the Python side.
 
-- the generated theme and icons match src/gui/theme
+- the generated theme and icons match src/app/theme
 - no colour literal outside the generated theme
 - every string the page shows exists in lang_manager
 - the bridge's methods and web/src/lib/types.ts agree (the contract)
@@ -41,7 +41,7 @@ def test_the_generated_files_match_the_python_theme(name):
 
 def test_both_themes_define_every_colour_token():
     css = webtheme.theme_css()
-    from src.gui.theme import get_theme
+    from src.app.theme import get_theme
     for token in get_theme("paper").color_tokens():
         assert css.count(f"--{token.replace('_', '-')}:") == 2, token
 

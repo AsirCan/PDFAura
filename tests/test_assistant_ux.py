@@ -34,10 +34,13 @@ def test_recognizer_starts_with_no_model():
 
 
 def test_there_is_no_startup_preload_hook():
-    """preload_model_async() was called from MainWindow.__init__."""
+    """preload_model_async() was called from the Tk MainWindow.__init__;
+    the window must not load the speech model before the microphone is used."""
     assert not hasattr(SpeechRecognizer, "preload_model_async")
-    with open("src/gui/main_window.py", encoding="utf-8") as f:
-        assert "preload_model_async" not in f.read()
+    for path in ("src/app/window.py", "src/app/bridge.py", "src/app/assistant.py"):
+        with open(path, encoding="utf-8") as f:
+            source = f.read()
+        assert "preload_model" not in source, path
 
 
 # ── Load failures are reported (#17.1) ────────────────────────────────────

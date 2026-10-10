@@ -31,18 +31,18 @@ def _asset(name):
 
 
 def _theme_palette(name):
-    from src.gui.theme import get_theme
+    from src.app.theme import get_theme
     return get_theme(name)
 
 
 def _starting_theme():
     """The theme the window opens in, so its first frame is not white."""
-    from src.gui.theme import resolve_theme_name, theme_preference
+    from src.app.theme import resolve_theme_name, theme_preference
     return resolve_theme_name(theme_preference())
 
 
 def _window_size():
-    """The Tk window's rule: large, but never past the screen."""
+    """Large, but never past the screen."""
     try:
         import webview
         screen = webview.screens[0]

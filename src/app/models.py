@@ -1,8 +1,8 @@
 """Local AI models for Settings: the list, a download and a test.
 
 The Tk settings dialog started its own threads for these, and an error
-other than the expected one left its Download button disabled for good. A
-UI now asks for rows to show and starts a download or a test as a job:
+other than the expected one left its Download button disabled for good.
+The window now asks for rows to show and starts a download or a test as a job:
 progress, then exactly one of done / failed / cancelled, through ``post``.
 """
 from dataclasses import dataclass

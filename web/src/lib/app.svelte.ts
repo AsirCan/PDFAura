@@ -8,7 +8,7 @@ import type { IconName } from "./generated/icons";
 export const PAGES = ["compress", "organize", "scanner", "convert", "security", "advanced", "batch"] as const;
 export type Page = (typeof PAGES)[number];
 
-// Sidebar order (Ctrl+1 … Ctrl+7 follow it), as NAV_ITEMS in main_window.py.
+// Sidebar order; Ctrl+1 … Ctrl+7 follow it.
 export const NAV: { page: Page; icon: IconName; label: string }[] = [
   { page: "compress", icon: "COMPRESS", label: "txt_compress" },
   { page: "organize", icon: "ORGANIZE", label: "txt_edit" },

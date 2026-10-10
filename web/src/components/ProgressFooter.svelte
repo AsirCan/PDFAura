@@ -1,7 +1,7 @@
 <script lang="ts">
   // A tool's action row: the main button, then progress and Cancel while a
-  // job runs (ProgressFooter in helpers.py). ``working`` is other work the
-  // tool waits for (the scanner's corner detection): a bar that only moves.
+  // job runs. ``working`` is other work the tool waits for (the scanner's
+  // corner detection): a bar that only moves.
   import { t } from "../lib/i18n.svelte";
   import type { ToolRun } from "../lib/run.svelte";
 

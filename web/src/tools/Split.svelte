@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Split (tab_split.py): one page range of a PDF into a new PDF.
+  // Split: one page range of a PDF into a new PDF.
   import { onDestroy } from "svelte";
   import { api } from "../lib/bridge";
   import { previewFile } from "../lib/app.svelte";

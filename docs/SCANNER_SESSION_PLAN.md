@@ -1,5 +1,7 @@
 # Belge Tarayıcı: Oturum Kalıcılığı (Scanner Session Persistence) Uygulama Planı
 
+> **Tarihî belge.** Bu plan Tk sekmesi (`src/gui/tabs/tab_scanner.py`) için yazıldı. Tk arayüzü #25'in 5. fazında kaldırıldı. Oturumun disk tarafı (`src/core/scanner_session.py`) aynen duruyor; sayfa modeli `src/app/scanner.py`, pencerenin sayfaları tutan tarafı `src/app/scanboard.py`'dir.
+
 > **Bu doküman kimin için?** Bu projeyi hiç görmemiş bir geliştirici ya da AI asistanı için yazıldı. Hiçbir ek bağlam gerekmeden baştan sona uygulanabilir.
 >
 > **Güvenilirlik:** Buradaki kodun tamamı `b7ce3b1` commit'inin bir kopyasına uygulandı. Gerçek Tk penceresiyle uçtan uca test edildi: ekleme, döndürme, sıralama, kapatma, orijinal dosyaları silme, yeniden açma, geri yükleme, PDF alma, bozuk/eksik/kurcalanmış oturum ve ikinci instance kilidi (bkz. Ek A). Satır numaraları `b7ce3b1` içindir. Kod kaydıysa metot adıyla bul.

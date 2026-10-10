@@ -4,7 +4,7 @@ These used to live in the Tk tabs, each with its own copy of the
 "validate, start a thread, format the result" code. Every tool here is a
 ``check`` (raises Invalid with a message the user can act on) and a ``run``
 (does the work with a TaskContext and returns an Outcome). Neither touches
-a UI toolkit, so the web window can call exactly the same code.
+a UI, so both are tested without a window.
 
 Modes are language-independent keys ("encrypt", "pdf2word"); the labels a
 UI shows for them come from ``mode_label``.
@@ -394,14 +394,6 @@ def mode_label(tool, mode):
     """The localised label for ``mode`` of ``tool`` ("encrypt" -> "Şifrele")."""
     key = _MODE_LABEL_KEYS[tool].get(mode)
     return _(key) if key else mode
-
-
-def mode_from_label(tool, label):
-    """The mode key for a label a Tk control holds, or the label itself."""
-    for mode, key in _MODE_LABEL_KEYS[tool].items():
-        if _(key) == label:
-            return mode
-    return label
 
 
 def get(name):

@@ -1,10 +1,10 @@
 """Background jobs, the same way for every tool and every UI.
 
-Each tab used to start its own thread and hand results back with
+Each Tk tab used to start its own thread and hand results back with
 root.after, ten times over with small differences. A job runs
-``work(ctx)`` on a worker thread and reports through ``post``, which must
-run a function on the UI's own thread: Tk passes ``root.after(0, ...)``,
-tests pass a direct call, and the web window will pass its event emitter.
+``work(ctx)`` on a worker thread and reports through ``post(fn, *args)``.
+The web window's reports are events, which may be sent from any thread,
+so it passes call_now; tests do the same.
 """
 import itertools
 import logging

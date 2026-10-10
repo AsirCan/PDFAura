@@ -238,10 +238,11 @@ def test_whisper_is_found_in_the_hugging_face_cache(tmp_path, monkeypatch):
 # ── Settings screen text (#18.5, #18.6) ───────────────────────────────────
 
 def test_settings_does_not_claim_to_have_saved_on_open():
-    with open("src/gui/tabs/tab_settings.py", encoding="utf-8") as f:
+    """It said "saved" as soon as it opened; only a save may say so."""
+    with open("web/src/components/Settings.svelte", encoding="utf-8") as f:
         source = f.read()
-    build_ui = source.split("def _build_general_settings")[0]
-    assert '_("settings_saved")' not in build_ui
+    opening = source.split("new Feedback(")[1].split(";")[0]
+    assert "settings_saved" not in opening
 
 
 def test_model_detail_labels_are_translated():
@@ -258,7 +259,7 @@ def test_model_detail_labels_are_translated():
 
 
 def test_no_hardcoded_turkish_left_in_the_model_detail_panel():
-    with open("src/gui/tabs/tab_settings.py", encoding="utf-8") as f:
+    with open("web/src/components/Settings.svelte", encoding="utf-8") as f:
         source = f.read()
-    for literal in ('f"Durum:', 'f"Yol:', 'f"Lisans:', 'f"Not:', "İndiriliyor:"):
+    for literal in ("Durum:", "Yol:", "Lisans:", "Not:", "İndiriliyor:"):
         assert literal not in source, f"{literal} still hardcoded"

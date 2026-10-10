@@ -103,7 +103,7 @@ def make_app(token, images, pages, scans=None, root=None):
 
     @app.get("/app-icon.png")
     def app_icon():
-        # The brand mark in the sidebar: the same file as the Tk window's.
+        # The brand mark in the sidebar.
         return bottle.static_file("appicon.png", root=assets_root())
 
     @app.get("/")

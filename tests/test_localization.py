@@ -1,4 +1,4 @@
-"""Issue #20: Turkish text in the English UI, and an undefined Hero style."""
+"""Issue #20: Turkish text in the English UI; every language complete."""
 import os
 import re
 import string
@@ -9,7 +9,7 @@ from src.core.lang_manager import _STRINGS
 
 TURKISH_ONLY = "çğışöüÇĞİŞÖÜ"
 
-SOURCE_DIRS = ("src/core", "src/gui", "src/ai", "src/utils")
+SOURCE_DIRS = ("src/core", "src/app", "src/ai", "src/utils")
 
 
 def source_files():
@@ -102,32 +102,14 @@ def test_missing_key_falls_back_to_english():
     assert _in_language("de", "suffix_compressed") == "_compressed"
 
 
-def test_right_to_left_text_is_embedded_line_by_line():
-    """Tk lays out left to right; without an RTL embedding the trailing
-    colon of "لغة التطبيق:" is drawn on the wrong side."""
+def test_right_to_left_text_is_plain():
+    """The page sets dir="rtl" and the browser lays the text out: no
+    direction marks, no lines broken for Tk (they came out as real breaks)."""
     assert RTL_LANGUAGES <= set(LANGUAGES)
-    text = _in_language("ar", "settings_restart_body")
-    for line in filter(None, text.split("\n")):
-        assert line.startswith("‫") and line.endswith("‬")
-
-
-@pytest.mark.parametrize("language", sorted(RTL_LANGUAGES))
-def test_right_to_left_lines_stay_short(language):
-    """Tk on Windows draws about 200 bytes at a time and lays each piece out
-    separately, which scrambled the word order of longer Urdu lines."""
-    from src.core.lang_manager import _RTL_LINE_BYTES
-    for key in _STRINGS[language]:
-        for line in _in_language(language, key).split("\n"):
-            assert len(line.encode("utf-8")) <= _RTL_LINE_BYTES, key
-
-
-def test_right_to_left_file_suffixes_stay_plain():
-    """English fallbacks are not wrapped: they end up inside file names."""
-    assert _in_language("ar", "suffix_merged") == "_merged"
-
-
-def test_left_to_right_text_is_not_wrapped():
-    assert "‫" not in _in_language("ja", "settings_lang")
+    for language in sorted(RTL_LANGUAGES):
+        text = _in_language(language, "settings_restart_body")
+        assert "‫" not in text and "‬" not in text
+        assert text == _STRINGS[language]["settings_restart_body"]
 
 
 # ── No user-visible Turkish outside lang_manager ──────────────────────────
@@ -150,29 +132,6 @@ def test_no_hardcoded_turkish_in_displayed_strings(path):
     assert matches == [], f"{path}: hardcoded Turkish reaches the screen"
 
 
-# ── Styles referenced actually exist (#20.1) ──────────────────────────────
-
-def test_every_referenced_ttk_style_is_defined(tk_root):
-    """Hero.TFrame was used but never defined, so its labels sat on coloured
-    boxes against the wrong background.
-
-    Styles are generated from the theme by helpers, so this asks ttk itself
-    (after setup_styles) rather than reading styles.py."""
-    from tkinter import ttk
-    style = ttk.Style(tk_root)
-
-    used = set()
-    for path in source_files():
-        with open(path, encoding="utf-8") as f:
-            used |= set(re.findall(r'style="([A-Za-z0-9_.]+\.T[A-Za-z]+)"', f.read()))
-
-    # ttk's own built-ins need no definition.
-    builtin = {"TFrame", "TLabel", "TButton", "TEntry", "TCombobox", "TCheckbutton",
-               "TNotebook", "TProgressbar", "TScrollbar", "TSeparator", "Treeview"}
-    missing = {name for name in used - builtin if not style.configure(name)}
-    assert missing == set(), f"styles used but never configured: {sorted(missing)}"
-
-
 # ── Specific fixes from the issue ─────────────────────────────────────────
 
 def test_the_export_typo_is_fixed():
@@ -192,116 +151,3 @@ def test_compression_qualities_are_explained(quality):
         label = _STRINGS[language][f"quality_{quality}"]
         assert quality in label
         assert "dpi" in label, f"{language}/{quality} has no explanation"
-
-
-def test_merge_uses_the_standard_hint_strip():
-    """The merge tab showed a fabricated "2 files merged" line in a hero."""
-    with open("src/gui/tabs/tab_merge.py", encoding="utf-8") as f:
-        source = f.read()
-    # ToolLayout builds the standard hint strip for every tool page.
-    assert "ToolLayout(self.parent, _(\"hint_merge\"))" in source
-    assert "HeroBody.TLabel" not in source
-
-
-def test_merge_listbox_uses_the_shared_style():
-    with open("src/gui/tabs/tab_merge.py", encoding="utf-8") as f:
-        source = f.read()
-    assert "style_listbox(self.merge_listbox)" in source
-
-
-def test_preview_panel_uses_a_minimum_width_column():
-    """Pack shrank both children proportionally when the window was narrow;
-    a grid column with a minsize takes the space from the content instead."""
-    with open("src/gui/main_window.py", encoding="utf-8") as f:
-        source = f.read()
-    assert "columnconfigure(1, weight=0, minsize=PREVIEW_COLUMN_WIDTH)" in source
-    assert 'self.preview_host.grid(' in source
-
-
-def test_viewer_closes_its_document():
-    with open("src/gui/pdf_viewer.py", encoding="utf-8") as f:
-        source = f.read()
-    assert "doc.close()" in source
-    assert "def destroy(self):" in source
-
-
-def test_viewer_has_keyboard_shortcuts():
-    with open("src/gui/pdf_viewer.py", encoding="utf-8") as f:
-        source = f.read()
-    for key in ("<Left>", "<Right>", "<Prior>", "<Next>", "<plus>", "<minus>"):
-        assert key in source, f"{key} not bound"
-
-
-def test_preview_panel_closes_its_document_on_failure():
-    with open("src/gui/preview_panel.py", encoding="utf-8") as f:
-        source = f.read()
-    assert "finally:" in source
-
-
-def test_mismatched_drop_is_reported():
-    with open("src/gui/tabs/tab_convert.py", encoding="utf-8") as f:
-        source = f.read()
-    assert "convert_drop_mismatch" in source
-
-
-# ── Layout at the supported window widths (#20.2) ─────────────────────────
-
-@pytest.fixture(scope="module")
-def app_window(tk_root):
-    """A real MainWindow on the shared Tk root."""
-    from src.gui.main_window import MainWindow
-    for child in tk_root.winfo_children():
-        child.destroy()
-    tk_root.deiconify()
-    window = MainWindow(tk_root)
-    yield tk_root, window
-    for child in tk_root.winfo_children():
-        child.destroy()
-    tk_root.withdraw()
-
-
-PREVIEW_PAGES = ["compress", "organize", "convert", "security", "advanced", "batch"]
-
-
-@pytest.mark.parametrize("width", [1100, 1300, 1480, 1920])
-def test_preview_panel_keeps_its_width_at_every_size(app_window, width):
-    """It was squeezed to "Ön", "Seçi", "bel" at the default window size."""
-    from src.gui.main_window import PREVIEW_WIDTH
-
-    root, window = app_window
-    root.geometry(f"{width}x920")
-    root.update_idletasks()
-    root.update()
-
-    for page in PREVIEW_PAGES:
-        window.show_page(page)
-        root.update_idletasks()
-        root.update()
-        actual = window.preview_host.winfo_width()
-        assert actual >= PREVIEW_WIDTH, f"{page} at {width}px: preview is {actual}px"
-
-
-def test_scanner_gives_the_preview_column_back(app_window):
-    """The scanner has its own preview, so the column should not be reserved."""
-    root, window = app_window
-    window.show_page("scanner")
-    root.update_idletasks()
-    root.update()
-    assert not window.preview_host.winfo_ismapped()
-
-
-@pytest.mark.parametrize("width", [1100, 1480])
-def test_no_page_is_wider_than_the_window(app_window, width):
-    """Content wider than the window pushes buttons off the right edge."""
-    root, window = app_window
-    root.geometry(f"{width}x920")
-    root.update_idletasks()
-    root.update()
-
-    for page in PREVIEW_PAGES:
-        window.show_page(page)
-        root.update_idletasks()
-        root.update()
-        frame = window.workspaces[page].frame
-        assert frame.winfo_width() <= window.content.winfo_width() + 2, \
-            f"{page} at {width}px overflows its column"

@@ -38,17 +38,6 @@ def test_mode_ids_match_the_core():
     assert [m for m, _k in scanner.MODES] == [
         document_scanner.MODE_ORIGINAL, document_scanner.MODE_CLEAN_DOC, document_scanner.MODE_BW,
         document_scanner.MODE_GRAYSCALE, document_scanner.MODE_SHARP]
-    assert scanner.A4_ASPECT == document_scanner.A4_HEIGHT_PX / document_scanner.A4_WIDTH_PX
-
-
-@pytest.mark.parametrize("mode", [m for m, _k in scanner.MODES])
-def test_mode_labels_round_trip(mode):
-    assert scanner.mode_from_label(scanner.mode_label(mode)) == mode
-
-
-def test_unknown_labels_fall_back_to_the_original_photo():
-    assert scanner.mode_from_label("nonsense") == scanner.MODE_ORIGINAL
-    assert scanner.mode_label("nonsense") is None
 
 
 def test_default_corners_sit_inside_the_photo():
@@ -207,10 +196,9 @@ def test_export_writes_one_page_per_snapshot_entry(tmp_path):
 
 def test_pictures_have_the_requested_sizes():
     page = page_for(photo())
-    assert scanner.thumbnail(page, 112, 158, "#EEF0F4").size == (112, 158)
+    fitted = scanner.fitted(page, 180, 255)
+    assert fitted.width <= 180 and fitted.height <= 255 and (fitted.width == 180 or fitted.height == 255)
     assert max(scanner.preview(page, scanner.MODE_BW, 260, 370).size) <= 370
-    assert scanner.drag_ghost(page, 56, 79).size == (56, 79)
-    assert scanner.magnifier(page, 0, 0.5, 200).size == (200, 200)
     assert scanner.to_pil(page.display_image, (60, 80)).size == (60, 80)
 
 
@@ -223,7 +211,7 @@ HEAVY = ("cv2", "numpy", "pypdf", "fitz", "pymupdf", "pytesseract", "sounddevice
 def test_opening_the_window_loads_no_heavy_library():
     """Each of these used to be imported at startup (#25: 0.56 s of the
     window's import time). They load when a tool first needs them."""
-    code = ("import sys; import src.gui.main_window; "
+    code = ("import sys; import src.app.window; "
             f"print(' '.join(m for m in {HEAVY!r} if m in sys.modules))")
     # conftest moved APPDATA, which is also where pip's --user packages live.
     env = dict(os.environ, PYTHONUSERBASE=site.getuserbase())

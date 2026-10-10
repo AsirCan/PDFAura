@@ -1,6 +1,6 @@
 <script lang="ts">
-  // The scanner's pages as thumbnails, in PDF order (the strip of
-  // tab_scanner.py): drag one to reorder, double-click or F2 to name it,
+  // The scanner's pages as thumbnails, in PDF order: drag one to reorder,
+  // double-click or F2 to name it,
   // right-click for more. Arrow keys select, Alt+arrows move the page,
   // Delete removes it.
   import { t } from "../../lib/i18n.svelte";
@@ -256,7 +256,7 @@
   <h3 class="section-title">{t("scanner_pages")}</h3>
   <p class="caption-line small muted ellipsis" title={caption}>{caption}</p>
   <!-- Narrow strip: one hint per line; wide: both on one. -->
-  <p class="hint"><span>{t("scanner_strip_hint_drag")}{" · "}</span>
+  <p class="hint"><span>{t("scanner_strip_hint_drag")} ·</span>
     <span>{t("scanner_strip_hint_name")}</span></p>
   <div class="scroller" bind:this={scroller}>
     <ul bind:this={list} role="listbox" tabindex="0" aria-label={t("scanner_pages")} onkeydown={key}

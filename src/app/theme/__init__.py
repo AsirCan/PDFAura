@@ -6,16 +6,15 @@ Adding a theme:
     3. Set "theme": "slate" in config.json, or pick it in Settings.
 
 The preference stored in config.json is a theme name or "system", which
-follows Windows' light/dark app mode. styles.apply_theme() switches a
-running window without a restart.
+follows Windows' light/dark app mode; the page follows it at once.
 
-Every colour, font and radius on screen comes from the active theme; widgets
-read it through active_theme() or the constants src/gui/styles.py derives
-from it, never from literals.
+Every colour, font and radius in the window comes from a theme:
+python -m src.app.webtheme writes them as the CSS variables the page uses
+(web/src/lib/generated/theme.css), and the page has no colour of its own.
 """
-from src.gui.theme.base import Metrics, Palette, Theme, TypeRole, Typography
-from src.gui.theme.night import NIGHT
-from src.gui.theme.paper import PAPER
+from src.app.theme.base import Metrics, Palette, Theme, TypeRole, Typography
+from src.app.theme.night import NIGHT
+from src.app.theme.paper import PAPER
 
 DEFAULT_THEME = PAPER.name
 LIGHT_THEME = PAPER.name
@@ -24,7 +23,6 @@ SYSTEM = "system"
 DEFAULT_PREFERENCE = SYSTEM
 
 _THEMES = {}
-_active = None
 
 
 def register_theme(theme):
@@ -75,29 +73,12 @@ def resolve_theme_name(preference):
     return get_theme(preference).name
 
 
-def active_theme():
-    """The theme the preference in the config resolves to."""
-    global _active
-    if _active is None:
-        _active = get_theme(resolve_theme_name(theme_preference()))
-    return _active
-
-
-def set_active_theme(name):
-    """Make `name` the active theme. Before the UI exists this is all it
-    takes; a running window switches with styles.apply_theme()."""
-    global _active
-    _active = get_theme(name)
-    return _active
-
-
 register_theme(PAPER)
 register_theme(NIGHT)
 
 __all__ = [
     "Metrics", "Palette", "Theme", "TypeRole", "Typography",
-    "register_theme", "available_themes", "get_theme",
-    "active_theme", "set_active_theme", "DEFAULT_THEME",
+    "register_theme", "available_themes", "get_theme", "DEFAULT_THEME",
     "LIGHT_THEME", "DARK_THEME", "SYSTEM", "DEFAULT_PREFERENCE",
     "system_prefers_dark", "theme_preference", "resolve_theme_name",
 ]

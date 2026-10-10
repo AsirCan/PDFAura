@@ -1,6 +1,6 @@
 <script lang="ts">
   // Split, Merge and Edit pages behind one sidebar entry, switched above
-  // them (GroupWorkspace in main_window.py). Each keeps its state.
+  // them. Each keeps its state.
   import { onMount } from "svelte";
   import { app } from "../lib/app.svelte";
   import { t } from "../lib/i18n.svelte";

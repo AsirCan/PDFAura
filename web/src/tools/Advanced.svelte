@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Advanced (tab_advanced.py): full preview, OCR to text, metadata and a
+  // Advanced: full preview, OCR to text, metadata and a
   // visual signature stamp.
   import { onDestroy, onMount } from "svelte";
   import { api, on } from "../lib/bridge";
@@ -71,7 +71,7 @@
   }
 
   function browseOutput() {
-    // Advanced has no suggested name (as in Tk): the dialog starts empty.
+    // Advanced has no suggested name: the dialog starts empty.
     void output.browse();
   }
 

@@ -7,8 +7,6 @@
 # DLLs) and pyinstaller-hooks-contrib covers pythonnet.
 import os
 
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
-
 block_cipher = None
 
 # The window's page, built from web/ by Vite. It is not in git.
@@ -24,10 +22,6 @@ datas = [
 if os.path.isdir("models"):
     datas.append(("models", "models"))
 
-# tkinterdnd2 ships the tkdnd Tcl package as data; without it drag and drop
-# fails at startup in a frozen build.
-datas += collect_data_files("tkinterdnd2")
-
 hiddenimports = [
     # pystray picks its backend at runtime, so PyInstaller cannot see it.
     "pystray._win32",
@@ -37,7 +31,6 @@ hiddenimports = [
     "pythoncom",
     "pywintypes",
 ]
-hiddenimports += collect_submodules("tkinterdnd2")
 
 a = Analysis(
     ["main.py"],
@@ -50,7 +43,8 @@ a = Analysis(
     runtime_hooks=[],
     # faster-whisper and its model are downloaded on first use rather than
     # bundled; excluding the heavy training stack keeps the build small.
-    excludes=["torch", "tensorflow", "matplotlib", "pytest"],
+    # Tk is not used since the window moved to WebView2 (#25).
+    excludes=["torch", "tensorflow", "matplotlib", "pytest", "tkinter", "_tkinter"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

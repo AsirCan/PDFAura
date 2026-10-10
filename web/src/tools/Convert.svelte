@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Convert (tab_convert.py): seven conversions, each keeping its own files.
+  // Convert: seven conversions, each keeping its own files.
   import { onDestroy, onMount } from "svelte";
   import { api } from "../lib/bridge";
   import { app, previewFile } from "../lib/app.svelte";

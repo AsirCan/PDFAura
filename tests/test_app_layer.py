@@ -15,7 +15,7 @@ from conftest import make_pdf, page_widths
 from src.app import tools
 from src.app.api import Api
 from src.app.jobs import JobRunner
-from src.app.tools import Invalid, Outcome, mode_from_label, mode_label
+from src.app.tools import Invalid, Outcome, mode_label
 from src.core.lang_manager import _
 
 
@@ -233,10 +233,11 @@ def test_invalid_is_a_value_error_with_the_message():
     ("advanced", "ocr"), ("batch", "rename"),
 ])
 @pytest.mark.parametrize("language", ["tr", "en", "ar", "ja"])
-def test_mode_labels_round_trip(tool, mode, language):
+def test_every_mode_has_a_label(tool, mode, language):
     from src.core.config_manager import cfg
     cfg.config["language"] = language
-    assert mode_from_label(tool, mode_label(tool, mode)) == mode
+    label = mode_label(tool, mode)
+    assert label and label != mode
 
 
 # ── Each tool, start to finish ────────────────────────────────────────────

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Compress (tab_compress.py): one PDF in, a quality profile, one PDF out.
+  // Compress: one PDF in, a quality profile, one PDF out.
   import { onDestroy, onMount } from "svelte";
   import { api } from "../lib/bridge";
   import { app, previewFile } from "../lib/app.svelte";

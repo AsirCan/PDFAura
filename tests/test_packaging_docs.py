@@ -35,10 +35,16 @@ def test_the_spec_is_valid_python():
 
 def test_the_spec_keeps_the_runtime_only_imports():
     spec = read("PDFAura.spec")
-    # pystray chooses its backend at runtime and tkinterdnd2 ships Tcl data;
-    # neither survives a frozen build without being named here.
+    # pystray chooses its backend at runtime: it does not survive a frozen
+    # build without being named here.
     assert "pystray._win32" in spec
-    assert "tkinterdnd2" in spec
+
+
+def test_the_spec_leaves_tk_out():
+    """Nothing uses Tk since the window moved to WebView2 (#25)."""
+    spec = read("PDFAura.spec")
+    assert '"tkinter"' in spec and "tkinterdnd2" not in spec
+    assert "tkinterdnd2" not in read("requirements.txt")
 
 
 def test_the_spec_ships_the_window_page():
@@ -160,11 +166,12 @@ def test_crash_is_recorded_and_surfaced(tmp_path, monkeypatch):
 
 # ── Start-up ──────────────────────────────────────────────────────────────
 
-def test_the_web_window_is_the_default(monkeypatch):
+def test_the_web_window_is_the_only_window(monkeypatch):
     import main
+    assert not hasattr(main, "run_tk")
     started = []
     monkeypatch.setattr(main, "run_web", lambda port=None: started.append(("web", port)) or 0)
-    monkeypatch.setattr(main, "run_tk", lambda: started.append(("tk", None)))
+    # --web was needed while Tk was the default; old shortcuts still pass it.
     for argv in (["main.py"], ["main.py", "--web"], ["main.py", "--debug-port", "9333"]):
         monkeypatch.setattr("sys.argv", argv)
         with pytest.raises(SystemExit):

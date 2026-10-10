@@ -127,8 +127,9 @@ def test_the_window_opens_with_every_tool(window):
 
 def test_keyboard_switches_tools(window):
     window.page.keyboard.press("Control+4")
-    window.wait("document.querySelector('h1').textContent.length > 0")
-    assert window.page.evaluate("document.querySelector('.nav-item.selected span').textContent") == "Dönüştür"
+    # Waiting on the selection itself: the title was there before the switch.
+    window.wait("document.querySelector('.nav-item.selected span')?.textContent === 'Dönüştür'")
+    assert window.page.evaluate("document.querySelector('h1').textContent") == "Format çevirici"
 
 
 def test_compress_runs_end_to_end(window, tmp_path):

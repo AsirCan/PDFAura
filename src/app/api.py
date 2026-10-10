@@ -1,9 +1,8 @@
-"""The single door a UI uses to run tools.
+"""The single door to run tools by.
 
-The Tk tabs go through here today; in Faz 2 of #25 the web window exposes
-the same object to JavaScript. A UI checks the input, asks before
-replacing a file, starts the tool and gets back progress and exactly one
-of done / failed / cancelled, always on its own thread (see ``post``).
+The window's bridge (bridge.py) calls it for the page. A UI checks the
+input, asks before replacing a file, starts the tool and gets back
+progress and exactly one of done / failed / cancelled, through ``post``.
 """
 from src.app import tools
 from src.app.jobs import JobRunner, call_now

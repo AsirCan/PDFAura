@@ -1,7 +1,7 @@
-// Running a tool from a page, the same way for every tool -- the web twin
-// of ToolRun in src/gui/helpers.py: check the input, ask before replacing a
-// file the app suggested, start, follow progress, and end in exactly one of
-// done / failed / cancelled, shown in the result panel.
+// Running a tool from a page, the same way for every tool: check the input,
+// ask before replacing a file the app suggested, start, follow progress,
+// and end in exactly one of done / failed / cancelled, shown in the result
+// panel.
 import { api, on } from "./bridge";
 import { dialogs } from "./dialog.svelte";
 import { t } from "./i18n.svelte";
@@ -15,7 +15,7 @@ export type Text = string | (() => string);
 
 const words = (text: Text) => (typeof text === "function" ? text() : text);
 
-/** The result panel's state (InlineFeedback in helpers.py). */
+/** The result panel's state. */
 export class Feedback {
   tone = $state<Tone>("neutral");
   output = $state<string | null>(null);

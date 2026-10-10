@@ -35,7 +35,7 @@
     const width = Math.max(1, Math.floor(doc.width * scale));
     const height = Math.max(1, Math.floor(doc.height * scale));
     // At least 1.5x the shown size: a downscaled page reads smoother than
-    // one drawn at exactly its size (Tk's panel drew at 560 px and scaled).
+    // one drawn at exactly its size.
     const render = Math.min(2400, Math.ceil((width * Math.max(window.devicePixelRatio || 1, 1.5)) / 160) * 160);
     return { width, height, render };
   });

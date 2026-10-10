@@ -1,7 +1,7 @@
 // Every visible string comes from src/core/lang_manager.py, sent whole at
 // start-up and again when the language changes, so a new language shows at
 // once without a restart. The browser lays out right-to-left text itself
-// (dir="rtl"); the strings carry none of Tk's direction marks.
+// (dir="rtl"); the strings carry no direction marks.
 import type { LanguagePayload } from "./types";
 
 class Language {

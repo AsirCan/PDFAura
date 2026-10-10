@@ -12,8 +12,8 @@ its white label stays readable. tests/test_ui_theme.py checks every pair.
 """
 from dataclasses import replace
 
-from src.gui.theme.base import Palette, Theme
-from src.gui.theme.paper import PAPER
+from src.app.theme.base import Palette, Theme
+from src.app.theme.paper import PAPER
 
 NIGHT = replace(
     PAPER,

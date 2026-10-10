@@ -1,8 +1,7 @@
 """The document scanner for the web window.
 
-The Tk tab keeps its pages itself: it can hold the photos as numpy arrays.
-The web page cannot, so this board owns the page list and its photos, and
-the page tells it what the user did -- add, remove, move, rotate, drag a
+The page cannot hold the photos (numpy arrays), so this board owns the
+page list and its photos, and the page tells it what the user did -- add, remove, move, rotate, drag a
 corner (sent once, when the handle is let go), rename, pick a mode or a
 place to save, export. The page draws from small descriptions (state())
 and asks for pictures by URL: /scan/<token>/<uid>/<kind>?v=<version>,
@@ -13,7 +12,7 @@ change something the board sends a "scanner" event with the whole state,
 which holds no pixels and stays small.
 
 The model itself (rotation, detection, session format, export) is
-src/app/scanner.py, shared with the Tk tab.
+src/app/scanner.py.
 """
 import os
 import threading
@@ -24,7 +23,7 @@ from src.core.lang_manager import _
 
 PHOTO_MAX = 2000          # px, long side of the photo the editor shows
 JPEG_QUALITY = 88
-SAVE_DELAY_S = 0.4        # the Tk tab's SESSION_SAVE_DELAY_MS
+SAVE_DELAY_S = 0.4        # a burst of changes is saved once
 
 
 def _notice(title_key, message, tone="info"):
@@ -168,7 +167,7 @@ class ScannerBoard:
             return self.state(_notice("scanner_crop_area", _("scanner_select_hint")))
 
     def select(self, index):
-        # Not a change worth a save of its own (as in Tk); the next one keeps it.
+        # Not a change worth a save of its own; the next one keeps it.
         with self._lock:
             if 0 <= index < len(self.pages):
                 self.current = index

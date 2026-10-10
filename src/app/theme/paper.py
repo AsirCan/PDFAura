@@ -6,7 +6,7 @@ and where the user is. Status colours appear only when there is a status to
 report. Every text/background pair used on screen meets WCAG AA; see
 tests/test_ui_theme.py.
 """
-from src.gui.theme.base import Metrics, Palette, Theme, TypeRole, Typography
+from src.app.theme.base import Metrics, Palette, Theme, TypeRole, Typography
 
 _UI = ("Segoe UI Variable Text", "Segoe UI")
 _UI_STRONG = ("Segoe UI Variable Text Semibold", "Segoe UI Semibold")

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Merge (tab_merge.py): several PDFs, in the order of the list, into one.
+  // Merge: several PDFs, in the order of the list, into one.
   import { onDestroy } from "svelte";
   import { api } from "../lib/bridge";
   import { previewFile } from "../lib/app.svelte";

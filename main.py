@@ -16,13 +16,7 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
 
 def main():
-    args = sys.argv[1:]
-    if "--tk" in args:
-        # The old Tk window, kept for one release in case WebView2 fails
-        # somewhere (#25). --web is the default and still accepted.
-        run_tk()
-        return
-    sys.exit(run_web(_debug_port(args)))
+    sys.exit(run_web(_debug_port(sys.argv[1:])))
 
 
 def _debug_port(args):
@@ -36,30 +30,10 @@ def _debug_port(args):
 
 
 def run_web(debug_port=None):
-    """The window: Edge WebView2 drawing web/ (#25). Tk is never loaded."""
+    """The window: Edge WebView2 drawing web/ (#25)."""
     try:
         from src.app.window import run
         return run(debug_port=debug_port)
-    except Exception:
-        _report_crash()
-        raise
-
-
-def run_tk():
-    try:
-        # Loaded here, not at the top, so --web starts without Tk.
-        from tkinterdnd2 import TkinterDnD
-        from src.gui.main_window import MainWindow
-
-        # Use TkinterDnD for drag and drop support
-        root = TkinterDnD.Tk()
-        app = MainWindow(root)
-        root.deiconify()
-        root.lift()
-        root.attributes("-topmost", True)
-        root.after_idle(root.attributes, "-topmost", False)
-        root.focus_force()
-        root.mainloop()
     except Exception:
         # The working directory is Program Files in an installed build, where
         # we cannot write, so the real error used to be lost entirely and the

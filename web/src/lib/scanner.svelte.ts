@@ -17,9 +17,6 @@ export const MODES: { mode: ScanMode; label: string }[] = [
 // src/app/scanner.py IMAGE_EXTENSIONS: what OpenCV reads.
 export const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"];
 
-/** Width / height of a thumbnail cell: A4, as the exported pages mostly are. */
-export const A4_ASPECT = 2480 / 3508;
-
 // Pictures are asked for at fixed sizes, so a resize never fetches them
 // again; the page scales them down.
 const PHOTO_PX = 2000;

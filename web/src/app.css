@@ -1,6 +1,6 @@
-/* PDF Aura's controls, as the Tk window draws them (src/gui/styles.py).
-   Every colour, font and radius is a variable from lib/generated/theme.css;
-   no colour literal belongs here (tests/test_webtheme.py checks). */
+/* PDF Aura's controls. Every colour, font and radius is a variable from
+   lib/generated/theme.css; no colour literal belongs here
+   (tests/test_web_page.py checks). */
 @import "./lib/generated/theme.css";
 
 *,

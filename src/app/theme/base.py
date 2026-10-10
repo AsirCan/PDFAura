@@ -1,8 +1,8 @@
 """The shape of a theme.
 
-A theme is plain data: colour tokens, type roles and metrics. Nothing here
-touches Tk, so a theme can be defined, registered and tested without a
-display. src/gui/styles.py turns the active theme into ttk styles.
+A theme is plain data: colour tokens, type roles and metrics, so a theme
+can be defined, registered and tested (WCAG contrast included) without a
+window. src/app/webtheme.py turns the themes into CSS variables.
 
 Colour tokens are semantic ("text_secondary", "accent_subtle"), never
 literal ("grey_600"), so a new theme only has to answer "what colour is a

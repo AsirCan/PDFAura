@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Batch (tab_batch.py): compress, convert or rename every file in a
+  // Batch: compress, convert or rename every file in a
   // folder, with a log that shows each file as it is done.
   import { onDestroy, onMount, tick } from "svelte";
   import { api } from "../lib/bridge";

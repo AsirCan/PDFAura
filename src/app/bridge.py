@@ -102,7 +102,7 @@ class JobEvents:
         self._send({"type": "progress", "current": current, "total": total, "message": message})
 
     def _done(self, outcome):
-        # Tk's result panel played these; the setting in Settings decides.
+        # The result sounds; the setting in Settings decides.
         if self._sounds:
             from src.core.notify import play_error, play_success
             if outcome.tone == "success":

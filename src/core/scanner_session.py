@@ -65,7 +65,7 @@ def _try_lock(path):
 
 
 class ScannerSessionStore:
-    """Disk side of the scanner session. Thread-safe; never touches Tk."""
+    """Disk side of the scanner session. Thread-safe; never touches the UI."""
 
     def __init__(self, session_dir, enabled=True, on_error=None):
         self.session_dir = session_dir

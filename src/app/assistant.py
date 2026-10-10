@@ -1,7 +1,7 @@
 """The assistant: a typed or spoken command, handled the same way for every UI.
 
 The Tk header used to run this itself with four threads and a dozen
-root.after calls. A UI now only reports what the user did -- submit a
+root.after calls. The window now only reports what the user did -- submit a
 line, press or release the microphone -- and gets back two things through
 ``post``, on its own thread:
 
