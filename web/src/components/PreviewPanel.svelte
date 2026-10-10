@@ -105,6 +105,23 @@
     padding: 18px;
     min-height: 0;
   }
+  /* Narrower windows give the room to the tool (App.svelte). */
+  @media (max-width: 1180px) {
+    .preview {
+      width: 280px;
+    }
+  }
+  @media (max-width: 1060px) {
+    .preview {
+      width: 250px;
+      padding: 14px;
+    }
+  }
+  @media (max-width: 900px) {
+    .preview {
+      width: 210px;
+    }
+  }
   h2 {
     margin: 0;
   }

@@ -41,17 +41,29 @@ def _starting_theme():
     return resolve_theme_name(theme_preference())
 
 
-def _window_size():
-    """Large, but never past the screen."""
+def _screen():
     try:
         import webview
         screen = webview.screens[0]
-        screen_w, screen_h = screen.width, screen.height
+        return screen.width, screen.height
     except Exception:
-        screen_w, screen_h = 1600, 1000
+        return 1600, 1000
+
+
+def _window_size():
+    """Large, but never past the screen."""
+    screen_w, screen_h = _screen()
     width = min(1480, max(1100, screen_w - 60))
     height = min(920, max(720, screen_h - 80))
     return min(width, screen_w), min(height, screen_h)
+
+
+def _min_size():
+    """As small as the tools still fit side by side with the preview
+    (1100 x 720, as the Tk window had), but never more than the screen: a
+    small or highly scaled screen gets the narrow layout of app.css."""
+    screen_w, screen_h = _screen()
+    return min(1100, screen_w - 40), min(720, screen_h - 60)
 
 
 class Shell:
@@ -100,7 +112,7 @@ class Shell:
         # random port, and adds none of its own routes.
         self.window = webview.create_window(
             "PDF Aura", url=make_app(self.token, self.images, self.pages, self.scans), js_api=self.bridge,
-            width=width, height=height, min_size=(960, 640), background_color=theme.palette.canvas)
+            width=width, height=height, min_size=_min_size(), background_color=theme.palette.canvas)
         self.events.attach(self.window.run_js)
         self.window.events.closing += self._on_closing
         self.window.events.loaded += self._on_loaded

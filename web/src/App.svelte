@@ -136,6 +136,25 @@
   .page {
     height: 100%;
   }
+  /* A small or highly scaled screen: the window may be narrower than the
+     1100 px it normally keeps (window.py _min_size); tighter gutters and a
+     narrower tool column keep everything on screen. */
+  @media (max-width: 1060px) {
+    .main {
+      padding: 18px 18px 20px;
+    }
+    .body {
+      gap: 16px;
+    }
+    .content {
+      min-width: 380px;
+    }
+  }
+  @media (max-width: 900px) {
+    .content {
+      min-width: 360px;
+    }
+  }
   .page[hidden] {
     display: none;
   }

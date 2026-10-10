@@ -174,7 +174,7 @@
             <button class="btn btn-secondary" onclick={pickFolder}>{t("str_select")}</button>
           </div>
 
-          <div class="row buttons">
+          <div class="row buttons wrap">
             <button class="btn btn-primary" onclick={save}>{t("settings_save_btn")}</button>
             <button class="btn btn-secondary" onclick={clearHistory}>{t("settings_clear_history")}</button>
           </div>
