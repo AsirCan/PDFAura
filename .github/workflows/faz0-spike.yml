@@ -1,0 +1,36 @@
+name: faz0-spike
+
+# Faz 0 of #25: proves on a clean runner that Playwright can drive the
+# pywebview + WebView2 window over CDP, and that dialogs and the tray work.
+on:
+  push:
+    branches: [main, web-ui]
+    paths: ["spikes/faz0/**", ".github/workflows/faz0-spike.yml"]
+  workflow_dispatch:
+
+jobs:
+  spike:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r spikes/faz0/requirements.txt
+
+      - name: Make sure the WebView2 runtime is there
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          if (Test-Path $key) { "WebView2 $((Get-ItemProperty $key).pv)"; exit 0 }
+          Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile "$env:RUNNER_TEMP\wv2.exe"
+          Start-Process "$env:RUNNER_TEMP\wv2.exe" -ArgumentList '/silent /install' -Wait
+
+      - name: Run the spike checks
+        run: python -m pytest spikes/faz0 -q -p no:cacheprovider

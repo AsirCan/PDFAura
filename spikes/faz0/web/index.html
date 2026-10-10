@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>PDF Aura</title>
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body>
+  <header class="top">
+    <h1>PDF Aura · Faz 0</h1>
+    <span id="status" class="badge">yükleniyor…</span>
+    <button id="run-all" class="primary">Tüm ölçümleri çalıştır</button>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Köprü</h2>
+      <p class="hint">JS → Python → JS gidiş-dönüş süresi.</p>
+      <button id="ping-btn">200 × ping</button>
+      <output id="ping-out"></output>
+      <div id="info" class="mono"></div>
+    </section>
+
+    <section class="card">
+      <h2>Dosya diyalogları</h2>
+      <p class="hint">Windows'un kendi diyalogları.</p>
+      <div class="row">
+        <button id="open-btn">Dosya aç…</button>
+        <button id="folder-btn">Klasör seç…</button>
+        <button id="save-btn">Kaydet…</button>
+      </div>
+      <output id="dialog-out" class="mono"></output>
+    </section>
+
+    <section class="card" id="drop-zone">
+      <h2>Sürükle-bırak</h2>
+      <p class="hint">Gezgin'den bir veya birkaç dosya bırakın: tam yol görünmeli.</p>
+      <output id="drop-out" class="mono">—</output>
+    </section>
+
+    <section class="card wide">
+      <h2>Görüntü taşıma: 12 MP fotoğraf</h2>
+      <p class="hint">data: URL (köprü üzerinden base64) ile yerel HTTP adresini karşılaştırır.</p>
+      <button id="photo-btn">Ölç</button>
+      <output id="photo-out" class="mono"></output>
+      <div class="stage"><img id="photo" alt=""></div>
+    </section>
+
+    <section class="card wide">
+      <h2>300 sayfalık PDF: küçük resimler</h2>
+      <div class="row">
+        <button id="thumbs-data-btn">data: URL</button>
+        <button id="thumbs-http-btn">HTTP (lazy)</button>
+      </div>
+      <output id="thumbs-out" class="mono"></output>
+      <div id="thumbs" class="thumbs"></div>
+    </section>
+
+    <section class="card">
+      <h2>İlerleme olayları</h2>
+      <p class="hint">Python'dan 1000 olay; arayüz akmaya devam etmeli.</p>
+      <button id="burst-btn">Gönder</button>
+      <progress id="bar" max="1" value="0"></progress>
+      <output id="burst-out" class="mono"></output>
+    </section>
+
+    <section class="card">
+      <h2>Tema ve yazı</h2>
+      <output id="theme-out" class="mono"></output>
+      <div class="samples" id="samples"></div>
+    </section>
+  </main>
+
+  <script src="spike.js"></script>
+</body>
+</html>
