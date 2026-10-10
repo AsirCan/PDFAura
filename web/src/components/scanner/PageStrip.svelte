@@ -253,7 +253,7 @@
 </script>
 
 <div class="strip">
-  <h3 class="section-title">{t("scanner_pages")}</h3>
+  <h2 class="section-title">{t("scanner_pages")}</h2>
   <p class="caption-line small muted ellipsis" title={caption}>{caption}</p>
   <!-- Narrow strip: one hint per line; wide: both on one. -->
   <p class="hint"><span>{t("scanner_strip_hint_drag")} ·</span>
@@ -315,10 +315,10 @@
     min-width: 0;
     height: 100%;
   }
-  h3 {
+  h2 {
     margin: 0;
   }
-  h3,
+  h2,
   p {
     flex: none;
   }

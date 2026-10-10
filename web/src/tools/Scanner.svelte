@@ -301,7 +301,7 @@
       <ProgressFooter {run} label={t("scanner_btn")} onaction={exportPdf} disabled={locked} {working} />
     </section>
 
-    <aside class="side card" aria-label={t("scanner_preview")}>
+    <section class="side card" aria-label={t("scanner_preview")}>
       <h2 class="heading">{t("scanner_preview")}</h2>
       <div class="preview">
         {#if preview}
@@ -310,7 +310,7 @@
         {/if}
       </div>
       <div class="result"><FeedbackPanel {feedback} /></div>
-    </aside>
+    </section>
   </div>
 </div>
 
