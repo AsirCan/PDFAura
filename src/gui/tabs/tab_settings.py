@@ -278,7 +278,7 @@ class SettingsPanel(ttk.Frame):
         selected = filedialog.askopenfilename(
             title=_("settings_ai_pick_model"),
             filetypes=[
-                ("AI model files", "*.gguf *.onnx *.bin *.safetensors *.pdmodel *.traineddata *.ct2"),
+                ("AI model files", "*.onnx *.bin *.pdmodel *.traineddata *.ct2"),
                 ("All files", "*.*"),
             ],
         )

@@ -3,9 +3,7 @@ import json
 import os
 from pathlib import Path
 
-import pytest
-
-from src.ai.model_manager import DEFAULT_MODEL_SPECS, ModelManager
+from src.ai.model_manager import ModelManager
 from src.core.config_manager import ConfigManager, cfg, detect_default_language
 from src.core.output_paths import default_output_dir, suggest_output
 
@@ -203,13 +201,6 @@ def test_the_downloaded_model_is_actually_found(tmp_path, monkeypatch):
     model.write_bytes(b"fake onnx")
 
     assert document_scanner_onnx.get_model_path() == str(model)
-
-
-def test_unused_models_are_not_marked_required():
-    """LocalLLM.generate always raises, so nothing uses these yet."""
-    by_id = {spec.id: spec for spec in DEFAULT_MODEL_SPECS}
-    assert by_id["local_llm"].required is False
-    assert by_id["embedding_model"].required is False
 
 
 def test_tesseract_is_looked_for_beyond_path(monkeypatch, tmp_path):

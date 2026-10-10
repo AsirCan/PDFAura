@@ -63,37 +63,6 @@ DEFAULT_MODEL_SPECS: tuple[ModelSpec, ...] = (
         notes="Mevcut scanner algoritmasının hızlı AI fallback modelidir.",
     ),
     ModelSpec(
-        id="local_llm",
-        name="Yerel LLM - Qwen/Mistral GGUF",
-        category="llm",
-        description="PDF sohbeti, özet, komut anlama ve öğrenci modu için kullanılacak yerel dil modeli.",
-        relative_dir="llm",
-        patterns=("*.gguf",),
-        size_mb=900.0,
-        # No feature uses this yet (LocalLLM.generate always raises), so it
-        # must not be advertised as required.
-        required=False,
-        license_name="Seçilen modele göre değişir; ticari kullanım ayrıca doğrulanmalı",
-        source_url="https://huggingface.co/models?search=gguf%20qwen%20instruct",
-        hardware_profile="Hafif/Standart",
-        notes="İlk hedef küçük/orta boy Qwen veya Mistral instruct GGUF modelidir.",
-    ),
-    ModelSpec(
-        id="embedding_model",
-        name="Yerel Embedding Modeli",
-        category="embeddings",
-        description="PDF parçalarını vektörleştirip kaynak gösteren yerel arama/RAG sistemi için kullanılır.",
-        relative_dir="embeddings",
-        patterns=("*.onnx", "*.bin", "*.safetensors", "*.gguf"),
-        size_mb=120.0,
-        # Planned, not wired into any feature yet.
-        required=False,
-        license_name="Seçilen modele göre değişir; ticari kullanım ayrıca doğrulanmalı",
-        source_url="https://huggingface.co/models?search=multilingual%20embedding",
-        hardware_profile="Hafif",
-        notes="Küçük multilingual embedding modeli tercih edilecek.",
-    ),
-    ModelSpec(
         id="ocr_engine",
         name="Yerel OCR - Tesseract/PaddleOCR",
         category="ocr",
