@@ -86,6 +86,13 @@ export interface ModelList {
 
 export type Params = Record<string, unknown>;
 
+export interface Metadata {
+  title: string;
+  author: string;
+  subject: string;
+  creator: string;
+}
+
 export interface Api {
   boot(): Promise<Boot>;
   set_language(code: string): Promise<LanguagePayload>;
@@ -108,6 +115,9 @@ export interface Api {
   start(tool: string, params: Params): Promise<Started>;
   cancel(job: number): Promise<void>;
   document(path: string): Promise<PdfDocument>;
+  tesseract_available(): Promise<boolean>;
+  install_tesseract(): Promise<void>;
+  read_metadata(path: string): Promise<Metadata & { error?: string }>;
   assistant_submit(text: string): Promise<boolean>;
   assistant_press(): Promise<void>;
   assistant_release(): Promise<void>;
@@ -134,4 +144,5 @@ export interface Events {
   "assistant-reply": { text: string };
   drop: { files: FileInfo[] };
   "model-test": { id: string; ok: boolean; message: string };
+  tesseract: { ok: boolean; message: string };
 }

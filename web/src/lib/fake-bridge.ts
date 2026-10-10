@@ -153,6 +153,17 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
       if (file.kind !== "pdf") return { ...file, error: "not-a-pdf" };
       return { ...file, id: "doc", pages: 12, width: 595, height: 842, encrypted: false, version: 1, base: "" };
     },
+    async tesseract_available() {
+      return true;
+    },
+    async install_tesseract() {
+      record("install_tesseract", []);
+      setTimeout(() => emit("tesseract", { ok: true, message: "" }), 0);
+    },
+    async read_metadata(path) {
+      record("read_metadata", [path]);
+      return { title: "Faaliyet Raporu", author: "Örnek A.Ş.", subject: "", creator: "" };
+    },
     async assistant_submit(text) {
       record("assistant_submit", [text]);
       emit("assistant", { state: "processing", detail: "" });

@@ -266,6 +266,30 @@ class Bridge:
     def cancel(self, job_id):
         self._api.cancel(job_id)
 
+    # ── Advanced: OCR engine, metadata ────────────────────────────────
+    def tesseract_available(self):
+        from src.core.ocr import check_tesseract_availability
+        return check_tesseract_availability()
+
+    def install_tesseract(self):
+        """Install Tesseract with winget; the result is a "tesseract" event
+        ({"ok": true} or {"ok": false, "message": ...})."""
+        from src.core.install_tesseract import install_target_tesseract
+        emit = self._events.emit
+        install_target_tesseract(on_success=lambda: emit("tesseract", {"ok": True, "message": ""}),
+                                 on_error=lambda message: emit("tesseract", {"ok": False, "message": message}))
+
+    def read_metadata(self, path):
+        """The document's title, author, subject and creator, or {"error": ...}."""
+        if not path or not os.path.isfile(path):
+            return {"error": "missing"}
+        from src.core.metainfo import read_metadata
+        try:
+            meta = read_metadata(path)
+        except Exception as exc:
+            return {"error": str(exc)}
+        return {key: meta.get(key, "") or "" for key in ("title", "author", "subject", "creator")}
+
     # ── Preview and viewer ────────────────────────────────────────────
     def document(self, path):
         """A PDF to show: its id for page URLs and what the preview says

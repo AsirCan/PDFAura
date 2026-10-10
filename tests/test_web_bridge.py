@@ -279,3 +279,10 @@ def test_the_web_window_does_not_load_tk_or_heavy_libraries():
                          timeout=120)
     assert out.returncode == 0, out.stderr
     assert out.stdout.split() == []
+
+
+def test_metadata_is_read_for_the_page(bridge, tmp_path):
+    source = make_pdf(tmp_path / "a.pdf", metadata={"/Title": "Faaliyet Raporu", "/Author": "Örnek A.Ş."})
+    assert bridge.read_metadata(source) == {"title": "Faaliyet Raporu", "author": "Örnek A.Ş.",
+                                            "subject": "", "creator": ""}
+    assert bridge.read_metadata(str(tmp_path / "gone.pdf")) == {"error": "missing"}
