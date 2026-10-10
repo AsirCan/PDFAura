@@ -5,9 +5,6 @@ import queue
 import tempfile
 import threading
 
-import numpy as np
-import sounddevice as sd
-import soundfile as sf
 
 from src.core.config_manager import cfg
 
@@ -96,6 +93,9 @@ class SpeechRecognizer:
                 except queue.Empty:
                     break
 
+            # Loaded when the microphone is first used, not at startup
+            # (sounddevice alone took ~80 ms to import).
+            import sounddevice as sd
             try:
                 self.stream = sd.InputStream(
                     samplerate=self.samplerate,
@@ -140,6 +140,9 @@ class SpeechRecognizer:
         if not self.audio_data:
             callback("")
             return
+
+        import numpy as np
+        import soundfile as sf
 
         # Çok kısa kayıtları reddet (< 0.5 saniye)
         audio_concat = np.concatenate(self.audio_data, axis=0)

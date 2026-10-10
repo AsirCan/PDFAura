@@ -2,7 +2,6 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
-import fitz
 from PIL import Image, ImageTk
 
 from src.core.lang_manager import _
@@ -101,6 +100,7 @@ class PreviewPanel(ttk.Frame):
         if not self.info.winfo_manager():
             self.info.pack(side="bottom", fill="x", pady=(14, 0), before=self.canvas)
 
+        import fitz    # PyMuPDF: loaded with the first preview, not at startup
         doc = None
         try:
             doc = fitz.open(self.current_path)

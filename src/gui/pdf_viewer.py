@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import fitz # PyMuPDF
 from PIL import Image, ImageTk
 from src.core.lang_manager import _
 from src.gui import styles
@@ -16,6 +15,7 @@ class PDFViewerWindow(tk.Toplevel):
         self.geometry("1000x800")
         
         try:
+            import fitz    # PyMuPDF: loaded when a viewer opens, not at startup
             self.doc = fitz.open(self.pdf_path)
             self.total_pages = len(self.doc)
         except Exception as e:
@@ -111,6 +111,7 @@ class PDFViewerWindow(tk.Toplevel):
         self.page_label.config(text=_("viewer_page").format(current=self.current_page + 1, total=self.total_pages))
         
         page = self.doc.load_page(self.current_page)
+        import fitz
         mat = fitz.Matrix(self.zoom_factor, self.zoom_factor)
         pix = page.get_pixmap(matrix=mat)
         

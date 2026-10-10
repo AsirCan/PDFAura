@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 import sys
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -384,6 +383,7 @@ class ModelManager:
         destination = self.model_dir(spec) / spec.filenames[0]
         part = destination.with_suffix(destination.suffix + ".part")
 
+        import urllib.request
         try:
             req = urllib.request.Request(spec.download_url, headers={"User-Agent": "PDFAura/1.0"})
             with urllib.request.urlopen(req, timeout=30) as response:

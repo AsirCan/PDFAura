@@ -4,10 +4,16 @@ Rotation, default corners, detection fallback, the saved session and the
 export were all inside a 1,900-line tab; these pin their behaviour down so
 the web window can reuse them.
 """
+import os
+import site
+import subprocess
+import sys
+
 import cv2
 import numpy as np
 import pytest
 
+from conftest import ROOT
 from src.app import scanner
 from src.core import document_scanner
 
@@ -206,3 +212,22 @@ def test_pictures_have_the_requested_sizes():
     assert scanner.drag_ghost(page, 56, 79).size == (56, 79)
     assert scanner.magnifier(page, 0, 0.5, 200).size == (200, 200)
     assert scanner.to_pil(page.display_image, (60, 80)).size == (60, 80)
+
+
+# ── Startup cost ──────────────────────────────────────────────────────────
+
+HEAVY = ("cv2", "numpy", "pypdf", "fitz", "pymupdf", "pytesseract", "sounddevice", "soundfile",
+         "pystray", "onnxruntime", "faster_whisper", "reportlab", "pdf2docx")
+
+
+def test_opening_the_window_loads_no_heavy_library():
+    """Each of these used to be imported at startup (#25: 0.56 s of the
+    window's import time). They load when a tool first needs them."""
+    code = ("import sys; import src.gui.main_window; "
+            f"print(' '.join(m for m in {HEAVY!r} if m in sys.modules))")
+    # conftest moved APPDATA, which is also where pip's --user packages live.
+    env = dict(os.environ, PYTHONUSERBASE=site.getuserbase())
+    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True,
+                         env=env, timeout=120)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.split() == []

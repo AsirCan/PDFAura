@@ -6,7 +6,6 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 
-import pystray
 from PIL import Image, ImageTk
 
 from src.core.config_manager import cfg
@@ -63,6 +62,15 @@ NAV_ITEMS = [
     ("advanced", Icons.ADVANCED, "txt_advanced"),
     ("batch", Icons.BATCH, "txt_batch"),
 ]
+
+
+def __getattr__(name):
+    # pystray loads when the tray icon is first needed, not at startup;
+    # main_window.pystray still resolves for callers and tests.
+    if name == "pystray":
+        import pystray
+        return pystray
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class ToolWorkspace:
@@ -379,6 +387,7 @@ class MainWindow:
             return False
         try:
             image = Image.open(icon_path)
+            import pystray
             menu = pystray.Menu(
                 pystray.MenuItem(_("tray_open"), self.show_window),
                 pystray.MenuItem(_("tray_quit"), self.quit_window),

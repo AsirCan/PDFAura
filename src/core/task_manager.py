@@ -4,7 +4,6 @@ Merkezi görev yönetimi altyapısı.
 """
 import gc
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class CancelledError(Exception):
