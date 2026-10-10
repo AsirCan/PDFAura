@@ -422,3 +422,44 @@ def existing_target(name, params):
     writes = TOOLS[name].writes
     path = writes(**params) if writes else None
     return path if path and os.path.isfile(path) else None
+
+
+# ── Suggested output ──────────────────────────────────────────────────────
+
+# What a tool writes when the user has not picked a place, by (tool, mode):
+# the suffix (an output_paths.SUFFIX_KEYS name, or None for none) and the
+# extension (None keeps the input's; "" is a folder).
+_OUTPUT_NAMES = {
+    ("compress", None): ("compressed", None),
+    ("split", None): ("split", None),
+    ("merge", None): ("merged", ".pdf"),
+    ("edit", None): ("edited", None),
+    ("security", "encrypt"): ("encrypted", None),
+    ("security", "decrypt"): ("decrypted", None),
+    ("security", "watermark"): ("watermarked", None),
+    ("convert", "pdf2img"): ("images", ""),
+    ("convert", "img2pdf"): ("merged", ".pdf"),
+    ("convert", "pdf2word"): (None, ".docx"),
+    ("convert", "word2pdf"): (None, ".pdf"),
+    ("convert", "ppt2pdf"): (None, ".pdf"),
+    ("convert", "excel2pdf"): (None, ".pdf"),
+    ("convert", "pdf2txt"): (None, ".txt"),
+    ("scanner", None): ("scanned", ".pdf"),
+}
+
+
+def suggest_output(tool, source, mode=None, start=None, end=None):
+    """Where ``tool`` writes for ``source`` (its input, or the first of
+    several) unless the user picks a place.
+
+    The name is '<stem><suffix><ext>'; it goes in the default output folder
+    from Settings when one is set, otherwise next to ``source``. Every tool
+    follows that setting now; only Compress used to. Split adds the page
+    range, as '_<start>-<end>'. "" when there is no source yet.
+    """
+    from src.core.output_paths import suggest_output as suggest
+    if not source:
+        return ""
+    kind, ext = _OUTPUT_NAMES.get((tool, mode)) or _OUTPUT_NAMES[(tool, None)]
+    tail = f"_{start}-{end}" if tool == "split" else ""
+    return suggest(source, kind, ext, tail=tail)

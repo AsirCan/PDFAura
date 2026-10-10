@@ -32,6 +32,10 @@ class Api:
     def cancellable(self, tool, params):
         return tools.is_cancellable(tool, params)
 
+    def suggest_output(self, tool, source, mode=None, start=None, end=None):
+        """Where the tool should write unless the user picks a place."""
+        return tools.suggest_output(tool, source, mode, start=start, end=end)
+
     # ── Running ───────────────────────────────────────────────────────
     def start(self, tool, params, *, on_progress=None, on_done=None, on_failed=None, on_cancelled=None):
         """Start ``tool`` and return its Job. Call check() first.

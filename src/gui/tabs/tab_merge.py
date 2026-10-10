@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+from src.app.tools import suggest_output
 from src.core.lang_manager import _
 from src.gui import styles
 from src.gui.styles import P
@@ -75,8 +76,7 @@ class MergeTab:
         if len(self.merge_file_list) == 1:
             notify_preview(self.app_root, file_path)
         if self.merge_file_list and not self.merge_output_var.get().strip():
-            base = os.path.splitext(self.merge_file_list[0])[0]
-            self.merge_output_var.set(f"{base}{_('suffix_merged')}.pdf")
+            self.merge_output_var.set(suggest_output("merge", self.merge_file_list[0]))
 
     def merge_remove_selected(self):
         selected = self.merge_listbox.curselection()

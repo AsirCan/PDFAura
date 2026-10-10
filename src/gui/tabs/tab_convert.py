@@ -2,7 +2,7 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.app.tools import mode_from_label
+from src.app.tools import mode_from_label, suggest_output
 from src.core.lang_manager import _
 from src.gui import styles
 from src.gui.styles import P
@@ -188,8 +188,7 @@ class ConvertTab:
         selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
         if selected:
             self.p2i_input_var.set(selected)
-            base = os.path.splitext(selected)[0]
-            self.p2i_folder_var.set(f"{base}{_('suffix_images')}")
+            self.p2i_folder_var.set(suggest_output("convert", selected, "pdf2img"))
 
     def choose_p2i_folder(self):
         selected = filedialog.askdirectory(title=_("convert_dialog_folder"))
@@ -203,8 +202,7 @@ class ConvertTab:
             self.i2p_listbox.insert(tk.END, os.path.basename(file_path))
             self.i2p_empty_hint.refresh()
         if self.i2p_file_list and not self.i2p_output_var.get().strip():
-            base = os.path.splitext(self.i2p_file_list[0])[0]
-            self.i2p_output_var.set(f"{base}{_('suffix_merged')}.pdf")
+            self.i2p_output_var.set(suggest_output("convert", self.i2p_file_list[0], "img2pdf"))
 
     def i2p_remove_selected(self):
         selected = self.i2p_listbox.curselection()
@@ -222,7 +220,7 @@ class ConvertTab:
         selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
         if selected:
             self.p2w_input_var.set(selected)
-            self.p2w_output_var.set(f"{os.path.splitext(selected)[0]}.docx")
+            self.p2w_output_var.set(suggest_output("convert", selected, "pdf2word"))
 
     def choose_p2w_output(self):
         selected = filedialog.asksaveasfilename(title=_("convert_dialog_word_save"), defaultextension=".docx", filetypes=[("Word", "*.docx")])
@@ -233,7 +231,7 @@ class ConvertTab:
         selected = filedialog.askopenfilename(title=_("convert_dialog_word"), filetypes=[("Word", "*.doc *.docx")])
         if selected:
             self.w2p_input_var.set(selected)
-            self.w2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
+            self.w2p_output_var.set(suggest_output("convert", selected, "word2pdf"))
 
     def choose_w2p_output(self):
         selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
@@ -244,7 +242,7 @@ class ConvertTab:
         selected = filedialog.askopenfilename(title=_("str_file_selection"), filetypes=[("PowerPoint", "*.ppt *.pptx")])
         if selected:
             self.ppt2p_input_var.set(selected)
-            self.ppt2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
+            self.ppt2p_output_var.set(suggest_output("convert", selected, "ppt2pdf"))
 
     def choose_ppt2p_output(self):
         selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
@@ -255,7 +253,7 @@ class ConvertTab:
         selected = filedialog.askopenfilename(title=_("str_file_selection"), filetypes=[("Excel", "*.xls *.xlsx")])
         if selected:
             self.excel2p_input_var.set(selected)
-            self.excel2p_output_var.set(f"{os.path.splitext(selected)[0]}.pdf")
+            self.excel2p_output_var.set(suggest_output("convert", selected, "excel2pdf"))
 
     def choose_excel2p_output(self):
         selected = filedialog.asksaveasfilename(title=_("convert_dialog_pdf_save"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
@@ -266,7 +264,7 @@ class ConvertTab:
         selected = filedialog.askopenfilename(title=_("convert_dialog_pdf"), filetypes=[("PDF", "*.pdf")])
         if selected:
             self.p2txt_input_var.set(selected)
-            self.p2txt_output_var.set(f"{os.path.splitext(selected)[0]}.txt")
+            self.p2txt_output_var.set(suggest_output("convert", selected, "pdf2txt"))
 
     def choose_p2txt_output(self):
         selected = filedialog.asksaveasfilename(title=_("adv_dialog_txt_save"), defaultextension=".txt", filetypes=[("Text", "*.txt")])
@@ -277,28 +275,28 @@ class ConvertTab:
         mode = self.convert_mode_var.get()
         if mode == _("convert_pdf2img") and file_path.lower().endswith(".pdf"):
             self.p2i_input_var.set(file_path)
-            self.p2i_folder_var.set(f"{os.path.splitext(file_path)[0]}{_('suffix_images')}")
+            self.p2i_folder_var.set(suggest_output("convert", file_path, "pdf2img"))
         elif mode == _("convert_img2pdf") and file_path.lower().endswith((".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif")):
             self.i2p_file_list.append(file_path)
             self.i2p_listbox.insert(tk.END, os.path.basename(file_path))
             self.i2p_empty_hint.refresh()
             if not self.i2p_output_var.get().strip():
-                self.i2p_output_var.set(f"{os.path.splitext(file_path)[0]}{_('suffix_merged')}.pdf")
+                self.i2p_output_var.set(suggest_output("convert", file_path, "img2pdf"))
         elif mode == _("convert_pdf2word") and file_path.lower().endswith(".pdf"):
             self.p2w_input_var.set(file_path)
-            self.p2w_output_var.set(f"{os.path.splitext(file_path)[0]}.docx")
+            self.p2w_output_var.set(suggest_output("convert", file_path, "pdf2word"))
         elif mode == _("convert_word2pdf") and file_path.lower().endswith((".doc", ".docx")):
             self.w2p_input_var.set(file_path)
-            self.w2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
+            self.w2p_output_var.set(suggest_output("convert", file_path, "word2pdf"))
         elif mode == _("convert_ppt2pdf") and file_path.lower().endswith((".ppt", ".pptx")):
             self.ppt2p_input_var.set(file_path)
-            self.ppt2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
+            self.ppt2p_output_var.set(suggest_output("convert", file_path, "ppt2pdf"))
         elif mode == _("convert_excel2pdf") and file_path.lower().endswith((".xls", ".xlsx")):
             self.excel2p_input_var.set(file_path)
-            self.excel2p_output_var.set(f"{os.path.splitext(file_path)[0]}.pdf")
+            self.excel2p_output_var.set(suggest_output("convert", file_path, "excel2pdf"))
         elif mode == _("convert_pdf2txt") and file_path.lower().endswith(".pdf"):
             self.p2txt_input_var.set(file_path)
-            self.p2txt_output_var.set(f"{os.path.splitext(file_path)[0]}.txt")
+            self.p2txt_output_var.set(suggest_output("convert", file_path, "pdf2txt"))
         else:
             # A file that does not suit the selected mode was dropped and
             # silently ignored, which looked like the drop had not worked.

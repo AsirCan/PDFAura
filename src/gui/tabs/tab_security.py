@@ -1,8 +1,7 @@
-import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.app.tools import mode_from_label
+from src.app.tools import mode_from_label, suggest_output
 from src.core.lang_manager import _
 from src.gui.widgets import SegmentedControl
 from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview
@@ -109,15 +108,8 @@ class SecurityTab:
         self.input_var.set(path)
         if self._output_chosen:
             return
-        base, ext = os.path.splitext(path)
-        current = self.mode_var.get()
-        if current == _("security_encrypt"):
-            suffix = _("security_suffix_encrypted")
-        elif current == _("security_decrypt"):
-            suffix = _("security_suffix_decrypted")
-        else:
-            suffix = _("security_suffix_watermarked")
-        self.output_var.set(f"{base}{suffix}{ext}")
+        mode = mode_from_label("security", self.mode_var.get())
+        self.output_var.set(suggest_output("security", path, mode))
 
     def choose_output_pdf(self):
         selected = filedialog.asksaveasfilename(title=_("security_dialog_output"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])

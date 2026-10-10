@@ -1,8 +1,7 @@
-import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
-from src.app.tools import mode_from_label
+from src.app.tools import mode_from_label, suggest_output
 from src.core.common import get_pdf_page_count
 from src.core.lang_manager import _
 from src.gui.widgets import SegmentedControl
@@ -114,8 +113,7 @@ class EditTab:
             self.edit_page_info_var.set(_("edit_total_pages").format(count=total))
         except Exception as exc:
             self.edit_page_info_var.set(f"{_('str_error')}: {exc}")
-        base, ext = os.path.splitext(selected)
-        self.edit_output_var.set(f"{base}{_('suffix_edited')}{ext}")
+        self.edit_output_var.set(suggest_output("edit", selected))
 
     def choose_edit_output_pdf(self):
         selected = filedialog.asksaveasfilename(title=_("edit_dialog_output"), defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
@@ -130,8 +128,7 @@ class EditTab:
                 self.edit_page_info_var.set(_("edit_total_pages").format(count=total))
             except Exception as exc:
                 self.edit_page_info_var.set(f"{_('str_error')}: {exc}")
-            base, ext = os.path.splitext(file_path)
-            self.edit_output_var.set(f"{base}{_('suffix_edited')}{ext}")
+            self.edit_output_var.set(suggest_output("edit", file_path))
 
     def start_edit(self):
         # Every field is read here, on the main thread; the job gets values.

@@ -2,10 +2,10 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+from src.app.tools import suggest_output
 from src.core.common import get_pdf_page_count
 from src.core.lang_manager import _
 from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview, follow_width
-from src.utils.file_helper import suggest_split_output_path
 
 
 class SplitTab:
@@ -103,7 +103,7 @@ class SplitTab:
         if current:
             try:
                 start_page, end_page = int(self.split_start_var.get()), int(self.split_end_var.get())
-                init = os.path.basename(suggest_split_output_path(current, start_page, end_page))
+                init = os.path.basename(suggest_output("split", current, start=start_page, end=end_page))
             except ValueError:
                 init = os.path.basename(current)
         selected = filedialog.asksaveasfilename(
@@ -121,7 +121,7 @@ class SplitTab:
             return
         try:
             start_page, end_page = int(self.split_start_var.get()), int(self.split_end_var.get())
-            self.split_output_var.set(suggest_split_output_path(current, start_page, end_page))
+            self.split_output_var.set(suggest_output("split", current, start=start_page, end=end_page))
         except ValueError:
             pass
 

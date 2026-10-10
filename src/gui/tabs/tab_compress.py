@@ -2,10 +2,10 @@ import os
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+from src.app.tools import suggest_output
 from src.core.compress import VALID_QUALITIES
 from src.core.lang_manager import _
 from src.gui.helpers import InlineFeedback, ProgressFooter, ToolLayout, ToolRun, bind_preview
-from src.utils.file_helper import suggest_output_path
 
 
 class CompressTab:
@@ -78,7 +78,7 @@ class CompressTab:
         init = ""
         current = self.input_var.get().strip()
         if current:
-            init = os.path.basename(suggest_output_path(current))
+            init = os.path.basename(suggest_output("compress", current))
         selected = filedialog.asksaveasfilename(
             title=_("compress_dialog_output"),
             defaultextension=".pdf",
@@ -97,7 +97,7 @@ class CompressTab:
         and the new result overwrote it.
         """
         if not self._output_chosen:
-            self.output_var.set(suggest_output_path(input_path))
+            self.output_var.set(suggest_output("compress", input_path))
 
     def handle_external_drop(self, file_path):
         if file_path.lower().endswith(".pdf"):

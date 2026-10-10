@@ -19,6 +19,7 @@ from PIL import ImageTk
 
 from src.app import scanner
 from src.app.scanner import ScanPage
+from src.app.tools import suggest_output
 from src.core.config_manager import cfg
 from src.core.lang_manager import _ as tr   # rename to avoid shadowing
 from src.core.scanner_session import ScannerSessionStore
@@ -369,8 +370,7 @@ class ScannerTab:
         self.current_index = self.pages.index(first_new_page)
 
         if not self.output_var.get().strip() and self.pages:
-            base = os.path.splitext(self.pages[0].path)[0]
-            self.output_var.set(f"{base}{tr('suffix_scanned')}.pdf")
+            self.output_var.set(suggest_output("scanner", self.pages[0].path))
 
         self._show_current_page()
         self.feedback.set_info(
