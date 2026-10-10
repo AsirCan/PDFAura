@@ -83,8 +83,19 @@ jobs:
           Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile "$env:RUNNER_TEMP\wv2.exe"
           Start-Process "$env:RUNNER_TEMP\wv2.exe" -ArgumentList '/silent /install' -Wait
 
-      - name: The real window, over CDP
+      - name: The real window, over CDP (layout in every language included)
+        env:
+          PDFAURA_SHOTS: ${{ runner.temp }}/screens
         run: python -m pytest -m e2e -q -p no:cacheprovider
+
+      - name: Keep the screenshots for a look
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: ${{ runner.temp }}/screens
+          retention-days: 7
+          if-no-files-found: ignore
 
   package:
     runs-on: windows-latest
@@ -132,7 +143,7 @@ jobs:
       - name: The built app opens and works
         env:
           PDFAURA_EXE: ${{ github.workspace }}\dist\PDFAura\PDFAura.exe
-        run: python -m pytest -m e2e -q -p no:cacheprovider -k "opens_with_every_tool or compress_runs or nothing_leaves"
+        run: python -m pytest -m e2e -q -p no:cacheprovider tests/e2e/test_web_window.py -k "opens_with_every_tool or compress_runs or nothing_leaves"
 
       - name: Installer
         shell: pwsh
