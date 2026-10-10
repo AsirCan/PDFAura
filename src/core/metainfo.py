@@ -1,7 +1,5 @@
 from datetime import datetime
 
-from pypdf import PdfWriter
-
 from src.core.common import open_pdf_reader
 
 # Info-dictionary key for each field name we expose.
@@ -41,6 +39,7 @@ def update_metadata(input_pdf, output_pdf, title=None, author=None, subject=None
     With clean=True both the Info dictionary and the XMP stream are dropped,
     so no producer string survives.
     """
+    from pypdf import PdfWriter
     reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
 

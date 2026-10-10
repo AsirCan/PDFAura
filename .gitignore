@@ -98,3 +98,7 @@ CrashpadMetrics*.pma
 *.db
 *.sqlite
 *.sqlite3
+
+# Web interface (#25): dependencies and the build are made locally / in CI
+web/node_modules/
+web/dist/

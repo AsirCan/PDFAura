@@ -369,6 +369,7 @@ def test_office_is_preferred_when_installed(tmp_path, fake_com, monkeypatch):
     assert ("saveas", "ppt", (str(tmp_path / "out.pdf"), convert.PP_SAVE_AS_PDF)) in fake_com.events
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not __import__("src.utils.libreoffice_helper", fromlist=["x"]).find_libreoffice(),
                     reason="LibreOffice is not installed")
 def test_real_libreoffice_converts_a_word_document(tmp_path, monkeypatch):

@@ -1,0 +1,304 @@
+/* PDF Aura's controls. Every colour, font and radius is a variable from
+   lib/generated/theme.css; no colour literal belongs here
+   (tests/test_web_page.py checks). */
+@import "./lib/generated/theme.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  line-height: 1.4;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+textarea,
+.selectable {
+  user-select: text;
+}
+
+/* ── Type roles ─────────────────────────────────────────────────────── */
+.display { font: var(--weight-display) var(--size-display) / 1.25 var(--font-display); }
+.title { font: var(--weight-title) var(--size-title) / 1.3 var(--font-title); }
+.heading { font: var(--weight-heading) var(--size-heading) / 1.3 var(--font-heading); }
+.body { font: var(--weight-body) var(--size-body) / 1.4 var(--font-body); }
+.body-strong { font: var(--weight-body-strong) var(--size-body-strong) / 1.4 var(--font-body-strong); }
+.label { font: var(--weight-label) var(--size-label) / 1.35 var(--font-label); }
+.small { font: var(--weight-small) var(--size-small) / 1.4 var(--font-small); }
+.small-strong { font: var(--weight-small-strong) var(--size-small-strong) / 1.4 var(--font-small-strong); }
+.micro { font: var(--weight-micro) var(--size-micro) / 1.3 var(--font-micro); }
+.mono { font: var(--weight-mono) var(--size-mono) / 1.4 var(--font-mono); }
+.muted { color: var(--text-secondary); }
+.faint { color: var(--text-tertiary); }
+
+.icon {
+  font-family: var(--font-icon);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  display: inline-block;
+  speak: never;
+}
+
+/* ── Focus: a ring only for the keyboard (FocusVisible in widgets.py) ── */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* ── Surfaces ───────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  border: 0;
+  margin: 0;
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────── */
+.field-label {
+  display: block;
+  font: var(--weight-label) var(--size-label) / 1.35 var(--font-label);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.section-title {
+  font: var(--weight-heading) var(--size-heading) / 1.3 var(--font-heading);
+  color: var(--text);
+  margin: 0;
+}
+.hint {
+  font: var(--weight-small) var(--size-small) / 1.4 var(--font-small);
+  color: var(--text-tertiary);
+}
+
+.input,
+.select {
+  width: 100%;
+  min-width: 0;
+  background: var(--field);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  min-height: 34px;
+}
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+.input:hover,
+.select:hover {
+  border-color: var(--border-strong);
+}
+.input:focus,
+.select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  outline: none;
+}
+.input:disabled,
+.select:disabled {
+  background: var(--sunken);
+  border-color: var(--border-subtle);
+  color: var(--text-disabled);
+}
+.input::selection {
+  background: var(--accent-subtle-hover);
+  color: var(--text);
+}
+.select {
+  appearance: none;
+  padding-inline-end: 30px;
+  background-image: none;
+}
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+.select-wrap::after {
+  content: "\E70D";
+  font-family: var(--font-icon);
+  font-size: 10px;
+  color: var(--text-secondary);
+  position: absolute;
+  inset-inline-end: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.select option {
+  background: var(--field);
+  color: var(--text);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: var(--control-pad-y) 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font: var(--weight-body-strong) var(--size-body-strong) / 1.2 var(--font-body-strong);
+  white-space: nowrap;
+  cursor: default;
+  background: var(--surface);
+  color: var(--text);
+}
+.btn .icon {
+  font-size: 12px;
+}
+.btn:disabled {
+  color: var(--text-disabled);
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  padding: calc(var(--control-pad-y) + 1px) 18px;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:active:not(:disabled) { background: var(--accent-pressed); }
+.btn-primary:disabled { background: var(--sunken); }
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--surface-subtle); border-color: var(--border-strong); }
+.btn-secondary:active:not(:disabled) { background: var(--sunken); }
+.btn-secondary:disabled { border-color: var(--border-subtle); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.btn-ghost:active:not(:disabled) { background: var(--pressed); }
+.btn-danger {
+  background: var(--danger-fill);
+  color: var(--text-on-accent);
+}
+.btn-danger:hover:not(:disabled) { background: var(--danger-fill-hover); }
+.btn-small {
+  min-height: 28px;
+  padding: 4px 10px;
+  font: var(--weight-small) var(--size-small) / 1.2 var(--font-small);
+}
+
+/* ── Check boxes and radio buttons ──────────────────────────────────── */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.check input {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: none;
+  border: 1px solid var(--border-strong);
+  background: var(--field);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-content: center;
+}
+.check input[type="radio"] {
+  border-radius: 50%;
+}
+.check input:hover {
+  border-color: var(--accent);
+}
+.check input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check input[type="checkbox"]:checked::after {
+  content: "\E73E";
+  font-family: var(--font-icon);
+  font-size: 12px;
+  color: var(--text-on-accent);
+}
+.check input[type="radio"]:checked {
+  background: var(--field);
+  border: 5px solid var(--accent);
+}
+.check input:disabled {
+  background: var(--sunken);
+  border-color: var(--border);
+}
+
+/* ── Scrollbars: thin, like ScrollArea in widgets.py ───────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ── Utilities ──────────────────────────────────────────────────────── */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -35,10 +35,24 @@ def test_the_spec_is_valid_python():
 
 def test_the_spec_keeps_the_runtime_only_imports():
     spec = read("PDFAura.spec")
-    # pystray chooses its backend at runtime and tkinterdnd2 ships Tcl data;
-    # neither survives a frozen build without being named here.
+    # pystray chooses its backend at runtime: it does not survive a frozen
+    # build without being named here.
     assert "pystray._win32" in spec
-    assert "tkinterdnd2" in spec
+
+
+def test_the_spec_leaves_tk_out():
+    """Nothing uses Tk since the window moved to WebView2 (#25)."""
+    spec = read("PDFAura.spec")
+    assert '"tkinter"' in spec and "tkinterdnd2" not in spec
+    assert "tkinterdnd2" not in read("requirements.txt")
+
+
+def test_the_spec_ships_the_window_page():
+    """The window's page (web/dist) is built by Vite and not in git; a
+    build without it would open to an error."""
+    spec = read("PDFAura.spec")
+    assert '("web/dist", "web/dist")' in spec
+    assert "npm run build" in spec
 
 
 def test_the_license_file_exists():
@@ -76,6 +90,16 @@ def test_readme_embeds_the_demo_videos():
 def test_installer_output_name_matches_the_readme():
     """README promised PDFAura-Setup.exe; the script produced PDFAura.exe."""
     assert "OutputBaseFilename=PDFAura-Setup" in read("setup.iss")
+
+
+def test_installer_makes_sure_webview2_is_there():
+    """The window needs the Edge WebView2 runtime; without it the app can
+    only say so. The installer fetches Microsoft's bootstrapper if missing."""
+    iss = read("setup.iss")
+    assert "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" in iss       # the runtime's EdgeUpdate client
+    assert "https://go.microsoft.com/fwlink/p/?LinkId=2124703" in iss
+    from src.app import native
+    assert native.WEBVIEW2_DOWNLOAD in iss
 
 
 def test_installer_does_not_ship_ghostscript():
@@ -127,8 +151,8 @@ def test_crash_is_recorded_and_surfaced(tmp_path, monkeypatch):
     import main
 
     shown = []
-    import tkinter.messagebox as messagebox
-    monkeypatch.setattr(messagebox, "showerror", lambda *a, **k: shown.append(a))
+    from src.app import native
+    monkeypatch.setattr(native, "show_error", lambda *a, **k: shown.append(a))
 
     try:
         raise RuntimeError("kaboom")
@@ -138,6 +162,27 @@ def test_crash_is_recorded_and_surfaced(tmp_path, monkeypatch):
     log = open(main._crash_log_path(), encoding="utf-8").read()
     assert "kaboom" in log
     assert shown, "the user was told nothing"
+
+
+# ── Start-up ──────────────────────────────────────────────────────────────
+
+def test_the_web_window_is_the_only_window(monkeypatch):
+    import main
+    assert not hasattr(main, "run_tk")
+    started = []
+    monkeypatch.setattr(main, "run_web", lambda port=None: started.append(("web", port)) or 0)
+    # --web was needed while Tk was the default; old shortcuts still pass it.
+    for argv in (["main.py"], ["main.py", "--web"], ["main.py", "--debug-port", "9333"]):
+        monkeypatch.setattr("sys.argv", argv)
+        with pytest.raises(SystemExit):
+            main.main()
+    assert started == [("web", None), ("web", None), ("web", 9333)]
+
+
+def test_readme_says_how_to_build_the_window():
+    readme = read("README.md")
+    assert "npm ci" in readme and "npm run build" in readme
+    assert "WebView2" in readme
 
 
 # ── README claims match the code ──────────────────────────────────────────

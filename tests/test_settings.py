@@ -3,9 +3,7 @@ import json
 import os
 from pathlib import Path
 
-import pytest
-
-from src.ai.model_manager import DEFAULT_MODEL_SPECS, ModelManager
+from src.ai.model_manager import ModelManager
 from src.core.config_manager import ConfigManager, cfg, detect_default_language
 from src.core.output_paths import default_output_dir, suggest_output
 
@@ -106,12 +104,20 @@ def test_deleted_files_drop_out_of_the_list(tmp_path, monkeypatch):
     assert manager.get_recent_files() == []
 
 
-def test_the_success_panel_records_a_recent_file():
-    """Every tool finishes through InlineFeedback.set_success."""
-    import inspect
-    from src.gui import helpers
-    source = inspect.getsource(helpers.InlineFeedback.set_success)
-    assert "add_recent_file" in source
+def test_a_finished_job_is_added_to_the_recent_files(tmp_path, monkeypatch):
+    """Every tool finishes through src.app.api, whichever UI started it."""
+    from src.app.api import Api
+    from src.app.tools import Outcome
+    recorded = []
+    monkeypatch.setattr(cfg, "add_recent_file", recorded.append)
+    target = tmp_path / "out.pdf"
+    target.write_bytes(b"%PDF")
+
+    job = Api().start_work(lambda ctx: Outcome("t", "m", str(target)), fail_title="str_error")
+    assert job.finished.wait(5)
+    failed = Api().start_work(lambda ctx: Outcome("t", "m", str(target), tone="warning"), fail_title="str_error")
+    assert failed.finished.wait(5)
+    assert recorded == [str(target)]
 
 
 # ── Default output folder (#18.1) ─────────────────────────────────────────
@@ -197,13 +203,6 @@ def test_the_downloaded_model_is_actually_found(tmp_path, monkeypatch):
     assert document_scanner_onnx.get_model_path() == str(model)
 
 
-def test_unused_models_are_not_marked_required():
-    """LocalLLM.generate always raises, so nothing uses these yet."""
-    by_id = {spec.id: spec for spec in DEFAULT_MODEL_SPECS}
-    assert by_id["local_llm"].required is False
-    assert by_id["embedding_model"].required is False
-
-
 def test_tesseract_is_looked_for_beyond_path(monkeypatch, tmp_path):
     """Settings checked only PATH while the Advanced tab also checked
     Program Files, so the two screens could disagree."""
@@ -239,10 +238,11 @@ def test_whisper_is_found_in_the_hugging_face_cache(tmp_path, monkeypatch):
 # ── Settings screen text (#18.5, #18.6) ───────────────────────────────────
 
 def test_settings_does_not_claim_to_have_saved_on_open():
-    with open("src/gui/tabs/tab_settings.py", encoding="utf-8") as f:
+    """It said "saved" as soon as it opened; only a save may say so."""
+    with open("web/src/components/Settings.svelte", encoding="utf-8") as f:
         source = f.read()
-    build_ui = source.split("def _build_general_settings")[0]
-    assert '_("settings_saved")' not in build_ui
+    opening = source.split("new Feedback(")[1].split(";")[0]
+    assert "settings_saved" not in opening
 
 
 def test_model_detail_labels_are_translated():
@@ -259,7 +259,7 @@ def test_model_detail_labels_are_translated():
 
 
 def test_no_hardcoded_turkish_left_in_the_model_detail_panel():
-    with open("src/gui/tabs/tab_settings.py", encoding="utf-8") as f:
+    with open("web/src/components/Settings.svelte", encoding="utf-8") as f:
         source = f.read()
-    for literal in ('f"Durum:', 'f"Yol:', 'f"Lisans:', 'f"Not:', "İndiriliyor:"):
+    for literal in ("Durum:", "Yol:", "Lisans:", "Not:", "İndiriliyor:"):
         assert literal not in source, f"{literal} still hardcoded"

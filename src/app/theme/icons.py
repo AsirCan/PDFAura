@@ -1,0 +1,42 @@
+"""Segoe Fluent Icons glyphs by meaning, for the page's icon font.
+
+python -m src.app.webtheme writes them to web/src/lib/generated/icons.ts.
+"""
+
+
+class Icons:
+    """Segoe Fluent Icons (Windows 11) / Segoe MDL2 Assets (Windows 10)
+    glyphs by meaning, so screens ask for "lock", not for U+E72E."""
+    COMPRESS = "\uE73F"
+    ORGANIZE = "\uE8A9"
+    SCAN = "\uE722"
+    CONVERT = "\uE8AB"
+    SECURITY = "\uE72E"
+    ADVANCED = "\uE90F"
+    BATCH = "\uE81E"
+    SETTINGS = "\uE713"
+    MIC = "\uE720"
+    SEND = "\uE724"
+    DOCUMENT = "\uE8A5"
+    FOLDER = "\uE838"
+    OPEN = "\uE8A7"
+    INFO = "\uE946"
+    WARNING = "\uE7BA"
+    ERROR = "\uE783"
+    SUCCESS = "\uE73E"
+    CLOSE = "\uE711"
+    ADD = "\uE710"
+    DELETE = "\uE74D"
+    UP = "\uE70E"
+    DOWN = "\uE70D"
+    LEFT = "\uE76B"
+    RIGHT = "\uE76C"
+    ROTATE_CW = "\uE7AD"
+    CROP = "\uE7A8"
+    FULLSCREEN = "\uE740"
+    SPARK = "\uE945"
+    ZOOM_IN = "\uE8A3"
+    ZOOM_OUT = "\uE71F"
+    SHIELD = "\uEA18"
+    CLEAR = "\uE894"
+    SYNC = "\uE72C"

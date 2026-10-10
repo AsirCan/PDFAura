@@ -1,10 +1,15 @@
 import os
 
-import fitz  # PyMuPDF
-import pytesseract
-from PIL import Image
-
 from src.core.lang_manager import _
+
+
+def __getattr__(name):
+    # pytesseract (and the numpy it pulls in) loads on first use, not when
+    # the app starts; ocr.pytesseract still works for callers and tests.
+    if name == "pytesseract":
+        import pytesseract
+        return pytesseract
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # Preferred OCR languages, best first. Only ones actually installed are used:
 # the language was hardcoded to "tur", so OCR failed outright without the
@@ -24,6 +29,7 @@ _STANDARD_PATHS = (
 
 def check_tesseract_availability():
     """Returns True if Tesseract can be called, else False."""
+    import pytesseract
     try:
         pytesseract.get_tesseract_version()
         return True
@@ -41,6 +47,7 @@ def check_tesseract_availability():
 
 def installed_languages():
     """Language codes Tesseract actually has data for."""
+    import pytesseract
     try:
         return list(pytesseract.get_languages(config=""))
     except Exception:
@@ -82,6 +89,9 @@ def perform_ocr_to_text(input_pdf, output_txt, lang=None, ctx=None):
     Reports per-page progress and honours cancellation: the Cancel button
     used to sit there while the job ran on to a "success" message.
     """
+    import fitz  # PyMuPDF
+    import pytesseract
+    from PIL import Image
     if not check_tesseract_availability():
         raise EnvironmentError(_("err_tesseract_missing"))
 

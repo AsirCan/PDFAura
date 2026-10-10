@@ -1,15 +1,19 @@
-"""The theme system: tokens, contrast, and that screens really use it."""
-import os
+"""The theme system: the registry, the preference and the tokens' contrast.
+
+The page only uses the CSS variables generated from these themes
+(tests/test_web_page.py checks both), so the contrast checked here is the
+contrast on screen.
+"""
 import re
 from dataclasses import replace
 
 import pytest
 
-from src.gui import theme as theme_module
-from src.gui.theme import (DARK_THEME, DEFAULT_THEME, LIGHT_THEME, SYSTEM, available_themes,
+from src.app import theme as theme_module
+from src.app.theme import (DARK_THEME, DEFAULT_THEME, LIGHT_THEME, SYSTEM, available_themes,
                            get_theme, register_theme, resolve_theme_name, theme_preference)
-from src.gui.theme.night import NIGHT
-from src.gui.theme.paper import PAPER
+from src.app.theme.night import NIGHT
+from src.app.theme.paper import PAPER
 
 HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -43,7 +47,7 @@ def test_a_new_theme_can_be_registered_by_changing_tokens_only():
         assert get_theme("test-ink").palette.accent == "#0B6E4F"
         assert get_theme("test-ink").typography is PAPER.typography
     finally:
-        from src.gui import theme as registry
+        from src.app import theme as registry
         registry._THEMES.pop("test-ink", None)
 
 
@@ -150,63 +154,3 @@ def test_focus_ring_and_accent_are_visible_against_the_surface(theme):
     assert contrast(p.accent, p.sidebar) >= 3     # selected nav icon
     assert contrast(p.focus_ring, p.surface) >= 2.5
     assert contrast(p.handle, p.stage) >= 3
-
-
-# ── Screens use the theme, not literals ─────────────────────────────────────
-
-GUI_DIR = "src/gui"
-
-
-def _gui_sources():
-    for dirpath, _dirs, files in os.walk(GUI_DIR):
-        if "__pycache__" in dirpath or os.path.normpath(dirpath).startswith(os.path.normpath("src/gui/theme")):
-            continue
-        for name in files:
-            if name.endswith(".py"):
-                yield os.path.join(dirpath, name)
-
-
-@pytest.mark.parametrize("path", list(_gui_sources()))
-def test_no_colour_literals_outside_the_theme(path):
-    with open(path, encoding="utf-8") as f:
-        source = f.read()
-    literals = re.findall(r"[\"']#[0-9A-Fa-f]{3,8}[\"']", source)
-    assert literals == [], f"{path}: colours belong in src/gui/theme ({literals})"
-
-
-@pytest.mark.parametrize("path", list(_gui_sources()))
-def test_no_hardcoded_font_families_outside_the_theme(path):
-    """Fonts come from styles.font(role) so a theme can change them."""
-    with open(path, encoding="utf-8") as f:
-        source = f.read()
-    families = re.findall(r"(?:font=\(|family=)\s*[\"'](?:Segoe|Consolas|Bahnschrift|Arial)[^\"']*[\"']", source)
-    assert families == [], f"{path}: {families}"
-
-
-# ── Built styles ────────────────────────────────────────────────────────────
-
-def test_setup_styles_is_idempotent_per_window(tk_root):
-    from src.gui.styles import image_bank, setup_styles
-    bank = image_bank()
-    setup_styles(tk_root)            # a second call must not raise "duplicate element"
-    assert image_bank() is bank
-
-
-def test_fonts_resolve_to_installed_families(tk_root):
-    from tkinter import font as tkfont
-    from src.gui.styles import font
-    installed = set(tkfont.families(tk_root))
-    for role in ("display", "title", "body", "label", "small", "mono"):
-        family, size = font(role)
-        assert family in installed or family in ("Segoe UI", "Segoe UI Semibold", "Consolas")
-        assert size > 0
-
-
-def test_control_states_keep_one_size(tk_root):
-    """Hover, focus and pressed images of a control must be the same size,
-    or the control jumps when the pointer or keyboard reaches it."""
-    from src.gui import styles
-    sizes = {(photo.width(), photo.height())
-             for key, photo in styles.image_bank()._photos.items() if key[0] == "box"
-             and key[3] == styles.M.radius}
-    assert len(sizes) == 1, sizes

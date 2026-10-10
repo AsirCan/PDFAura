@@ -23,16 +23,12 @@ import shutil
 import threading
 import time
 
-import cv2
-
-from src.core.document_scanner import imread_unicode
-
 SESSION_VERSION = 1
 SESSION_FILE = "session.json"
 IMAGES_DIR = "images"
 LOCK_FILE = ".lock"
 # Level 1 = fastest zlib setting; PNG stays lossless at any level.
-PNG_PARAMS = [cv2.IMWRITE_PNG_COMPRESSION, 1]
+PNG_COMPRESSION = 1
 UID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
@@ -69,7 +65,7 @@ def _try_lock(path):
 
 
 class ScannerSessionStore:
-    """Disk side of the scanner session. Thread-safe; never touches Tk."""
+    """Disk side of the scanner session. Thread-safe; never touches the UI."""
 
     def __init__(self, session_dir, enabled=True, on_error=None):
         self.session_dir = session_dir
@@ -157,6 +153,7 @@ class ScannerSessionStore:
         path = self.image_path(uid)
         if not os.path.isfile(path):
             return None
+        from src.core.document_scanner import imread_unicode
         return imread_unicode(path)
 
     def _quarantine(self):
@@ -215,7 +212,8 @@ class ScannerSessionStore:
             path = self.image_path(uid)
             if os.path.isfile(path):
                 continue                       # written once, never rewritten
-            ok, buf = cv2.imencode(".png", img, PNG_PARAMS)
+            import cv2    # OpenCV loads with the first saved page, not at startup
+            ok, buf = cv2.imencode(".png", img, [cv2.IMWRITE_PNG_COMPRESSION, PNG_COMPRESSION])
             if not ok:
                 raise IOError(f"PNG encode failed for page {uid}")
             tmp = path + ".tmp"

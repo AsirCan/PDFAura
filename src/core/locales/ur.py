@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "تبدیل ہو رہا ہے...",
     "progress_pages_done":      "{count} صفحات تبدیل ہو گئے۔",
     "progress_saving":          "محفوظ ہو رہا ہے...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "تبدیلیاں محفوظ کریں دبانے پر لاگو ہوتی ہیں؛ تھیم اور زبان فوراً بدل جاتی ہیں۔",
+    "settings_folder_missing": "ڈیفالٹ آؤٹ پٹ فولڈر نہیں ملا۔ کوئی موجودہ فولڈر منتخب کریں یا اسے خالی چھوڑ دیں۔",
+    "overwrite_replace":       "تبدیل کریں",
+    "webview2_missing":        "PDF Aura کی ونڈو کے لیے Microsoft Edge WebView2 رن ٹائم درکار ہے، جو اس کمپیوٹر پر انسٹال نہیں ہے۔ آپ اسے یہاں سے ڈاؤن لوڈ کر سکتے ہیں:\n{url}",
+    "web_build_missing":       "ویب انٹرفیس بلڈ نہیں ہوا (web/dist موجود نہیں)۔ پہلے web فولڈر میں 'npm ci' اور 'npm run build' چلائیں، یا --web کے بغیر شروع کریں۔",
 }

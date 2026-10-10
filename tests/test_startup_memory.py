@@ -32,10 +32,12 @@ def test_blas_threads_are_capped_before_anything_imports_numpy():
     with open(os.path.join(ROOT, "main.py"), encoding="utf-8") as f:
         body = ast.parse(f.read()).body
     cap = next((n.lineno for n in body if _is_blas_cap(n)), None)
-    first_import = next(n.lineno for n in body
-                        if isinstance(n, (ast.Import, ast.ImportFrom)) and _may_load_numpy(n))
+    # The windows are imported inside main() now; any top-level import that
+    # can reach numpy must still come after the cap.
+    first_import = next((n.lineno for n in body
+                         if isinstance(n, (ast.Import, ast.ImportFrom)) and _may_load_numpy(n)), None)
     assert cap is not None, "main.py no longer caps OPENBLAS_NUM_THREADS"
-    assert cap < first_import, "the cap comes after an import that loads numpy"
+    assert first_import is None or cap < first_import, "the cap comes after an import that loads numpy"
 
 
 # Imports the app the way main.py does, then reads this process's commit.

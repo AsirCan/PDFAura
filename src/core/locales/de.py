@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "Wird konvertiert...",
     "progress_pages_done":      "{count} Seite(n) konvertiert.",
     "progress_saving":          "Wird gespeichert...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "Änderungen werden mit Speichern übernommen; Design und Sprache ändern sich sofort.",
+    "settings_folder_missing": "Der Standard-Ausgabeordner wurde nicht gefunden. Wählen Sie einen vorhandenen Ordner oder lassen Sie das Feld leer.",
+    "overwrite_replace":       "Ersetzen",
+    "webview2_missing":        "Das Fenster von PDF Aura benötigt die Microsoft Edge WebView2 Runtime, die auf diesem Computer nicht installiert ist. Sie können sie hier herunterladen:\n{url}",
+    "web_build_missing":       "Die Weboberfläche wurde nicht gebaut (web/dist fehlt). Führen Sie zuerst „npm ci“ und „npm run build“ im Ordner web aus oder starten Sie ohne --web.",
 }

@@ -1,135 +1,151 @@
-"""Issue #14: enabling the tray setting at runtime left no icon, so X hid the
-window with no way to get it back."""
+"""Closing the window and the tray icon (src/app/window.py).
+
+Issue #14: enabling the tray setting at runtime left no icon, so X hid the
+window with no way to get it back. The window only hides if there is a
+tray icon to bring it back from; otherwise closing quits.
+"""
+import threading
+
+import pystray
 import pytest
 
+from src.app import window as window_module
+from src.app.window import Shell
 from src.core.config_manager import cfg
-from src.gui.main_window import MainWindow
 
 
-class FakeRoot:
+class FakeWindow:
+    """What Shell uses of a pywebview window."""
+
     def __init__(self):
-        self.withdrawn = False
+        self.calls = []
 
-    def withdraw(self):
-        self.withdrawn = True
+    def hide(self):
+        self.calls.append("hide")
 
+    def show(self):
+        self.calls.append("show")
 
-class App:
-    """The two methods under test, on a stand-in with no Tk or pystray."""
-    on_closing = MainWindow.on_closing
-    _ensure_tray_icon = MainWindow._ensure_tray_icon
+    def restore(self):
+        self.calls.append("restore")
 
-    def __init__(self, icon_path=None, tray_icon=None, icon_starts=True):
-        self.root = FakeRoot()
-        self.icon_path = icon_path
-        self.tray_icon = tray_icon
-        self.quit_called = False
-        self._icon_starts = icon_starts
-        self._notified = False
-
-    def quit_window(self, _icon, _item):
-        self.quit_called = True
-
-    def show_window(self, _icon, _item):
-        pass
-
-    def _scanner_tab(self):
-        return None
-
-    def _notify_running_in_tray(self):
-        self._notified = True
-
-
-@pytest.fixture
-def tray_on():
-    old = cfg.config.get("close_to_tray")
-    cfg.config["close_to_tray"] = True
-    yield
-    cfg.config["close_to_tray"] = old
-
-
-@pytest.fixture
-def tray_off():
-    old = cfg.config.get("close_to_tray")
-    cfg.config["close_to_tray"] = False
-    yield
-    cfg.config["close_to_tray"] = old
-
-
-@pytest.fixture
-def icon_file(tmp_path):
-    from PIL import Image
-    path = tmp_path / "icon.png"
-    Image.new("RGB", (16, 16), (10, 10, 10)).save(path)
-    return str(path)
+    def destroy(self):
+        self.calls.append("destroy")
 
 
 class FakeIcon:
     """Stands in for pystray.Icon; run() returns instead of entering a loop."""
-    def __init__(self, *args, **kwargs):
-        self.ran = False
+    made = []
+
+    def __init__(self, name, image, title, menu):
+        self.menu = menu
+        self.ran = threading.Event()
+        self.stopped = False
+        self.notes = []
+        FakeIcon.made.append(self)
 
     def run(self):
-        self.ran = True
+        self.ran.set()
+
+    def stop(self):
+        self.stopped = True
+
+    def notify(self, body, title):
+        self.notes.append((title, body))
+
+    def update_menu(self):
+        pass
 
 
-def test_tray_icon_is_started_on_demand(tray_on, icon_file, monkeypatch):
-    """The setting was turned on after launch, so no icon existed yet."""
-    monkeypatch.setattr("src.gui.main_window.pystray.Icon", FakeIcon)
-
-    app = App(icon_path=icon_file, tray_icon=None)
-    app.on_closing()
-
-    assert isinstance(app.tray_icon, FakeIcon)
-    assert app.root.withdrawn is True
-    assert app.quit_called is False
+@pytest.fixture
+def tray(monkeypatch):
+    old = cfg.config.get("close_to_tray")
+    cfg.config["close_to_tray"] = True
+    FakeIcon.made = []
+    monkeypatch.setattr(pystray, "Icon", FakeIcon)
+    yield
+    cfg.config["close_to_tray"] = old
 
 
-def test_quits_instead_of_hiding_when_no_icon_can_be_made(tray_on):
-    """Without an icon file the window must not be hidden with no way back."""
-    app = App(icon_path=None, tray_icon=None)
-
-    app.on_closing()
-
-    assert app.root.withdrawn is False
-    assert app.quit_called is True
-
-
-def test_quits_when_the_icon_file_is_missing(tray_on, tmp_path):
-    app = App(icon_path=str(tmp_path / "gone.png"), tray_icon=None)
-
-    app.on_closing()
-
-    assert app.root.withdrawn is False
-    assert app.quit_called is True
+@pytest.fixture
+def icon_file(tmp_path, monkeypatch):
+    from PIL import Image
+    path = tmp_path / "app_icon.ico"
+    Image.new("RGB", (16, 16), (10, 10, 10)).save(path)
+    monkeypatch.setattr(window_module, "_asset", lambda name: str(path))
+    return str(path)
 
 
-def test_quits_when_pystray_fails(tray_on, icon_file, monkeypatch):
-    def boom(*a, **k):
-        raise RuntimeError("no tray on this system")
-    monkeypatch.setattr("src.gui.main_window.pystray.Icon", boom)
-
-    app = App(icon_path=icon_file, tray_icon=None)
-    app.on_closing()
-
-    assert app.root.withdrawn is False
-    assert app.quit_called is True
+@pytest.fixture
+def shell():
+    made = Shell()
+    made.window = FakeWindow()
+    return made
 
 
-def test_existing_icon_is_reused(tray_on, icon_file):
-    sentinel = object()
-    app = App(icon_path=icon_file, tray_icon=sentinel)
+def test_closing_hides_to_a_tray_icon_started_on_demand(tray, icon_file, shell, monkeypatch):
+    saved = []
+    monkeypatch.setattr(shell.scans, "save_now", lambda: saved.append(True))
+    assert shell._on_closing() is False, "closing must be cancelled, the window only hides"
+    assert shell.window.calls == ["hide"]
+    assert len(FakeIcon.made) == 1 and FakeIcon.made[0].ran.wait(5)
+    # The scanner's pages are written now: the app may never be shown again.
+    assert saved == [True]
 
-    app.on_closing()
 
-    assert app.tray_icon is sentinel
-    assert app.root.withdrawn is True
+def test_the_first_hide_says_the_app_is_still_running(tray, icon_file, shell):
+    shell._on_closing()
+    shell._on_closing()
+    assert len(FakeIcon.made[0].notes) == 1
 
 
-def test_setting_off_quits(tray_off, icon_file):
-    app = App(icon_path=icon_file, tray_icon=None)
+def test_quits_instead_of_hiding_when_no_icon_can_be_made(tray, shell, monkeypatch):
+    monkeypatch.setattr(window_module, "_asset", lambda name: None)
+    assert shell._on_closing() is True
+    assert shell.window.calls == []
 
-    app.on_closing()
 
-    assert app.root.withdrawn is False
-    assert app.quit_called is True
+def test_quits_when_pystray_fails(tray, icon_file, shell, monkeypatch):
+    def boom(*_a, **_k):
+        raise OSError("no tray here")
+    monkeypatch.setattr(pystray, "Icon", boom)
+    assert shell._on_closing() is True
+    assert shell.window.calls == []
+
+
+def test_an_existing_icon_is_reused(tray, icon_file, shell):
+    shell._on_closing()
+    shell._on_closing()
+    assert len(FakeIcon.made) == 1
+
+
+def test_with_the_setting_off_closing_quits(tray, icon_file, shell):
+    shell._ensure_tray()
+    cfg.config["close_to_tray"] = False
+    assert shell._on_closing() is True
+    assert FakeIcon.made[0].stopped
+
+
+def test_quit_really_quits(tray, icon_file, shell):
+    shell._ensure_tray()
+    shell.quit()
+    assert shell.window.calls == ["destroy"] and FakeIcon.made[0].stopped
+    assert shell._on_closing() is True
+
+
+def test_a_click_on_the_icon_brings_the_window_back(tray, icon_file, shell):
+    """The Open item is the menu's default, so a click on the icon (not only
+    right-click, Open) shows the window, restored and in front."""
+    shell._ensure_tray()
+    menu = FakeIcon.made[0].menu
+    first = list(menu.items)[0]
+    assert first.default
+    first(FakeIcon.made[0])
+    assert shell.window.calls == ["show", "restore"]
+
+
+def test_the_tray_menu_follows_the_language(tray, icon_file, shell):
+    shell._ensure_tray()
+    cfg.config["language"] = "en"
+    shell.language_changed()
+    assert [item.text for item in FakeIcon.made[0].menu.items] == ["Open", "Quit"]

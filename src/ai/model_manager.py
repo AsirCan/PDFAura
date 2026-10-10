@@ -4,12 +4,12 @@ import os
 import shutil
 import subprocess
 import sys
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
 from src.core.config_manager import cfg
+from src.core.task_manager import CancelledError
 from src.core.lang_manager import _
 
 
@@ -62,37 +62,6 @@ DEFAULT_MODEL_SPECS: tuple[ModelSpec, ...] = (
         download_url="https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/main/u2netp.onnx",
         hardware_profile="Hafif",
         notes="Mevcut scanner algoritmasının hızlı AI fallback modelidir.",
-    ),
-    ModelSpec(
-        id="local_llm",
-        name="Yerel LLM - Qwen/Mistral GGUF",
-        category="llm",
-        description="PDF sohbeti, özet, komut anlama ve öğrenci modu için kullanılacak yerel dil modeli.",
-        relative_dir="llm",
-        patterns=("*.gguf",),
-        size_mb=900.0,
-        # No feature uses this yet (LocalLLM.generate always raises), so it
-        # must not be advertised as required.
-        required=False,
-        license_name="Seçilen modele göre değişir; ticari kullanım ayrıca doğrulanmalı",
-        source_url="https://huggingface.co/models?search=gguf%20qwen%20instruct",
-        hardware_profile="Hafif/Standart",
-        notes="İlk hedef küçük/orta boy Qwen veya Mistral instruct GGUF modelidir.",
-    ),
-    ModelSpec(
-        id="embedding_model",
-        name="Yerel Embedding Modeli",
-        category="embeddings",
-        description="PDF parçalarını vektörleştirip kaynak gösteren yerel arama/RAG sistemi için kullanılır.",
-        relative_dir="embeddings",
-        patterns=("*.onnx", "*.bin", "*.safetensors", "*.gguf"),
-        size_mb=120.0,
-        # Planned, not wired into any feature yet.
-        required=False,
-        license_name="Seçilen modele göre değişir; ticari kullanım ayrıca doğrulanmalı",
-        source_url="https://huggingface.co/models?search=multilingual%20embedding",
-        hardware_profile="Hafif",
-        notes="Küçük multilingual embedding modeli tercih edilecek.",
     ),
     ModelSpec(
         id="ocr_engine",
@@ -384,6 +353,7 @@ class ModelManager:
         destination = self.model_dir(spec) / spec.filenames[0]
         part = destination.with_suffix(destination.suffix + ".part")
 
+        import urllib.request
         try:
             req = urllib.request.Request(spec.download_url, headers={"User-Agent": "PDFAura/1.0"})
             with urllib.request.urlopen(req, timeout=30) as response:
@@ -400,12 +370,16 @@ class ModelManager:
                             progress(downloaded, total)
             part.replace(destination)
             return destination
-        except Exception as exc:
+        except BaseException as exc:
             try:
                 if part.exists():
                     part.unlink()
             except OSError:
                 pass
+            # A cancel from the progress callback stays a cancel, not a
+            # failed download.
+            if isinstance(exc, CancelledError) or not isinstance(exc, Exception):
+                raise
             raise ModelDownloadError(str(exc)) from exc
 
     def test_model(self, model_id: str) -> tuple[bool, str]:

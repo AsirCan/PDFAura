@@ -1,7 +1,5 @@
 import io
 
-from pypdf import PdfReader, PdfWriter
-
 from src.core.common import open_pdf_reader
 from src.core.lang_manager import _
 from src.core.security import _page_geometry
@@ -36,6 +34,7 @@ def stamp_visual_signature(input_pdf, output_pdf, image_path, page_num=1,
     *width_pt* sets the stamp width in points directly; otherwise the image
     is placed at its natural size scaled by *scale*.
     """
+    from pypdf import PdfReader, PdfWriter
     from PIL import Image
     try:
         from reportlab.pdfgen import canvas

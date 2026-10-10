@@ -23,6 +23,8 @@ SUFFIX_KEYS = {
     "images": "suffix_images",
     "scanned": "suffix_scanned",
     "split": "suffix_split",
+    "metadata": "suffix_metadata",
+    "signed": "suffix_signed",
 }
 
 
@@ -37,20 +39,23 @@ def default_output_dir():
     return folder if folder and os.path.isdir(folder) else ""
 
 
-def suggest_output(input_path, kind, ext=None):
-    """Suggest '<input stem><localised suffix><ext>' for this input.
+def suggest_output(input_path, kind, ext=None, tail=""):
+    """Suggest '<input stem><localised suffix><tail><ext>' for this input.
 
-    Goes in the folder from Settings when one is set -- that setting was
-    stored but never read anywhere -- otherwise next to the input.
+    *kind* None adds no suffix (a conversion only changes the extension);
+    *ext* None keeps the input's. Goes in the folder from Settings when one
+    is set -- that setting was stored but never read anywhere -- otherwise
+    next to the input.
     """
     base, original_ext = os.path.splitext(input_path)
     target_ext = ext if ext is not None else original_ext
-    name = f"{os.path.basename(base)}{suffix(kind)}{target_ext}"
+    label = suffix(kind) if kind else ""
+    name = f"{os.path.basename(base)}{label}{tail}{target_ext}"
 
     folder = default_output_dir()
     if folder:
         return os.path.join(folder, name)
-    return f"{base}{suffix(kind)}{target_ext}"
+    return f"{base}{label}{tail}{target_ext}"
 
 
 def unique_path(path, taken=None, check_disk=True):

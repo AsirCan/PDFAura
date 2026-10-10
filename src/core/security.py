@@ -1,8 +1,6 @@
 import io
 import os
 
-from pypdf import PdfReader, PdfWriter
-
 from src.core.common import open_pdf_reader
 from src.core.lang_manager import _
 
@@ -17,6 +15,7 @@ def check_new_password(password, confirm=None):
 
 def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     """Encrypt a PDF with the given password (AES-256)."""
+    from pypdf import PdfWriter
     check_new_password(password)
     reader = open_pdf_reader(input_pdf)
     writer = PdfWriter()
@@ -38,6 +37,7 @@ def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
 
 def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     """Decrypt a PDF using the given password."""
+    from pypdf import PdfReader, PdfWriter
     if not PdfReader(input_pdf).is_encrypted:
         raise ValueError(_("err_pdf_not_encrypted"))
 
@@ -124,6 +124,7 @@ def _page_geometry(page):
 
 def _build_watermark_page(text, width, height, rotation, opacity, angle, font_size):
     """Render one watermark sized and centred for these exact page metrics."""
+    from pypdf import PdfReader
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import Color, black
     from reportlab.pdfbase import pdfmetrics
@@ -161,6 +162,7 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
     so mixed-size documents stay centred; a single A4 stamp used to be
     merged onto every page and was off by up to 314 pt on A3 landscape.
     """
+    from pypdf import PdfWriter
     try:
         import reportlab  # noqa: F401
     except ImportError:

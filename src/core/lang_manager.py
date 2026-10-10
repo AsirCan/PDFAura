@@ -302,6 +302,8 @@ _STRINGS = {
         "suffix_images":            "_resimler",
         "suffix_scanned":           "_tarandi",
         "suffix_split":             "_kesilmis",
+        "suffix_metadata":          "_bilgileri_duzenlenmis",
+        "suffix_signed":            "_imzali",
 
         # ── Gelişmiş (Advanced) Sekmesi ──
         "adv_operation":            "Gelişmiş İşlem",
@@ -488,7 +490,7 @@ _STRINGS = {
         "feedback_info_badge": "BİLGİ",
         "feedback_warning_badge": "KISMEN TAMAMLANDI",
         "overwrite_title":          "Dosya zaten var",
-        "overwrite_body":           "Su dosya zaten var:\n{path}\n\nUzerine yazilsin mi?",
+        "overwrite_body":           "Şu dosya zaten var:\n{path}\n\nÜzerine yazılsın mı?",
         "feedback_open_output": "Çıktıyı Aç",
         "feedback_open_folder": "Klasörü Aç",
         "preview_title": "Önizleme",
@@ -569,6 +571,13 @@ _STRINGS = {
         "progress_converting":      "Dönüştürülüyor...",
         "progress_pages_done":      "{count} sayfa dönüştürüldü.",
         "progress_saving":          "Kaydediliyor...",
+
+        # ── Web window (#25) ──
+        "settings_intro_web":      "Değişiklikler Kaydet'e bastığınızda uygulanır; tema ve dil ise hemen değişir.",
+        "settings_folder_missing": "Varsayılan çıktı klasörü bulunamadı. Var olan bir klasör seçin ya da boş bırakın.",
+        "overwrite_replace":       "Üzerine yaz",
+        "webview2_missing":        "PDF Aura'nın penceresi için Microsoft Edge WebView2 çalışma zamanı gerekiyor ve bu bilgisayarda kurulu değil. Buradan indirebilirsiniz:\n{url}",
+        "web_build_missing":       "Web arayüzü derlenmemiş (web/dist yok). Önce web klasöründe 'npm ci' ve 'npm run build' çalıştırın ya da --web olmadan başlatın.",
     },
 
     "en": {
@@ -872,6 +881,8 @@ _STRINGS = {
         "suffix_images":            "_images",
         "suffix_scanned":           "_scanned",
         "suffix_split":             "_split",
+        "suffix_metadata":          "_metadata",
+        "suffix_signed":            "_signed",
 
         # ── Advanced Tab ──
         "adv_operation":            "Advanced Operation",
@@ -1139,6 +1150,13 @@ _STRINGS = {
         "progress_converting":      "Converting...",
         "progress_pages_done":      "{count} page(s) converted.",
         "progress_saving":          "Saving...",
+
+        # ── Web window (#25) ──
+        "settings_intro_web":      "Changes are applied when you press Save; the theme and language change right away.",
+        "settings_folder_missing": "The default output folder was not found. Choose an existing folder or leave it empty.",
+        "overwrite_replace":       "Replace",
+        "webview2_missing":        "PDF Aura's window needs the Microsoft Edge WebView2 Runtime, which is not installed on this computer. You can download it here:\n{url}",
+        "web_build_missing":       "The web interface has not been built (web/dist is missing). Run 'npm ci' and 'npm run build' in the web folder first, or start without --web.",
     }
 }
 
@@ -1172,37 +1190,9 @@ LANGUAGES = {
     "ja": "日本語",
 }
 
-# Written right to left. Tk lays text out left to right, so without an
-# explicit embedding a trailing ":" or "..." lands on the wrong side.
+# Written right to left: the page sets dir="rtl" and the browser lays the
+# text out itself.
 RTL_LANGUAGES = {"ar", "ur"}
-_RLE, _PDF = "\u202b", "\u202c"
-
-
-# Tk on Windows draws a line in pieces of about 200 UTF-8 bytes, and each
-# piece is laid out on its own, so a longer right-to-left line comes out
-# with its pieces in the wrong order. Arabic letters take two bytes each.
-_RTL_LINE_BYTES = 180
-
-
-def _short_lines(line):
-    """Break *line* at spaces so no piece exceeds _RTL_LINE_BYTES."""
-    budget = _RTL_LINE_BYTES - len((_RLE + _PDF).encode("utf-8"))
-    pieces, current = [], ""
-    for word in line.split(" "):
-        candidate = f"{current} {word}" if current else word
-        if current and len(candidate.encode("utf-8")) > budget:
-            pieces.append(current)
-            current = word
-        else:
-            current = candidate
-    pieces.append(current)
-    return pieces
-
-
-def _right_to_left(text):
-    # A line break ends a bidi embedding, so every line is wrapped on its own.
-    lines = [piece for line in text.split("\n") for piece in _short_lines(line)]
-    return "\n".join(_RLE + line + _PDF if line else line for line in lines)
 
 
 def get_text(key):
@@ -1216,13 +1206,17 @@ def get_text(key):
 
     text = _STRINGS[lang].get(key)
     if text is None:
-        # English fallbacks are not wrapped: they include file-name suffixes,
-        # where an invisible direction mark would end up in the name.
         return _STRINGS["en"].get(key, key)
-    if lang in RTL_LANGUAGES:
-        return _right_to_left(text)
     return text
 
 def _(key):
     """Shorthand for get_text(key)"""
     return get_text(key)
+
+
+def strings_for(language):
+    """Every string in *language*, English where it has none: what the page
+    gets at start-up and whenever the language changes."""
+    if language not in _STRINGS:
+        language = "en"
+    return {**_STRINGS["en"], **_STRINGS[language]}

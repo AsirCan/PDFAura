@@ -556,4 +556,11 @@ STRINGS = {
     "progress_converting":      "変換中...",
     "progress_pages_done":      "{count} ページを変換しました。",
     "progress_saving":          "保存中...",
+
+    # ── Web window (#25) ──
+    "settings_intro_web":      "変更は［保存］を押すと適用されます。テーマと言語はすぐに切り替わります。",
+    "settings_folder_missing": "既定の出力フォルダーが見つかりません。既存のフォルダーを選ぶか、空欄のままにしてください。",
+    "overwrite_replace":       "置き換える",
+    "webview2_missing":        "PDF Aura のウィンドウには Microsoft Edge WebView2 ランタイムが必要ですが、このコンピューターにはインストールされていません。次の場所からダウンロードできます:\n{url}",
+    "web_build_missing":       "Web インターフェースがビルドされていません（web/dist がありません）。先に web フォルダーで「npm ci」と「npm run build」を実行するか、--web なしで起動してください。",
 }

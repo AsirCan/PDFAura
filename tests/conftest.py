@@ -16,7 +16,7 @@ import pytest  # noqa: E402
 from pypdf import PdfWriter  # noqa: E402
 
 # The theme follows Windows' light/dark mode by default. Pin the light theme
-# before anything builds styles, so tests do not depend on the machine.
+# so tests do not depend on the machine.
 from src.core.config_manager import cfg as _cfg  # noqa: E402
 _cfg.config["theme"] = "paper"
 
@@ -72,26 +72,3 @@ def _language_tr():
     cfg.config["language"] = "tr"
     yield
     cfg.config["language"] = old
-
-
-@pytest.fixture(scope="session")
-def tk_root():
-    """One Tk interpreter for the whole run.
-
-    Creating a second one after destroying the first made Tcl fail to read
-    its own init.tcl on some runs, so UI tests share this root; each test
-    cleans up the windows it opens.
-    """
-    import tkinter as tk
-    try:
-        root = tk.Tk()
-    except Exception as exc:                       # pragma: no cover
-        pytest.skip(f"no Tk display: {exc}")
-    root.withdraw()
-    from src.gui.styles import setup_styles
-    setup_styles(root)
-    yield root
-    try:
-        root.destroy()
-    except Exception:
-        pass

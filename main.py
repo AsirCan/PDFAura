@@ -14,22 +14,26 @@ if sys.stderr is None:
 # set before anything imports numpy; a value the user set still wins.
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
-import tkinter as tk
-from tkinterdnd2 import TkinterDnD
-
-from src.gui.main_window import MainWindow
 
 def main():
+    sys.exit(run_web(_debug_port(sys.argv[1:])))
+
+
+def _debug_port(args):
+    """--debug-port N opens the DevTools protocol on 127.0.0.1:N (tests only)."""
+    if "--debug-port" in args:
+        try:
+            return int(args[args.index("--debug-port") + 1])
+        except (IndexError, ValueError):
+            pass
+    return None
+
+
+def run_web(debug_port=None):
+    """The window: Edge WebView2 drawing web/ (#25)."""
     try:
-        # Use TkinterDnD for drag and drop support
-        root = TkinterDnD.Tk()
-        app = MainWindow(root)
-        root.deiconify()
-        root.lift()
-        root.attributes("-topmost", True)
-        root.after_idle(root.attributes, "-topmost", False)
-        root.focus_force()
-        root.mainloop()
+        from src.app.window import run
+        return run(debug_port=debug_port)
     except Exception:
         # The working directory is Program Files in an installed build, where
         # we cannot write, so the real error used to be lost entirely and the
@@ -58,14 +62,12 @@ def _report_crash():
     except Exception:
         pass   # nowhere to write; still show the dialog below
 
-    try:
-        from tkinter import messagebox
-        message = details.strip().splitlines()[-1] if details.strip() else ""
-        if path:
-            message = f"{message}\n\n{path}"
-        messagebox.showerror("PDF Aura", message)
-    except Exception:
-        print(details)
+    message = details.strip().splitlines()[-1] if details.strip() else ""
+    if path:
+        message = f"{message}\n\n{path}"
+    # A native message box: there may be no window left to show it in.
+    from src.app.native import show_error
+    show_error("PDF Aura", message)
 
 if __name__ == "__main__":
     main()
