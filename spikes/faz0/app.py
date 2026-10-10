@@ -249,8 +249,8 @@ class Api:
     def pick_folder(self):
         return list(self._window.create_file_dialog(webview.FileDialog.FOLDER) or [])
 
-    def pick_save(self):
-        result = self._window.create_file_dialog(webview.FileDialog.SAVE, save_filename="cikti.pdf",
+    def pick_save(self, directory="", name="cikti.pdf"):
+        result = self._window.create_file_dialog(webview.FileDialog.SAVE, directory=directory, save_filename=name,
                                                   file_types=("PDF (*.pdf)",))
         if isinstance(result, (list, tuple)):
             return result[0] if result else None

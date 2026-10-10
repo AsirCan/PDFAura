@@ -291,10 +291,41 @@ def test_folder_dialog_returns_the_folder(spike, tmp_path):
     assert [os.path.normcase(p) for p in picked] == [os.path.normcase(str(tmp_path))]
 
 
+def _dialog_tree(dialog):
+    """Every control of a dialog, for a failure message."""
+    import ctypes
+    rows = []
+
+    def cb(hwnd, _):
+        buf = ctypes.create_unicode_buffer(260)
+        ctypes.windll.user32.SendMessageW(hwnd, win32con.WM_GETTEXT, 260, buf)
+        rows.append(f"{win32gui.GetClassName(hwnd)} id={win32gui.GetDlgCtrlID(hwnd)} "
+                    f"visible={win32gui.IsWindowVisible(hwnd)} text={buf.value!r}")
+    win32gui.EnumChildWindows(dialog, cb, None)
+    return "\n".join(rows)
+
+
 def test_save_dialog_returns_the_target(spike, tmp_path):
+    """The folder and the suggested name the app passes come back as the
+    saved path. (Typing a different name into the box worked here but not
+    on the CI runner, whose dialog kept its own default whatever the box
+    showed, by WM_SETTEXT or by UI Automation; the app never types, it
+    suggests, so that is what is checked.)"""
     target = tmp_path / "çıktı.pdf"
-    picked = _pick(spike, "pick_save", str(target), default="cikti.pdf")     # app.py's save_filename
-    assert os.path.normcase(picked) == os.path.normcase(str(target))
+    spike.page.evaluate("([folder, name]) => { window.__done = false; pywebview.api.pick_save(folder, name)"
+                        ".then(v => { window.__picked = v; window.__done = true; }); }", [str(tmp_path), target.name])
+    dialog = wait_for(lambda: top_windows(spike.proc.pid, cls="#32770"))[0]
+    box = wait_for(lambda: _file_name_box(dialog))
+    tree = _dialog_tree(dialog)
+    uia, automation = _uia()
+    root = automation.ElementFromHandle(dialog)
+    ok = wait_for(lambda: root.FindFirst(uia.TreeScope_Children,
+                                         automation.CreatePropertyCondition(uia.UIA_AutomationIdPropertyId, "1")))
+    time.sleep(0.5)     # the dialog finishes opening its folder
+    ok.GetCurrentPattern(uia.UIA_InvokePatternId).QueryInterface(uia.IUIAutomationInvokePattern).Invoke()
+    spike.wait_js("window.__done")
+    picked = spike.page.evaluate("window.__picked")
+    assert box and os.path.normcase(picked or "") == os.path.normcase(str(target)), tree
 
 
 # ── Tray ───────────────────────────────────────────────────────────────
