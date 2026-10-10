@@ -73,9 +73,9 @@ class Spike:
         try:
             # A cold runner takes a while to start Python and WebView2, and
             # CDP answers before WebView2 has created the page.
-            self.browser = wait_for(self._connect, timeout=60, step=0.2)
+            self.browser = wait_for(self._connect, timeout=120, step=0.2)
             self.page = wait_for(lambda: self.browser.contexts and self.browser.contexts[0].pages
-                                 and self.browser.contexts[0].pages[0], timeout=60)
+                                 and self.browser.contexts[0].pages[0], timeout=120)
             # Not page.wait_for_function: Playwright evaluates its predicate
             # with eval() in the page, which the CSP blocks until pywebview's
             # bridge is in. page.evaluate goes through CDP and is not affected.
@@ -191,17 +191,17 @@ FILE_NAME_BOXES = (1148, 1152, 1001)     # cmb13 (open), edt2 (folder), edt1 (sa
 
 
 def _file_name_box(dialog):
+    """The dialog's file name box: an Edit whose own id is the file name
+    control's. Matching an ancestor's id instead picked the breadcrumb bar
+    on the CI runner, whose toolbar shares the save dialog's 1001, so the
+    typed path went into the address bar and cikti.pdf in Documents
+    was saved."""
     found = []
 
     def cb(hwnd, _):
-        if win32gui.GetClassName(hwnd) != "Edit" or not win32gui.IsWindowVisible(hwnd):
-            return
-        node = hwnd
-        while node and node != dialog:
-            if win32gui.GetDlgCtrlID(node) in FILE_NAME_BOXES:
-                found.append(hwnd)
-                return
-            node = win32gui.GetParent(node)
+        if (win32gui.GetClassName(hwnd) == "Edit" and win32gui.IsWindowVisible(hwnd)
+                and win32gui.GetDlgCtrlID(hwnd) in FILE_NAME_BOXES):
+            found.append(hwnd)
     win32gui.EnumChildWindows(dialog, cb, None)
     return found[0] if found else None
 
