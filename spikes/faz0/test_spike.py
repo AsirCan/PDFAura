@@ -61,6 +61,7 @@ def top_windows(pid, cls=None, title=None, visible=True):
 
 class Spike:
     def __init__(self, *args):
+        self.page = None
         self.port = free_port()
         self.lines = []
         self.proc = subprocess.Popen(
@@ -69,12 +70,21 @@ class Spike:
             errors="replace", env=dict(os.environ, PYTHONUNBUFFERED="1"))
         threading.Thread(target=self._read, daemon=True).start()
         self._pw = playwright.sync_playwright().start()
-        self.browser = wait_for(self._connect, timeout=30, step=0.2)
-        self.page = self.browser.contexts[0].pages[0]
-        # Not page.wait_for_function: Playwright evaluates its predicate with
-        # eval() in the page, which the CSP blocks until pywebview's bridge
-        # is in. page.evaluate goes through CDP and is not affected.
-        self.wait_js("!!(window.pywebview && window.pywebview.api && window.pywebview.api.ping)")
+        try:
+            # A cold runner takes a while to start Python and WebView2, and
+            # CDP answers before WebView2 has created the page.
+            self.browser = wait_for(self._connect, timeout=60, step=0.2)
+            self.page = wait_for(lambda: self.browser.contexts and self.browser.contexts[0].pages
+                                 and self.browser.contexts[0].pages[0], timeout=60)
+            # Not page.wait_for_function: Playwright evaluates its predicate
+            # with eval() in the page, which the CSP blocks until pywebview's
+            # bridge is in. page.evaluate goes through CDP and is not affected.
+            self.wait_js("!!(window.pywebview && window.pywebview.api && window.pywebview.api.ping)")
+        except BaseException:
+            # A half-opened window must not leave Playwright running: every
+            # later test would fail with "Sync API inside the asyncio loop".
+            self.close()
+            raise
 
     def wait_js(self, expression, timeout=15):
         def check():
@@ -102,7 +112,7 @@ class Spike:
         try:
             self.page.evaluate("void pywebview.api.quit()")     # do not wait on the promise
         except Exception:
-            pass
+            pass   # also when there was no page yet
         try:
             self.proc.wait(10)
         except subprocess.TimeoutExpired:

@@ -55,12 +55,14 @@ class Window:
         self._pw = playwright.sync_playwright().start()
         self.requests = []
         try:
-            browser = self._wait(self._connect, 40)
-            # CDP can answer before WebView2 has created the page.
+            # A cold runner takes a while for the first window (Python's
+            # imports, WebView2's first start), and CDP can answer before
+            # WebView2 has created the page.
+            browser = self._wait(self._connect, 60)
             self.page = self._wait(lambda: browser.contexts and browser.contexts[0].pages
-                                   and browser.contexts[0].pages[0], 20)
+                                   and browser.contexts[0].pages[0], 60)
             self.page.on("request", lambda request: self.requests.append(request.url))
-            self.wait("!!document.querySelector('.shell')")
+            self.wait("!!document.querySelector('.shell')", 30)
         except BaseException:
             # A half-opened window must not leave Playwright running: the next
             # test would then fail with "Sync API inside the asyncio loop".
