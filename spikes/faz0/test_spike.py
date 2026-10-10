@@ -6,7 +6,6 @@ Not part of the main suite (pytest.ini only collects tests/). Each test
 starts spikes/faz0/app.py with the DevTools port open and drives it with
 Playwright over CDP, the way the E2E layer in #25 would.
 """
-import json
 import os
 import socket
 import subprocess
@@ -15,7 +14,6 @@ import threading
 import time
 
 import pytest
-import win32api
 import win32con
 import win32gui
 import win32process
@@ -202,13 +200,13 @@ def _fill_file_dialog(pid, text):
     dialog = wait_for(lambda: top_windows(pid, cls="#32770"))[0]
     box = wait_for(lambda: _file_name_box(dialog))     # its controls appear after the window
 
-    def typed():
-        # On a slow machine (the CI runner) the dialog fills in its default
-        # name after the box appears, over what was typed: type until it stays.
+    # On a slow machine (the CI runner) the dialog fills in its default name
+    # a moment after the box appears, over what was typed; type again once it
+    # has. (Reading the box back cannot tell: another process's edit text
+    # does not survive the round trip intact.)
+    for pause in (0.8, 0.4):
         win32gui.SendMessage(box, win32con.WM_SETTEXT, 0, text)
-        time.sleep(0.3)
-        return win32gui.GetWindowText(box) == text
-    wait_for(typed, timeout=10, step=0)
+        time.sleep(pause)
     win32gui.SendMessage(win32gui.GetDlgItem(dialog, 1), win32con.BM_CLICK, 0, 0)    # IDOK
 
 

@@ -48,10 +48,18 @@ class Window:
                                      cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._pw = playwright.sync_playwright().start()
         self.requests = []
-        browser = self._wait(self._connect, 40)
-        self.page = browser.contexts[0].pages[0]
-        self.page.on("request", lambda request: self.requests.append(request.url))
-        self.wait("!!document.querySelector('.shell')")
+        try:
+            browser = self._wait(self._connect, 40)
+            # CDP can answer before WebView2 has created the page.
+            self.page = self._wait(lambda: browser.contexts and browser.contexts[0].pages
+                                   and browser.contexts[0].pages[0], 20)
+            self.page.on("request", lambda request: self.requests.append(request.url))
+            self.wait("!!document.querySelector('.shell')")
+        except BaseException:
+            # A half-opened window must not leave Playwright running: the next
+            # test would then fail with "Sync API inside the asyncio loop".
+            self.close()
+            raise
 
     def _connect(self):
         try:
@@ -88,7 +96,7 @@ class Window:
         try:
             self.page.evaluate("void window.pywebview.api.quit()")
         except Exception:
-            pass
+            pass   # also when there was no page yet
         try:
             self.proc.wait(10)
         except subprocess.TimeoutExpired:
