@@ -291,12 +291,12 @@ def test_feedback_tones_and_actions(app):
     pump(root)
     fb.set_info("t", "m")
     assert fb.tone == "info" and not fb.actions.winfo_ismapped()
+    # Mapping happens in an idle pass; under load a fixed 50 ms pump missed
+    # it now and then (#25 saw this fail in full runs), so wait for it.
     fb.set_warning("t", "m", output_path=__file__)
-    pump(root)
-    assert fb.tone == "warning" and fb.actions.winfo_ismapped()
+    assert fb.tone == "warning" and wait_for(root, fb.actions.winfo_ismapped, timeout=3.0)
     fb.set_error("t", "m")
-    pump(root)
-    assert fb.tone == "danger" and not fb.actions.winfo_ismapped()
+    assert fb.tone == "danger" and wait_for(root, lambda: not fb.actions.winfo_ismapped(), timeout=3.0)
     assert fb.badge.cget("text") == _("feedback_error_badge")
     fb.set_cancelled()
     assert fb.badge.cget("text") == _("perf_cancelled_badge")
@@ -671,9 +671,12 @@ def test_every_page_fits_and_scrolls_at_each_size(app, size):
     pump(root, 0.15)
     for page in PAGES:
         window.show_page(page)
-        pump(root, 0.35)
         frame = window.workspaces[page].frame
-        assert frame.winfo_width() <= window.content.winfo_width() + 2, f"{page} at {size}"
+        # Like the footer below: under load the first layout pass can still
+        # show the page at its natural width; wait for it to settle.
+        fits = wait_for(root, lambda: frame.winfo_ismapped()
+                        and 1 < frame.winfo_width() <= window.content.winfo_width() + 2, timeout=3.0)
+        assert fits, f"{page} at {size}: {frame.winfo_width()} > {window.content.winfo_width()}"
         # The primary action is reachable: visible, or inside a scroll area.
         tab = window.get_active_tab()
         footer = tab.footer
