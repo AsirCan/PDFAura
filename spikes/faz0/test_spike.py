@@ -201,7 +201,14 @@ def _fill_file_dialog(pid, text):
     """Type into the dialog's file name box and press its OK button."""
     dialog = wait_for(lambda: top_windows(pid, cls="#32770"))[0]
     box = wait_for(lambda: _file_name_box(dialog))     # its controls appear after the window
-    win32gui.SendMessage(box, win32con.WM_SETTEXT, 0, text)
+
+    def typed():
+        # On a slow machine (the CI runner) the dialog fills in its default
+        # name after the box appears, over what was typed: type until it stays.
+        win32gui.SendMessage(box, win32con.WM_SETTEXT, 0, text)
+        time.sleep(0.3)
+        return win32gui.GetWindowText(box) == text
+    wait_for(typed, timeout=10, step=0)
     win32gui.SendMessage(win32gui.GetDlgItem(dialog, 1), win32con.BM_CLICK, 0, 0)    # IDOK
 
 
