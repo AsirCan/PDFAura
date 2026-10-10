@@ -40,6 +40,13 @@ class TaskContext:
         current / total oranı yüzde hesabı için kullanılır.
         """
         self.check_cancelled()
+        self.notify(current, total, message)
+
+    def notify(self, current, total, message=""):
+        """Report progress without checking for a cancel, for code that
+        checks at its own safe points (the batch loops catch every error per
+        file, so a cancel raised from inside one would count as a failed
+        file)."""
         if self._progress_callback:
             self._progress_callback(current, total, message)
 

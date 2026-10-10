@@ -315,12 +315,15 @@ def _batch_check(mode, input_dir, output_dir, **_options):
 
 def _batch_run(ctx, mode, input_dir, output_dir, quality="screen", convert_mode="pdf2img", rename_rule=""):
     from src.core import batch
+    # The batch loops report each file through progress_callback; the tab
+    # used to pass None there, so its log and bar never moved until the end.
+    log = ctx.notify if ctx else None
     if mode == "compress":
-        succeeded, errors = batch.batch_compress_dir(input_dir, output_dir, quality, None, ctx=ctx)
+        succeeded, errors = batch.batch_compress_dir(input_dir, output_dir, quality, log, ctx=ctx)
     elif mode == "convert":
-        succeeded, errors = batch.batch_convert_dir(input_dir, output_dir, convert_mode, None, ctx=ctx)
+        succeeded, errors = batch.batch_convert_dir(input_dir, output_dir, convert_mode, log, ctx=ctx)
     else:
-        succeeded, errors = batch.batch_rename_dir(input_dir, output_dir, rename_rule, None, ctx=ctx)
+        succeeded, errors = batch.batch_rename_dir(input_dir, output_dir, rename_rule, log, ctx=ctx)
     return batch_outcome(succeeded, errors, output_dir)
 
 

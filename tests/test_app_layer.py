@@ -141,6 +141,16 @@ def test_no_progress_arrives_after_the_result():
     assert order[-1] == "done"
 
 
+def test_a_log_keeps_every_message():
+    def work(ctx):
+        for i in range(300):
+            ctx.notify(i + 1, 300, f"file {i}")
+    rec = Recorder()
+    JobRunner(progress_interval=0.05).start(work, throttle=False, **rec.callbacks())
+    rec.wait()
+    assert len(rec.progress) == 300
+
+
 def test_callbacks_go_through_post():
     """Tk passes root.after; every callback must use it, none called directly."""
     posted = []
@@ -328,6 +338,21 @@ def test_a_signature_is_stamped(tmp_path):
                                    signature={"image": str(stamp), "page": "1", "x": "100,5", "y": "100",
                                               "scale": "1.0"})
     assert kind == "done" and os.path.isfile(out)
+
+
+def test_batch_logs_every_file_while_it_runs(tmp_path):
+    """The tab used to pass no progress callback, so the log stayed empty
+    until the end."""
+    source, target = tmp_path / "in", tmp_path / "out"
+    source.mkdir()
+    target.mkdir()
+    for name in ("a", "b", "c"):
+        make_pdf(source / f"{name}.pdf")
+    (kind, outcome), rec = run_tool("batch", mode="rename", input_dir=str(source), output_dir=str(target),
+                                    rename_rule="belge_{n}")
+    assert kind == "done" and outcome.tone == "success"
+    assert outcome.details == {"succeeded": 3, "failed": 0}
+    assert len(rec.progress) == 3 and all(message for _c, _t, message in rec.progress)
 
 
 @pytest.mark.parametrize("succeeded, errors, tone", [
