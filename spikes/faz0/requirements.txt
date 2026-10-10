@@ -3,3 +3,4 @@
 pywebview==6.2.1          # Edge WebView2 window; pulls pythonnet 3.x and bottle
 playwright==1.63.0        # drives the window over CDP; no browser download needed
 pyinstaller>=6.0,<7       # build_exe.py
+comtypes>=1.2          # UI Automation fills the native file dialogs in test_spike.py

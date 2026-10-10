@@ -6,7 +6,6 @@ Not part of the main suite (pytest.ini only collects tests/). Each test
 starts spikes/faz0/app.py with the DevTools port open and drives it with
 Playwright over CDP, the way the E2E layer in #25 would.
 """
-import ctypes
 import os
 import socket
 import subprocess
@@ -71,11 +70,7 @@ class Spike:
         threading.Thread(target=self._read, daemon=True).start()
         self._pw = playwright.sync_playwright().start()
         try:
-            # A cold runner takes a while to start Python and WebView2, and
-            # CDP answers before WebView2 has created the page.
-            self.browser = wait_for(self._connect, timeout=120, step=0.2)
-            self.page = wait_for(lambda: self.browser.contexts and self.browser.contexts[0].pages
-                                 and self.browser.contexts[0].pages[0], timeout=120)
+            self.page = self._attach()
             # Not page.wait_for_function: Playwright evaluates its predicate
             # with eval() in the page, which the CSP blocks until pywebview's
             # bridge is in. page.evaluate goes through CDP and is not affected.
@@ -97,6 +92,21 @@ class Spike:
     def _read(self):
         for line in self.proc.stdout:
             self.lines.append(line.rstrip())
+
+    def _attach(self):
+        """The window's page over CDP. A cold runner takes a while to start
+        Python and WebView2, and a connection made too early there never
+        saw the page appear: attach again until it does."""
+        deadline = time.time() + 120
+        while True:
+            self.browser = wait_for(self._connect, timeout=60, step=0.2)
+            try:
+                return wait_for(lambda: next((p for c in self.browser.contexts for p in c.pages), None),
+                                timeout=15)
+            except TimeoutError:
+                if time.time() > deadline:
+                    raise
+                self.browser.close()      # over CDP this only disconnects
 
     def _connect(self):
         try:
@@ -206,33 +216,56 @@ def _file_name_box(dialog):
     return found[0] if found else None
 
 
-def _box_length(box):
-    # WM_GETTEXTLENGTH needs no buffer, so unlike WM_GETTEXT it answers
-    # correctly across processes whatever the text's encoding.
-    return ctypes.windll.user32.SendMessageW(box, win32con.WM_GETTEXTLENGTH, 0, 0)
+def _uia():
+    import comtypes.client
+    comtypes.client.GetModule("UIAutomationCore.dll")
+    from comtypes.gen import UIAutomationClient as uia
+    return uia, comtypes.client.CreateObject(uia.CUIAutomation, interface=uia.IUIAutomation)
 
 
 def _fill_file_dialog(pid, text, default=""):
-    """Type into the dialog's file name box and press its OK button.
+    """Put ``text`` in the dialog's file name box and press its OK button,
+    through UI Automation.
 
-    A save dialog fills in its default name a moment after its box
-    appears -- on the CI runner, after the test had typed, so it saved to
-    Documents. Wait for the default first (by its length), then type until
-    the box holds the text."""
+    Typing with WM_SETTEXT worked here but not on the CI runner, where the
+    save dialog kept saving its default name (cikti.pdf) to Documents
+    whatever the box showed: setting the box's value the way an
+    accessibility tool does goes through the dialog itself. The default
+    name is waited for first, so it cannot land on top of ``text``."""
     dialog = wait_for(lambda: top_windows(pid, cls="#32770"))[0]
-    box = wait_for(lambda: _file_name_box(dialog))     # its controls appear after the window
+    wait_for(lambda: _file_name_box(dialog))     # its controls appear after the window
+    uia, automation = _uia()
+    root = automation.ElementFromHandle(dialog)
+
+    def box():
+        found = root.FindFirst(uia.TreeScope_Descendants, automation.CreateAndCondition(
+            automation.CreatePropertyCondition(uia.UIA_ControlTypePropertyId, uia.UIA_EditControlTypeId),
+            automation.CreateOrCondition(
+                automation.CreatePropertyCondition(uia.UIA_AutomationIdPropertyId, "1001"),
+                automation.CreateOrCondition(
+                    automation.CreatePropertyCondition(uia.UIA_AutomationIdPropertyId, "1148"),
+                    automation.CreatePropertyCondition(uia.UIA_AutomationIdPropertyId, "1152")))))
+        return found if found else None
+
+    def value_of(element):
+        return element.GetCurrentPattern(uia.UIA_ValuePatternId).QueryInterface(
+            uia.IUIAutomationValuePattern)
+
+    edit = wait_for(box)
     if default:
         try:
-            wait_for(lambda: _box_length(box) == len(default), timeout=10)
+            wait_for(lambda: value_of(edit).CurrentValue == default, timeout=10)
         except TimeoutError:
             pass
 
     def typed():
-        win32gui.SendMessage(box, win32con.WM_SETTEXT, 0, text)
+        value_of(edit).SetValue(text)
         time.sleep(0.3)
-        return _box_length(box) == len(text)
+        return value_of(edit).CurrentValue == text
     wait_for(typed, timeout=10, step=0)
-    win32gui.SendMessage(win32gui.GetDlgItem(dialog, 1), win32con.BM_CLICK, 0, 0)    # IDOK
+    ok = root.FindFirst(uia.TreeScope_Children,
+                        automation.CreatePropertyCondition(uia.UIA_AutomationIdPropertyId, "1"))
+    ok.GetCurrentPattern(uia.UIA_InvokePatternId).QueryInterface(uia.IUIAutomationInvokePattern).Invoke()
 
 
 def _pick(spike, call, text, default=""):
