@@ -1,4 +1,5 @@
 from src.core.lang_manager import _
+from src.core.output_paths import write_pdf
 
 
 def merge_pdfs(pdf_list, output_pdf, ctx=None):
@@ -26,8 +27,7 @@ def merge_pdfs(pdf_list, output_pdf, ctx=None):
         if file_idx % 5 == 0:
             memory_optimize()
     
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
     
     if ctx:
         ctx.report_progress(total_files, total_files, _("progress_pages_done").format(count=page_counter))

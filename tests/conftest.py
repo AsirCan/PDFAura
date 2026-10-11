@@ -18,6 +18,9 @@ if ROOT not in sys.path:
 import pytest  # noqa: E402
 from pypdf import PdfWriter  # noqa: E402
 
+# The fixtures below write test inputs even while disk_full is on.
+_REAL_PDF_WRITE = PdfWriter.write
+
 # The theme follows Windows' light/dark mode by default. Pin the light theme
 # so tests do not depend on the machine.
 from src.core.config_manager import cfg as _cfg  # noqa: E402
@@ -33,7 +36,7 @@ def make_pdf(path, pages=3, size=(595, 842), metadata=None):
     if metadata:
         writer.add_metadata(metadata)
     with open(path, "wb") as f:
-        writer.write(f)
+        _REAL_PDF_WRITE(writer, f)
     return str(path)
 
 
@@ -43,7 +46,7 @@ def make_encrypted_pdf(path, user_password, owner_password=None, algorithm="AES-
         writer.add_blank_page(width=595 + i, height=842)
     writer.encrypt(user_password=user_password, owner_password=owner_password, algorithm=algorithm)
     with open(path, "wb") as f:
-        writer.write(f)
+        _REAL_PDF_WRITE(writer, f)
     return str(path)
 
 
@@ -165,11 +168,9 @@ def disk_full(monkeypatch):
     the same to files that module writes with open(). What is left behind is
     what a real full disk leaves: a truncated file wherever the bytes went.
     """
-    real_write = PdfWriter.write
-
     def filling_write(self, stream):
         buffer = io.BytesIO()
-        real_write(self, buffer)
+        _REAL_PDF_WRITE(self, buffer)
         data = buffer.getvalue()[:DISK_FULL_AFTER]
         if isinstance(stream, (str, os.PathLike)):
             with builtins.open(stream, "wb") as handle:

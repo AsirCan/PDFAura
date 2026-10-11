@@ -123,7 +123,8 @@ def perform_ocr_to_text(input_pdf, output_txt, lang=None, ctx=None):
     finally:
         doc.close()
 
-    with open(output_txt, "w", encoding="utf-8") as f:
+    from src.core.output_paths import atomic_output
+    with atomic_output(output_txt) as temp_path, open(temp_path, "w", encoding="utf-8") as f:
         f.write("\n".join(full_text))
 
     if ctx:

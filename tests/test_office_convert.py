@@ -366,7 +366,14 @@ def test_office_is_preferred_when_installed(tmp_path, fake_com, monkeypatch):
 
     convert.ppt_to_pdf(str(src), str(tmp_path / "out.pdf"))
 
-    assert ("saveas", "ppt", (str(tmp_path / "out.pdf"), convert.PP_SAVE_AS_PDF)) in fake_com.events
+    saves = [event for event in fake_com.events if event[:2] == ("saveas", "ppt")]
+    assert len(saves) == 1
+    target, file_format = saves[0][2]
+    assert file_format == convert.PP_SAVE_AS_PDF
+    # PowerPoint saves under a temporary name next to the output, which is
+    # moved into place afterwards (#27).
+    assert target.startswith(str(tmp_path / ".pdfaura-")) and target.endswith(".pdf")
+    assert (tmp_path / "out.pdf").exists()
 
 
 @pytest.mark.slow

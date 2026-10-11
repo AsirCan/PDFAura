@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from src.core.common import open_pdf_reader
+from src.core.output_paths import write_pdf
 
 # Info-dictionary key for each field name we expose.
 _FIELD_KEYS = {
@@ -55,8 +56,7 @@ def update_metadata(input_pdf, output_pdf, title=None, author=None, subject=None
             writer.xmp_metadata = None
         except Exception:
             pass
-        with open(output_pdf, "wb") as f:
-            writer.write(f)
+        write_pdf(writer, output_pdf)
         return
 
     new_meta = {}
@@ -78,5 +78,4 @@ def update_metadata(input_pdf, output_pdf, title=None, author=None, subject=None
 
     writer.add_metadata(new_meta)
 
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)

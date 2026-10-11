@@ -3,6 +3,7 @@ import os
 
 from src.core.common import open_pdf_reader
 from src.core.lang_manager import _
+from src.core.output_paths import write_pdf
 
 
 def check_new_password(password, confirm=None):
@@ -29,8 +30,7 @@ def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
 
     writer.encrypt(user_password=password, algorithm="AES-256")
 
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
 
     if ctx:
         ctx.report_progress(total + 1, total + 1, _("progress_finished"))
@@ -54,8 +54,7 @@ def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
             ctx.report_progress(i, total + 1, _("progress_page_of").format(current=i, total=total))
         writer.add_page(page)
 
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
 
     if ctx:
         ctx.report_progress(total + 1, total + 1, _("progress_finished"))
@@ -196,8 +195,7 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
         # Shift the stamp onto the crop box when it does not start at (0, 0).
         new_page.merge_translated_page(stamps[key], x0, y0, expand=False)
 
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
 
     if ctx:
         ctx.report_progress(total, total, _("progress_finished"))

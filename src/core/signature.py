@@ -2,6 +2,7 @@ import io
 
 from src.core.common import open_pdf_reader
 from src.core.lang_manager import _
+from src.core.output_paths import write_pdf
 from src.core.security import _page_geometry
 
 # Points per image pixel when no explicit width is given: 96 dpi artwork
@@ -93,8 +94,7 @@ def stamp_visual_signature(input_pdf, output_pdf, image_path, page_num=1,
         if i == page_num - 1:
             new_page.merge_transformed_page(stamp_page, matrix, expand=False)
 
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
 
 
 def _rotation_matrix(rotation, width, height):

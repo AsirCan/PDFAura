@@ -143,3 +143,14 @@ def atomic_output(path):
             except OSError:
                 pass
         raise
+
+
+def write_pdf(writer, path):
+    """Save a pypdf PdfWriter to *path* through atomic_output.
+
+    The pypdf tools opened the destination with open(path, "wb"), which
+    empties it first: a write cut short by a full disk left a truncated file
+    where the input (when saving over it) or an older output used to be.
+    """
+    with atomic_output(path) as temp_path:
+        writer.write(temp_path)

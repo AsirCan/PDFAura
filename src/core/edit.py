@@ -1,4 +1,5 @@
 from src.core.lang_manager import _
+from src.core.output_paths import write_pdf
 
 
 def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
@@ -19,8 +20,7 @@ def delete_pages_from_pdf(input_pdf, output_pdf, pages_to_delete, ctx=None):
     
     if len(writer.pages) == 0:
         raise ValueError(_("err_delete_all_pages"))
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
 
 def rotate_pages_in_pdf(input_pdf, output_pdf, pages_to_rotate, angle, ctx=None):
     """Rotate specific pages by angle (90, 180, 270). Pages are 1-indexed."""
@@ -39,8 +39,7 @@ def rotate_pages_in_pdf(input_pdf, output_pdf, pages_to_rotate, angle, ctx=None)
             page.rotate(angle)
         writer.add_page(page)
     
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
 
 def reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=None):
     """Reorder pages according to new_order (1-indexed list)."""
@@ -75,5 +74,4 @@ def reorder_pages_in_pdf(input_pdf, output_pdf, new_order, ctx=None):
                 pages=page_num, total=page_count))
         writer.add_page(reader.pages[page_num - 1])
     
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)

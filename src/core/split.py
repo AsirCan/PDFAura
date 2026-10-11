@@ -1,4 +1,5 @@
 from src.core.lang_manager import _
+from src.core.output_paths import write_pdf
 
 
 def split_pdf(input_pdf, output_pdf, start_page, end_page, ctx=None):
@@ -23,8 +24,7 @@ def split_pdf(input_pdf, output_pdf, start_page, end_page, ctx=None):
             ctx.report_progress(idx + 1, page_count, _("progress_page_of").format(current=i + 1, total=total_pages))
         writer.add_page(reader.pages[i])
     
-    with open(output_pdf, "wb") as f:
-        writer.write(f)
+    write_pdf(writer, output_pdf)
     
     if ctx:
         ctx.report_progress(page_count, page_count, _("progress_finished"))

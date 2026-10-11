@@ -158,20 +158,29 @@ def _encode_image(image):
 
 
 def pdf_to_word(input_pdf, output_docx, ctx=None):
-    """Convert PDF to Word using pdf2docx."""
+    """Convert PDF to Word using pdf2docx.
+
+    The document is built in a temporary file and moved into place, so a
+    failed conversion leaves an existing .docx as it was.
+    """
     try:
         from pdf2docx import Converter
     except ImportError:
         raise ImportError("pdf2docx kutuphanesi bulunamadi.\nLutfen kurun: pip install pdf2docx")
-    
+    from src.core.output_paths import atomic_output
+
     if ctx:
         ctx.check_cancelled()
         ctx.report_progress(0, 100, _("progress_converting"))
-    
+
     cv = Converter(input_pdf)
-    cv.convert(output_docx, start=0, end=None)
-    cv.close()
-    
+    try:
+        with atomic_output(output_docx) as temp_path:
+            cv.convert(temp_path, start=0, end=None)
+    finally:
+        # Left open after an error, the PDF stayed locked on Windows.
+        cv.close()
+
     if ctx:
         ctx.report_progress(100, 100, _("progress_finished"))
 
@@ -222,6 +231,7 @@ def _office_to_pdf(com_convert, app_name, input_path, output_pdf, ctx):
     Without it (or without pywin32) every Office conversion used to fail
     outright, even with LibreOffice sitting on the same machine.
     """
+    from src.core.output_paths import atomic_output
     from src.utils.libreoffice_helper import find_libreoffice, libreoffice_to_pdf
 
     input_abs = os.path.abspath(input_path)
@@ -232,7 +242,10 @@ def _office_to_pdf(com_convert, app_name, input_path, output_pdf, ctx):
         ctx.report_progress(0, 100, _("progress_converting"))
 
     try:
-        com_convert(input_abs, output_abs)
+        # Office writes the PDF itself; a temporary name keeps an older one
+        # intact if it stops halfway (LibreOffice's path does the same).
+        with atomic_output(output_abs) as temp_path:
+            com_convert(input_abs, temp_path)
     except (OfficeNotInstalledError, ImportError):
         soffice = find_libreoffice()
         if soffice is None:
@@ -358,11 +371,12 @@ def _excel_to_pdf_com(input_abs, output_abs):
 def pdf_to_txt(input_pdf, output_txt, ctx=None):
     """Convert PDF to Text natively using pypdf."""
     from src.core.common import open_pdf_reader
+    from src.core.output_paths import atomic_output
 
     reader = open_pdf_reader(input_pdf)
     text = []
     total = len(reader.pages)
-    
+
     for i, page in enumerate(reader.pages, 1):
         if ctx:
             ctx.check_cancelled()
@@ -370,8 +384,8 @@ def pdf_to_txt(input_pdf, output_txt, ctx=None):
         page_text = page.extract_text()
         if page_text:
             text.append(page_text)
-            
-    with open(output_txt, "w", encoding="utf-8") as f:
+
+    with atomic_output(output_txt) as temp_path, open(temp_path, "w", encoding="utf-8") as f:
         f.write("\n\n--- Sayfa Sonu ---\n\n".join(text))
     
     if ctx:
