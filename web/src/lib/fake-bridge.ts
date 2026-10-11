@@ -14,9 +14,13 @@ export interface FakeOptions {
   problem?: string | null;
   /** Files the next pick_files() returns. */
   picks?: string[];
+  /** Files that are already on disk: existing_target() names them as a run's
+   * output and file_info() says they exist. Without it file_info() says every
+   * file exists and existing_target() never finds one. */
+  existing?: string[];
 }
 
-function info(path: string): FileInfo {
+function info(path: string, exists = true): FileInfo {
   const name = path.split(/[\\/]/).pop() ?? path;
   const dot = name.lastIndexOf(".");
   const ext = dot >= 0 ? name.slice(dot).toLowerCase() : "";
@@ -26,7 +30,7 @@ function info(path: string): FileInfo {
   };
   return {
     path, name, folder: path.slice(0, path.length - name.length - 1), ext,
-    kind: ext ? kinds[ext] ?? "other" : "folder", size: 1_234_567, exists: true, is_dir: !ext,
+    kind: ext ? kinds[ext] ?? "other" : "folder", size: 1_234_567, exists, is_dir: !ext,
   };
 }
 
@@ -38,6 +42,7 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
   let jobs = 0;
   const timers = new Map<number, ReturnType<typeof setTimeout>[]>();
   const strings = options.strings ?? {};
+  const existing = options.existing ? new Set(options.existing) : null;
   const record = (name: string, args: unknown[]) => calls.push([name, args]);
   const models: ModelList = {
     root: "C:\\Users\\Örnek\\AppData\\Roaming\\PDFAura\\models",
@@ -101,12 +106,12 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
       return recent;
     },
     async file_info(paths) {
-      return paths.map(info);
+      return paths.map((path) => info(path, existing ? existing.has(path) : true));
     },
     async pick_files(kind = "pdf", multiple = false) {
       record("pick_files", [kind, multiple]);
       const picks = options.picks ?? ["C:\\Belgeler\\rapor.pdf"];
-      return (multiple ? picks : picks.slice(0, 1)).map(info);
+      return (multiple ? picks : picks.slice(0, 1)).map((path) => info(path));
     },
     async pick_folder() {
       record("pick_folder", []);
@@ -128,8 +133,11 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
       record("check", [tool, params]);
       return options.problem ?? null;
     },
-    async existing_target() {
-      return null;
+    async existing_target(tool, params) {
+      record("existing_target", [tool, params]);
+      // Like tools.existing_target: the output file, never PDF -> Images' folder.
+      const target = tool === "convert" && params.mode === "pdf2img" ? "" : String(params.output ?? "");
+      return target && existing?.has(target) ? target : null;
     },
     async suggest_output(tool, source, mode) {
       record("suggest_output", [tool, source, mode]);

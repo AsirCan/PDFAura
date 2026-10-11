@@ -61,14 +61,32 @@ describe("running a tool", () => {
 
   it("asks before replacing a file the app suggested", async () => {
     language.apply({ language: "tr", rtl: false, strings: { overwrite_body: "{path} var" } });
-    const bridge = createFakeBridge();
-    bridge.existing_target = async () => "C:\\rapor.pdf";
-    useBridge(bridge);
+    const bridge = useBridge(createFakeBridge({ existing: ["C:\\rapor.pdf"] }));
     const run = new ToolRun(new Feedback());
-    const started = run.start("compress", {}, { askOverwrite: true });
+    const started = run.start("compress", { output: "C:\\rapor.pdf" }, { askOverwrite: true });
     await vi.waitFor(() => expect(dialogs.open?.body).toContain("C:\\rapor.pdf"));
     dialogs.answer(false);
     expect(await started).toBe(false);
     expect(bridge.calls.some(([name]) => name === "start")).toBe(false);
+  });
+
+  it("replaces the file once the user agrees", async () => {
+    const bridge = useBridge(createFakeBridge({ existing: ["C:\\rapor.pdf"], jobMs: 10_000 }));
+    const run = new ToolRun(new Feedback());
+    const started = run.start("compress", { output: "C:\\rapor.pdf" }, { askOverwrite: true });
+    await vi.waitFor(() => expect(dialogs.open).not.toBeNull());
+    dialogs.answer(true);
+    expect(await started).toBe(true);
+    expect(bridge.calls.filter(([name]) => name === "start")).toHaveLength(1);
+    run.cancel();
+  });
+
+  it("does not ask when nothing is there yet", async () => {
+    const bridge = useBridge(createFakeBridge({ existing: ["C:\\baska.pdf"], jobMs: 10_000 }));
+    const run = new ToolRun(new Feedback());
+    expect(await run.start("compress", { output: "C:\\rapor.pdf" }, { askOverwrite: true })).toBe(true);
+    expect(dialogs.open).toBeNull();
+    expect(bridge.calls.map(([name]) => name)).toEqual(["check", "existing_target", "start"]);
+    run.cancel();
   });
 });

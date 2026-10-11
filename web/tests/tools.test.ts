@@ -2,11 +2,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useBridge } from "../src/lib/bridge";
 import { app } from "../src/lib/app.svelte";
+import { dialogs } from "../src/lib/dialog.svelte";
 import { createFakeBridge } from "../src/lib/fake-bridge";
 import { language } from "../src/lib/i18n.svelte";
 import type { FileInfo } from "../src/lib/types";
 import Advanced from "../src/tools/Advanced.svelte";
 import Batch from "../src/tools/Batch.svelte";
+import Compress from "../src/tools/Compress.svelte";
 import Convert from "../src/tools/Convert.svelte";
 import Organize from "../src/tools/Organize.svelte";
 import Security from "../src/tools/Security.svelte";
@@ -86,6 +88,18 @@ describe("the tool pages", () => {
     drop("advanced", file("C:\\Belgeler\\rapor.pdf"));
     await fireEvent.click(screen.getByRole("radio", { name: "adv_metadata" }));
     await waitFor(() => expect(screen.getByLabelText("adv_meta_title")).toHaveValue("Faaliyet Raporu"));
+  });
+
+  it("compress asks before replacing a suggested output that exists", async () => {
+    bridge = useBridge(createFakeBridge({ jobMs: 30, existing: ["C:\\Belgeler\\rapor_compress.pdf"] }));
+    render(Compress);
+    drop("compress", file("C:\\Belgeler\\rapor.pdf"));
+    await waitFor(() => expect(screen.getByLabelText("str_output_pdf")).toHaveValue("C:\\Belgeler\\rapor_compress.pdf"));
+    await fireEvent.click(screen.getByRole("button", { name: "compress_btn" }));
+    await waitFor(() => expect(dialogs.open?.title).toBe("overwrite_title"));
+    dialogs.answer(false);
+    await waitFor(() => expect(dialogs.open).toBeNull());
+    expect(started()).toEqual([]);
   });
 
   it("batch logs the start and the count at the end", async () => {
