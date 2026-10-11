@@ -51,7 +51,7 @@
 
   function startSplit() {
     void run.start("split", { input: input.trim(), output: output.value.trim(), start: String(start ?? ""),
-                              end: String(end ?? "") }, { askOverwrite: output.ask });
+                              end: String(end ?? "") }, { output });
   }
 
   onDestroy(() => run.dispose());

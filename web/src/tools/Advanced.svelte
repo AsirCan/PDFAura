@@ -14,6 +14,7 @@
   import ToolLayout from "../components/ToolLayout.svelte";
 
   type Mode = "preview" | "ocr" | "metadata" | "signature";
+  type Writing = Exclude<Mode, "preview">;
   const MODE_LABELS: Record<Mode, string> = {
     preview: "adv_preview", ocr: "adv_ocr", metadata: "adv_metadata", signature: "adv_signature",
   };
@@ -27,14 +28,22 @@
   let signature = $state({ image: "", page: "1", x: "100", y: "100", scale: "1.0" });
   let tesseract = $state<boolean | null>(null);
   let installing = $state(false);
-  const output = new OutputPath("advanced", "pdf");
+  // One output per operation, like Convert: one shared path sent the OCR
+  // text over the PDF picked for the signature (#28). The save dialog offers
+  // .txt for OCR and .pdf otherwise.
+  const outputs: Record<Writing, OutputPath> = {
+    ocr: new OutputPath("advanced", "text"), metadata: new OutputPath("advanced", "pdf"),
+    signature: new OutputPath("advanced", "pdf"),
+  };
+  let output = $derived(mode === "preview" ? null : outputs[mode]);
   const feedback = new Feedback(() => t("adv_operation"), () => t("adv_preview_hint"));
   const run = new ToolRun(feedback);
 
   async function setInput(path: string) {
     input = path;
     previewFile(path);
-    await Promise.all([loadMetadata(true), output.suggest(path, mode)]);
+    await Promise.all([loadMetadata(true),
+                       ...Object.entries(outputs).map(([key, target]) => target.suggest(path, key))]);
   }
 
   async function browse() {
@@ -60,9 +69,7 @@
 
   async function switchMode(next: Mode) {
     feedback.info(() => t("adv_operation"), () => t(MODE_LABELS[next]));
-    // The save dialog offers .txt for OCR and .pdf otherwise.
-    output.kind = next === "ocr" ? "text" : "pdf";
-    await output.suggest(input.trim(), next);
+    if (next !== "preview") await outputs[next].suggest(input.trim(), next);
     if (next === "ocr") tesseract = await api().tesseract_available();
   }
 
@@ -72,7 +79,7 @@
   }
 
   function browseOutput() {
-    void output.browse(input.trim(), mode);
+    void output?.browse(input.trim(), mode);
   }
 
   function start() {
@@ -86,7 +93,8 @@
       feedback.info(() => t("adv_preview"), () => t("viewer_title"));
       return;
     }
-    const params: Record<string, unknown> = { input: path, output: output.value.trim(), mode };
+    const target = outputs[mode];
+    const params: Record<string, unknown> = { input: path, output: target.value.trim(), mode };
     if (mode === "metadata") {
       const keep = !clean && loadedFor === path;
       params.metadata = {
@@ -96,7 +104,7 @@
     } else if (mode === "signature") {
       params.signature = { ...signature };
     }
-    void run.start("advanced", params, { askOverwrite: output.ask });
+    void run.start("advanced", params, { output: target });
   }
 
   const stop = on("tesseract", (event) => {
@@ -177,10 +185,10 @@
     {/if}
   </div>
 
-  {#if mode !== "preview"}
+  {#if output}
     <div class="spaced">
       <FileField id="advanced-output" label={t("str_output_dir_file")} button={t("str_save_as")}
-                 bind:value={output.value} onbrowse={browseOutput} oninput={() => output.typed()} />
+                 bind:value={output.value} onbrowse={browseOutput} oninput={() => output?.typed()} />
     </div>
   {/if}
 

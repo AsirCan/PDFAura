@@ -36,7 +36,7 @@
   function start() {
     void run.start("security", {
       input: input.trim(), output: output.value.trim(), mode, password, confirm, watermark_text: watermark.trim(),
-    }, { askOverwrite: output.ask });
+    }, { output });
   }
 
   onMount(() => app.acceptDrops("security", (files) => {

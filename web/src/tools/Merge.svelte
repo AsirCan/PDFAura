@@ -37,8 +37,7 @@
   }
 
   function startMerge() {
-    void run.start("merge", { files: files.map((file) => file.path), output: output.value.trim() },
-                   { askOverwrite: output.ask });
+    void run.start("merge", { files: files.map((file) => file.path), output: output.value.trim() }, { output });
   }
 
   onDestroy(() => run.dispose());

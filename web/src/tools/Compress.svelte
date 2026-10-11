@@ -31,8 +31,7 @@
   }
 
   function start() {
-    void run.start("compress", { input: input.trim(), output: output.value.trim(), quality },
-                   { askOverwrite: output.ask });
+    void run.start("compress", { input: input.trim(), output: output.value.trim(), quality }, { output });
   }
 
   onMount(() => app.acceptDrops("compress", (files) => {

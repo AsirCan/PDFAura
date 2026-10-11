@@ -63,7 +63,7 @@
 
   function browseOutput() {
     const output = outputs[mode];
-    if (mode === "pdf2img") void output.browseFolder();
+    if (mode === "pdf2img") void output.browseFolder(inputs.pdf2img, mode);
     else if (mode === "img2pdf") void output.browse(images[0]?.path ?? "", mode);
     else void output.browse(inputs[mode as Single], mode);
   }
@@ -108,7 +108,7 @@
     } else {
       Object.assign(params, { input: inputs[mode].trim(), output: outputs[mode].value.trim() });
     }
-    void run.start("convert", params, { askOverwrite: outputs[mode].ask });
+    void run.start("convert", params, { output: outputs[mode] });
   }
 
   onMount(() => app.acceptDrops("convert", (files) => void drop(files)));

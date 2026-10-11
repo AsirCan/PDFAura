@@ -5,10 +5,14 @@ import { api } from "./bridge";
 
 export class OutputPath {
   value = $state("");
-  /** Picked in a save dialog, which has already asked about replacing it. */
+  /** Picked in a save dialog, for the input and mode in pickedFor. */
   picked = $state(false);
   /** Typed in by hand: no longer follows the input, but still asked about. */
   edited = $state(false);
+  private pickedFor: { source: string; mode: string | null } | null = null;
+  /** The save dialog asked about replacing the file; that answer covers the
+   * next run only. */
+  private confirmed = false;
 
   /** The save dialog's file type (bridge.FILE_TYPES): "pdf", "text", "docx"... */
   constructor(private tool: string, public kind = "pdf") {}
@@ -17,12 +21,23 @@ export class OutputPath {
     return !this.picked && !this.edited;
   }
 
-  /** Ask before replacing only what the app chose or the user typed. */
-  get ask() {
-    return !this.picked;
+  /** Ask before a run on ``source`` replaces the file, unless the save
+   * dialog has just asked about it for this input. */
+  askFor(source?: string) {
+    if (!this.picked || !this.confirmed) return true;
+    const pickedSource = this.pickedFor?.source ?? "";
+    return source !== undefined && pickedSource !== "" && pickedSource !== source.trim();
   }
 
+  /** Follow a new input or mode. A path picked for another input or mode is
+   * dropped: it kept B's result going to A's file, and the OCR text over the
+   * PDF picked for the signature, without a question (#28). */
   async suggest(source: string, mode?: string | null, start?: number | null, end?: number | null) {
+    if (this.pickedFor) {
+      // Picked before an input was chosen: it is this input's.
+      if (!this.pickedFor.source) this.pickedFor.source = source.trim();
+      if (this.pickedFor.source !== source.trim() || this.pickedFor.mode !== (mode ?? null)) this.unpick();
+    }
     if (!this.follows) return;
     this.value = source ? await api().suggest_output(this.tool, source, mode ?? null, start ?? null, end ?? null) : "";
   }
@@ -31,29 +46,39 @@ export class OutputPath {
     const suggested = this.value ||
       (source ? await api().suggest_output(this.tool, source, mode ?? null, start ?? null, end ?? null) : "");
     const path = await api().pick_save(this.kind, suggested);
-    if (path) {
-      this.value = path;
-      this.picked = true;
-    }
+    if (path) this.pick(path, source, mode);
   }
 
   /** For a folder output (PDF -> Images). */
-  async browseFolder() {
+  async browseFolder(source = "", mode?: string | null) {
     const folder = await api().pick_folder(this.value);
-    if (folder) {
-      this.value = folder.path;
-      this.picked = true;
-    }
+    if (folder) this.pick(folder.path, source, mode);
   }
 
   typed() {
     this.edited = true;
+    // The dialog asked about the path it gave, not this one.
+    this.unpick();
   }
 
-  reset() {
-    this.value = "";
-    this.picked = false;
+  /** A run is writing to the path. The save dialog's answer was for that
+   * run: the next one asks again if the file is there by then. */
+  used() {
+    this.confirmed = false;
+  }
+
+  private pick(path: string, source: string, mode?: string | null) {
+    this.value = path;
+    this.picked = true;
+    this.confirmed = true;
     this.edited = false;
+    this.pickedFor = { source: source.trim(), mode: mode ?? null };
+  }
+
+  private unpick() {
+    this.picked = false;
+    this.confirmed = false;
+    this.pickedFor = null;
   }
 }
 

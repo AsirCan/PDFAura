@@ -48,7 +48,7 @@
     void run.start("edit", {
       input: input.trim(), output: output.value.trim(), mode, delete_pages: deletePages.trim(),
       rotate_pages: rotatePages.trim(), angle, order: order.trim(),
-    }, { askOverwrite: output.ask });
+    }, { output });
   }
 
   onDestroy(() => run.dispose());

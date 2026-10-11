@@ -5,6 +5,7 @@
 import { api, on } from "./bridge";
 import { dialogs } from "./dialog.svelte";
 import { t } from "./i18n.svelte";
+import type { OutputPath } from "./output.svelte";
 import type { JobEvent, Outcome, Params, Started } from "./types";
 
 export type Tone = "neutral" | "info" | "busy" | "success" | "warning" | "danger";
@@ -100,9 +101,13 @@ export class ToolRun {
     this.feedback = feedback;
   }
 
-  /** Check, ask before replacing a suggested output, then start. False if
-   * nothing was started. */
-  async start(tool: string, params: Params, { askOverwrite = false } = {}): Promise<boolean> {
+  /** Check, ask before replacing an existing output, then start. False if
+   * nothing was started. ``output`` is the page's output field: it says
+   * whether the save dialog has already asked, and learns that the run used
+   * that answer up. */
+  async start(tool: string, params: Params,
+              { askOverwrite = false, output }: { askOverwrite?: boolean; output?: OutputPath } = {}):
+    Promise<boolean> {
     if (this.busy) return false;
     const bridge = api();
     const problem = await bridge.check(tool, params);
@@ -110,7 +115,8 @@ export class ToolRun {
       this.feedback.error(t("str_error"), problem);
       return false;
     }
-    if (askOverwrite) {
+    const source = typeof params.input === "string" ? params.input : undefined;
+    if (output ? output.askFor(source) : askOverwrite) {
       const existing = await bridge.existing_target(tool, params);
       if (existing) {
         const replace = await dialogs.ask({
@@ -120,7 +126,9 @@ export class ToolRun {
         if (!replace) return false;
       }
     }
-    return this.begin(() => bridge.start(tool, params));
+    const started = await this.begin(() => bridge.start(tool, params));
+    if (started) output?.used();
+    return started;
   }
 
   /** Follow the job ``launch`` starts: start() for a tool, or a page's own
