@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "Le chiffrement nécessite un mot de passe. Par exemple : chiffre rapport.pdf avec abc123.",
     "assist_password_used":     "Mot de passe utilisé : {password}",
     "assist_merge_needs_two":   "La fusion nécessite au moins deux noms de fichier. Par exemple : fusionne a.pdf et b.pdf.",
+    "assist_last_pages_too_many": "Le document compte {total} pages, impossible d'en prendre les {count} dernières.",
     "assist_merge_name":        "Fusion",
     "assist_not_understood":    "Je n'ai pas compris, pouvez-vous répéter ?",
     "assist_no_file":           "Je ne sais pas de quel fichier vous parlez. Dites le nom du fichier.",

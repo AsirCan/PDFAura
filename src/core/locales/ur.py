@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "انکرپٹ کرنے کے لیے پاس ورڈ چاہیے۔ مثال: report.pdf کو abc123 سے انکرپٹ کرو۔",
     "assist_password_used":     "استعمال شدہ پاس ورڈ: {password}",
     "assist_merge_needs_two":   "ضم کرنے کے لیے کم از کم دو فائلوں کے نام چاہییں۔ مثال: a.pdf اور b.pdf ضم کرو۔",
+    "assist_last_pages_too_many": "دستاویز میں {total} صفحات ہیں، اس لیے آخری {count} صفحات نہیں لیے جا سکتے۔",
     "assist_merge_name":        "ضم شدہ",
     "assist_not_understood":    "میں سمجھ نہیں سکا، براہ کرم دوبارہ کہیں۔",
     "assist_no_file":           "سمجھ نہیں آیا کہ آپ کس فائل کی بات کر رہے ہیں۔ براہ کرم فائل کا نام بتائیں۔",

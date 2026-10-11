@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "Para cifrar hace falta una contraseña. Por ejemplo: cifra informe.pdf con abc123.",
     "assist_password_used":     "Contraseña utilizada: {password}",
     "assist_merge_needs_two":   "Para unir hacen falta al menos dos nombres de archivo. Por ejemplo: une a.pdf y b.pdf.",
+    "assist_last_pages_too_many": "El documento tiene {total} páginas, así que no se pueden tomar las últimas {count}.",
     "assist_merge_name":        "Unido",
     "assist_not_understood":    "No lo he entendido, repítelo por favor.",
     "assist_no_file":           "No sé a qué archivo te refieres. Di el nombre del archivo.",

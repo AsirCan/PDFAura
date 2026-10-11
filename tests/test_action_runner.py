@@ -114,6 +114,44 @@ def test_an_existing_output_is_kept_and_the_new_name_is_said(home, spoken, monke
     assert written in spoken[-1]
 
 
+# ── "Son N sayfa" and failed steps (#33) ─────────────────────────────────
+
+@pytest.mark.parametrize("command", ["rapor.pdf son 3 sayfayı ayır", "extract the last 3 pages of rapor.pdf"])
+def test_last_pages_are_the_last_pages(home, spoken, command):
+    """It took page 1 alone and said the split went well."""
+    make_pdf(home / "rapor.pdf", pages=5)
+
+    action_runner.execute_intent(parse_intent(command))
+
+    assert page_widths(home / "rapor_aura.pdf") == [597, 598, 599]
+
+
+def test_more_last_pages_than_the_document_has_is_explained(home, spoken):
+    make_pdf(home / "rapor.pdf", pages=5)
+
+    action_runner.execute_intent(parse_intent("rapor.pdf son 9 sayfayı ayır"))
+
+    assert not (home / "rapor_aura.pdf").exists()
+    assert len(spoken) == 1 and "5" in spoken[0] and "9" in spoken[0]
+
+
+def test_a_failed_step_is_not_followed_by_a_success_message(home, spoken, monkeypatch):
+    """It said "İşlem sırasında bir hata oluştu" and then "Metin çıkarma
+    işlemleri tamamlandı. Dosyanız Masaüstüne kaydedildi."."""
+    make_pdf(home / "rapor.pdf")
+
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("metin okunamadi")
+    monkeypatch.setattr(action_runner, "pdf_to_txt", broken)
+
+    action_runner.execute_intent(parse_intent("rapor.pdf dosyasını metne çevir ve sıkıştır"))
+
+    assert len(spoken) == 1
+    assert "metin okunamadi" in spoken[0]
+    # The command stopped there: nothing was compressed either.
+    assert not (home / "rapor_aura.pdf").exists()
+
+
 def test_missing_file_is_reported(home, spoken):
     action_runner.execute_intent(parse_intent("yok.pdf dosyasını sıkıştır"))
     assert any("bulamad" in m.lower() for m in spoken)

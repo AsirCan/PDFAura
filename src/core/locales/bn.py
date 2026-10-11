@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "এনক্রিপ্ট করতে পাসওয়ার্ড লাগবে। যেমন: report.pdf কে abc123 দিয়ে এনক্রিপ্ট করো।",
     "assist_password_used":     "ব্যবহৃত পাসওয়ার্ড: {password}",
     "assist_merge_needs_two":   "মার্জ করতে অন্তত দুটি ফাইলের নাম লাগবে। যেমন: a.pdf আর b.pdf মার্জ করো।",
+    "assist_last_pages_too_many": "নথিতে {total}টি পৃষ্ঠা আছে, তাই শেষ {count}টি পৃষ্ঠা নেওয়া যাবে না।",
     "assist_merge_name":        "মার্জ",
     "assist_not_understood":    "বুঝতে পারিনি, অনুগ্রহ করে আবার বলুন।",
     "assist_no_file":           "কোন ফাইলের কথা বলছেন বুঝতে পারিনি। অনুগ্রহ করে ফাইলের নাম বলুন।",

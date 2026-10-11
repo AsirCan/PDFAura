@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "加密需要密码。例如：用 abc123 加密 报告.pdf。",
     "assist_password_used":     "使用的密码：{password}",
     "assist_merge_needs_two":   "合并至少需要两个文件名。例如：合并 a.pdf 和 b.pdf。",
+    "assist_last_pages_too_many": "文档共 {total} 页，无法取出最后 {count} 页。",
     "assist_merge_name":        "合并",
     "assist_not_understood":    "我没听懂，请再说一遍。",
     "assist_no_file":           "我不确定你指的是哪个文件。请说出文件名。",

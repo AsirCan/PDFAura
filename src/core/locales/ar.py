@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "التشفير يحتاج إلى كلمة مرور. مثال: شفّر report.pdf بكلمة المرور abc123.",
     "assist_password_used":     "كلمة المرور المستخدمة: {password}",
     "assist_merge_needs_two":   "الدمج يحتاج إلى اسمَي ملفين على الأقل. مثال: ادمج a.pdf و b.pdf.",
+    "assist_last_pages_too_many": "يحتوي المستند على {total} صفحات، لذا لا يمكن أخذ آخر {count} صفحات.",
     "assist_merge_name":        "مدمج",
     "assist_not_understood":    "لم أفهم ذلك، يُرجى الإعادة.",
     "assist_no_file":           "لم أعرف الملف الذي تقصده. يُرجى ذكر اسم الملف.",

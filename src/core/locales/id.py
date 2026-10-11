@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "Enkripsi memerlukan kata sandi. Contoh: enkripsi laporan.pdf dengan abc123.",
     "assist_password_used":     "Kata sandi yang digunakan: {password}",
     "assist_merge_needs_two":   "Penggabungan memerlukan minimal dua nama file. Contoh: gabungkan a.pdf dan b.pdf.",
+    "assist_last_pages_too_many": "Dokumen ini berisi {total} halaman, jadi {count} halaman terakhir tidak bisa diambil.",
     "assist_merge_name":        "Gabungan",
     "assist_not_understood":    "Saya tidak mengerti, silakan ulangi.",
     "assist_no_file":           "Saya tidak tahu file mana yang Anda maksud. Sebutkan nama filenya.",

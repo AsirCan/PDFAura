@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "Para criptografar é preciso uma senha. Por exemplo: criptografe relatorio.pdf com abc123.",
     "assist_password_used":     "Senha usada: {password}",
     "assist_merge_needs_two":   "Para juntar são precisos pelo menos dois nomes de arquivo. Por exemplo: junte a.pdf e b.pdf.",
+    "assist_last_pages_too_many": "O documento tem {total} páginas, então não é possível pegar as últimas {count}.",
     "assist_merge_name":        "Juntado",
     "assist_not_understood":    "Não entendi, pode repetir?",
     "assist_no_file":           "Não sei de qual arquivo você está falando. Diga o nome do arquivo.",

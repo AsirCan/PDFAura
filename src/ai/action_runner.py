@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -8,6 +9,7 @@ from src.core.merge import merge_pdfs
 from src.core.lang_manager import _
 from src.core.security import add_watermark_to_pdf, encrypt_pdf
 from src.core.compress import compress_pdf
+from src.core.errors import friendly_error
 from src.core.edit import delete_pages_from_pdf, rotate_pages_in_pdf
 from src.core.convert import pdf_to_images, pdf_to_word, pdf_to_txt
 from src.core.ocr import perform_ocr_to_text
@@ -83,7 +85,8 @@ def execute_intent(intent: dict):
             current_output = final_output_path if is_last_pdf else _temp_pdf_path(temp_files)
 
             if action_type == "split":
-                split_pdf(current_input, current_output, kwargs.get("start", 1), kwargs.get("end", 1))
+                start, end = _split_range(current_input, kwargs)
+                split_pdf(current_input, current_output, start, end)
             elif action_type == "watermark":
                 add_watermark_to_pdf(current_input, current_output, kwargs.get("text", "AURA"))
             elif action_type == "compress":
@@ -130,15 +133,13 @@ def execute_intent(intent: dict):
             msg += " " + _("assist_password_used").format(password=password_used)
         speak(msg)
 
-    except FileNotFoundError as e:
-        speak(_("assist_error").format(error=e))
-    except ValueError as e:
-        speak(_("assist_error").format(error=e))
     except PermissionError:
         speak(_("assist_no_permission"))
     except Exception as e:
-        print(f"[Action Runner Error] {e}")
-        speak(_("assist_unexpected_error"))
+        # Any failed step ends the command here, so the "done" message above
+        # is only ever said when every step worked (#33).
+        logging.getLogger(__name__).exception("Assistant command failed")
+        speak(_("assist_error").format(error=friendly_error(e)))
     finally:
         # Geçici dosyaları her durumda temizle (hata olsa bile)
         for tf in temp_files:
@@ -147,6 +148,19 @@ def execute_intent(intent: dict):
                     os.remove(tf)
             except Exception:
                 pass
+
+
+def _split_range(path, kwargs):
+    """The (start, end) pages of a split. "son 3 sayfa" arrives as
+    {"last": 3}; only start and end were read, so it took page 1 alone."""
+    if "last" not in kwargs:
+        return kwargs.get("start", 1), kwargs.get("end", 1)
+    from src.core.common import get_pdf_page_count
+    total = get_pdf_page_count(path)
+    count = kwargs["last"]
+    if count < 1 or count > total:
+        raise ValueError(_("assist_last_pages_too_many").format(count=count, total=total))
+    return total - count + 1, total
 
 
 def _temp_pdf_path(temp_files):
@@ -188,37 +202,35 @@ def _run_non_pdf_action(action_type, input_path, output_dir, base_name, kwargs):
     """PDF olmayan çıktı üreten işlemleri yönetir.
 
     Returns the file or folder written. Each gets a name nothing has yet
-    (rapor (2).docx), so the user's own files are never replaced.
+    (rapor (2).docx), so the user's own files are never replaced. A failure
+    is raised to execute_intent, which says so and stops: catching it here
+    let the command carry on to its "done" message.
     """
-    try:
-        if action_type == "ocr":
-            output_txt = unique_path(os.path.join(output_dir, f"{base_name}_ocr.txt"))
-            perform_ocr_to_text(input_path, output_txt)
-            speak(_("assist_ocr_done"))
-            return output_txt
+    if action_type == "ocr":
+        output_txt = unique_path(os.path.join(output_dir, f"{base_name}_ocr.txt"))
+        perform_ocr_to_text(input_path, output_txt)
+        speak(_("assist_ocr_done"))
+        return output_txt
 
-        elif action_type == "pdf_to_image":
-            img_folder = unique_path(os.path.join(output_dir, f"{base_name}_resimler"))
-            fmt = kwargs.get("format", "png")
-            count = pdf_to_images(input_path, img_folder, dpi=300, img_format=fmt)
-            speak(_("assist_images_done").format(count=count, fmt=fmt.upper()))
-            return img_folder
+    if action_type == "pdf_to_image":
+        img_folder = unique_path(os.path.join(output_dir, f"{base_name}_resimler"))
+        fmt = kwargs.get("format", "png")
+        count = pdf_to_images(input_path, img_folder, dpi=300, img_format=fmt)
+        speak(_("assist_images_done").format(count=count, fmt=fmt.upper()))
+        return img_folder
 
-        elif action_type == "pdf_to_word":
-            output_docx = unique_path(os.path.join(output_dir, f"{base_name}.docx"))
-            pdf_to_word(input_path, output_docx)
-            speak(_("assist_word_done"))
-            return output_docx
+    if action_type == "pdf_to_word":
+        output_docx = unique_path(os.path.join(output_dir, f"{base_name}.docx"))
+        pdf_to_word(input_path, output_docx)
+        speak(_("assist_word_done"))
+        return output_docx
 
-        elif action_type == "pdf_to_text":
-            output_txt = unique_path(os.path.join(output_dir, f"{base_name}.txt"))
-            pdf_to_txt(input_path, output_txt)
-            speak(_("assist_text_done"))
-            return output_txt
+    if action_type == "pdf_to_text":
+        output_txt = unique_path(os.path.join(output_dir, f"{base_name}.txt"))
+        pdf_to_txt(input_path, output_txt)
+        speak(_("assist_text_done"))
+        return output_txt
 
-    except Exception as e:
-        print(f"[Non-PDF Action Error] {e}")
-        speak(_("assist_error").format(error=e))
     return None
 
 

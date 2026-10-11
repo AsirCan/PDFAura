@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "暗号化にはパスワードが必要です。例: 報告書.pdf を abc123 で暗号化して。",
     "assist_password_used":     "使用したパスワード: {password}",
     "assist_merge_needs_two":   "結合には 2 つ以上のファイル名が必要です。例: a.pdf と b.pdf を結合して。",
+    "assist_last_pages_too_many": "文書は {total} ページなので、最後の {count} ページは取り出せません。",
     "assist_merge_name":        "結合",
     "assist_not_understood":    "よく分かりませんでした。もう一度言ってください。",
     "assist_no_file":           "どのファイルのことか分かりませんでした。ファイル名を言ってください。",

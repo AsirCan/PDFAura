@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "एन्क्रिप्ट करने के लिए पासवर्ड चाहिए। उदाहरण: report.pdf को abc123 से एन्क्रिप्ट करो।",
     "assist_password_used":     "उपयोग किया गया पासवर्ड: {password}",
     "assist_merge_needs_two":   "मर्ज करने के लिए कम से कम दो फ़ाइल नाम चाहिए। उदाहरण: a.pdf और b.pdf मर्ज करो।",
+    "assist_last_pages_too_many": "दस्तावेज़ में {total} पेज हैं, इसलिए आख़िरी {count} पेज नहीं लिए जा सकते।",
     "assist_merge_name":        "मर्ज",
     "assist_not_understood":    "मैं समझ नहीं पाया, कृपया फिर से कहें।",
     "assist_no_file":           "समझ नहीं आया कि आप किस फ़ाइल की बात कर रहे हैं। कृपया फ़ाइल का नाम बताएँ।",

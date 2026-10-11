@@ -141,6 +141,7 @@ STRINGS = {
     "assist_need_password":     "Zum Verschlüsseln wird ein Passwort benötigt. Zum Beispiel: verschlüssele bericht.pdf mit abc123.",
     "assist_password_used":     "Verwendetes Passwort: {password}",
     "assist_merge_needs_two":   "Zum Zusammenführen werden mindestens zwei Dateinamen benötigt. Zum Beispiel: füge a.pdf und b.pdf zusammen.",
+    "assist_last_pages_too_many": "Das Dokument hat {total} Seiten, die letzten {count} lassen sich daher nicht nehmen.",
     "assist_merge_name":        "Zusammengeführt",
     "assist_not_understood":    "Das habe ich nicht verstanden, bitte noch einmal sagen.",
     "assist_no_file":           "Ich weiß nicht, welche Datei Sie meinen. Bitte nennen Sie den Dateinamen.",
