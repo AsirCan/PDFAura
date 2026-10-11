@@ -56,7 +56,7 @@
     const started = await run.start("batch", {
       mode, input_dir: inputDir.trim(), output_dir: outputDir.trim(), quality, convert_mode: convertMode,
       rename_rule: renameRule,
-    });
+    }, { askOverwrite: true });
     if (started) {
       log = [];
       void append(t("batch_log_started", { path: inputDir.trim() }));

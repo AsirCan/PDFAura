@@ -49,10 +49,11 @@ export class OutputPath {
     if (path) this.pick(path, source, mode);
   }
 
-  /** For a folder output (PDF -> Images). */
+  /** For a folder output (PDF -> Images). The folder dialog says nothing
+   * about the files in it, so a run still asks before replacing them. */
   async browseFolder(source = "", mode?: string | null) {
     const folder = await api().pick_folder(this.value);
-    if (folder) this.pick(folder.path, source, mode);
+    if (folder) this.pick(folder.path, source, mode, false);
   }
 
   typed() {
@@ -67,10 +68,10 @@ export class OutputPath {
     this.confirmed = false;
   }
 
-  private pick(path: string, source: string, mode?: string | null) {
+  private pick(path: string, source: string, mode?: string | null, confirmed = true) {
     this.value = path;
     this.picked = true;
-    this.confirmed = true;
+    this.confirmed = confirmed;
     this.edited = false;
     this.pickedFor = { source: source.trim(), mode: mode ?? null };
   }

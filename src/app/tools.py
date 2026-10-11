@@ -37,7 +37,7 @@ class Tool:
     fail_title: str                 # lang key of the title shown when run() raises
     busy: object                    # busy(**params) -> text while it runs
     cancellable: object = True      # bool, or cancellable(**params) -> bool
-    writes: object = None           # writes(**params) -> the file it creates, if any
+    writes: object = None           # writes(**params) -> the file it creates, or the files it would replace
     log_progress: bool = False      # progress messages are a log: keep every one
 
 
@@ -306,11 +306,27 @@ def metadata_fields(clean, loaded, title="", author="", subject="", creator=""):
 BATCH_MODES = ("compress", "convert", "rename")
 
 
-def _batch_check(mode, input_dir, output_dir, **_options):
+def _batch_check(mode, input_dir, output_dir, quality="screen", convert_mode="pdf2img", rename_rule="",
+                 **_options):
+    from src.core import batch
+    from src.core.compress import VALID_QUALITIES
     if not input_dir or not os.path.isdir(input_dir):
         raise Invalid(_("err_select_valid_input_dir"))
     if not output_dir or not os.path.isdir(output_dir):
         raise Invalid(_("err_select_valid_output_dir"))
+    # The page only offers valid choices; anything else reaching the bridge
+    # used to fail halfway (an unknown conversion with an UnboundLocalError).
+    if mode not in BATCH_MODES:
+        raise Invalid(f"{_('err_unknown_op')}{mode}")
+    if mode == "compress" and quality not in VALID_QUALITIES:
+        raise Invalid(f"{_('err_select_quality')}{', '.join(VALID_QUALITIES)}")
+    if mode == "convert" and convert_mode not in batch.CONVERT_MODES:
+        raise Invalid(f"{_('err_unknown_op')}{convert_mode}")
+    if mode == "rename":
+        try:
+            batch.rename_stem(rename_rule, batch.SAMPLE_RENAME_VALUES)
+        except ValueError as exc:
+            raise Invalid(str(exc)) from None
 
 
 def _batch_run(ctx, mode, input_dir, output_dir, quality="screen", convert_mode="pdf2img", rename_rule=""):
@@ -354,9 +370,24 @@ def _writes_output(output="", **_params):
     return output
 
 
-def _convert_writes(mode, output="", **_params):
-    # PDF -> Images fills a folder; asking about the folder itself means nothing.
-    return None if mode == "pdf2img" else output
+def _convert_writes(mode, input="", output="", fmt="png", **_params):
+    if mode != "pdf2img":
+        return output
+    # PDF -> Images fills a folder: what it replaces are page images already
+    # in it under the same names (#34).
+    from src.core.convert import page_image_paths
+    try:
+        planned = page_image_paths(input, output, fmt)
+    except Exception:
+        return []        # an unreadable input; the run will say why
+    return [path for path in planned if os.path.isfile(path)]
+
+
+def _batch_writes(mode, input_dir, output_dir, convert_mode="pdf2img", rename_rule="", **_params):
+    # A run plans its names within itself only, so it would replace files of
+    # the same names already in the output folder -- the user's own, too.
+    from src.core import batch
+    return batch.existing_outputs(mode, input_dir, output_dir, convert_mode, rename_rule)
 
 
 TOOLS = {tool.name: tool for tool in (
@@ -375,7 +406,8 @@ TOOLS = {tool.name: tool for tool in (
          cancellable=lambda mode, **_p: mode not in _UNCANCELLABLE_CONVERSIONS, writes=_convert_writes),
     Tool("advanced", _advanced_check, _advanced_run, "str_error", _plain("str_processing"),
          cancellable=lambda mode, **_p: mode == "ocr", writes=_writes_output),
-    Tool("batch", _batch_check, _batch_run, "err_critical", _plain("str_processing"), log_progress=True),
+    Tool("batch", _batch_check, _batch_run, "err_critical", _plain("str_processing"), writes=_batch_writes,
+         log_progress=True),
 )}
 
 # The label each UI shows for a mode, by lang key.
@@ -419,10 +451,18 @@ def is_cancellable(name, params):
 
 
 def existing_target(name, params):
-    """The file a run would replace, if the tool writes one that exists now."""
+    """What a run would replace, if it writes anything that exists now: the
+    path, or the first of several and how many more there are."""
     writes = TOOLS[name].writes
-    path = writes(**params) if writes else None
-    return path if path and os.path.isfile(path) else None
+    found = writes(**params) if writes else None
+    if isinstance(found, str):
+        found = [found] if found and os.path.isfile(found) else []
+    found = list(found or [])
+    if not found:
+        return None
+    if len(found) == 1:
+        return found[0]
+    return f"{found[0]}\n{_('overwrite_more').format(count=len(found) - 1)}"
 
 
 # ── Suggested output ──────────────────────────────────────────────────────

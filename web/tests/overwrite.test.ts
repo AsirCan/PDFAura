@@ -12,7 +12,9 @@ import { createFakeBridge } from "../src/lib/fake-bridge";
 import { language } from "../src/lib/i18n.svelte";
 import type { FileInfo } from "../src/lib/types";
 import Advanced from "../src/tools/Advanced.svelte";
+import Batch from "../src/tools/Batch.svelte";
 import Compress from "../src/tools/Compress.svelte";
+import Convert from "../src/tools/Convert.svelte";
 import Security from "../src/tools/Security.svelte";
 
 const DIR = "C:\\Belgeler\\";
@@ -154,6 +156,35 @@ describe("replacing a file", () => {
     dialogs.answer(false);
     await waitFor(() => expect(dialogs.open).toBeNull());
     expect(started()).toHaveLength(2);
+  });
+
+  it("batch asks before replacing files already in the output folder (#34)", async () => {
+    bridge = useBridge(createFakeBridge({ jobMs: 20, existing: ["C:\\Belgeler\\Cikti\\Fatura.pdf"] }));
+    render(Batch);
+    app.page = "batch";
+    app.drop([{ ...pdf("Gelen"), path: `${DIR}Gelen`, kind: "folder", ext: "", is_dir: true }]);
+    app.drop([{ ...pdf("Cikti"), path: `${DIR}Cikti`, kind: "folder", ext: "", is_dir: true }]);
+    await waitFor(() => expect(screen.getByLabelText("str_output_folder_label")).toHaveValue(`${DIR}Cikti`));
+    await fireEvent.click(screen.getByRole("button", { name: "batch_start_btn" }));
+    await waitFor(() => expect(dialogs.open?.body).toBe("overwrite_body"));
+    dialogs.answer(false);
+    await waitFor(() => expect(dialogs.open).toBeNull());
+    expect(started()).toEqual([]);
+  });
+
+  it("PDF -> Images asks about pages already in the picked folder (#34)", async () => {
+    bridge = useBridge(createFakeBridge({ jobMs: 20, existing: ["C:\\Belgeler\\Çıktı\\rapor_001.png"] }));
+    render(Convert);
+    drop("convert", pdf("rapor.pdf"));
+    await waitFor(() => expect(screen.getByLabelText("str_input_pdf")).toHaveValue(`${DIR}rapor.pdf`));
+    // The folder dialog says nothing about the files inside.
+    await fireEvent.click(screen.getAllByRole("button", { name: "str_browse" })[1]);
+    await waitFor(() => expect(screen.getByLabelText("str_output_folder")).toHaveValue(`${DIR}Çıktı`));
+    await fireEvent.click(screen.getByRole("button", { name: "convert_btn" }));
+    await waitFor(() => expect(dialogs.open?.title).toBe("overwrite_title"));
+    dialogs.answer(false);
+    await waitFor(() => expect(dialogs.open).toBeNull());
+    expect(started()).toEqual([]);
   });
 
   it("security: the watermark does not replace the file picked for encryption", async () => {

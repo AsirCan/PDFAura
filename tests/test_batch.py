@@ -4,9 +4,11 @@ import os
 import pytest
 
 from conftest import make_pdf
+from src.app import tools
 from src.core import batch
 from src.core.batch import (RENAME_TOKENS, _apply_rename_tokens, batch_convert_dir,
                             batch_rename_dir, get_files_in_dir)
+from src.core.lang_manager import _
 from src.core.output_paths import unique_path
 
 
@@ -144,6 +146,123 @@ def test_empty_folder_is_reported(tmp_path):
     assert success == 0
     assert errors
     assert "bulunamadi" in errors[0].lower() or "found" in errors[0].lower()
+
+
+# ── Files already in the output folder are asked about (#34) ─────────────
+
+def _folders(tmp_path):
+    src, out = tmp_path / "in", tmp_path / "out"
+    src.mkdir()
+    out.mkdir()
+    return src, out
+
+
+def _batch(mode, src, out, **options):
+    return {"mode": mode, "input_dir": str(src), "output_dir": str(out), "quality": "screen",
+            "convert_mode": "pdf2img", "rename_rule": "[ORIJINAL_AD]", **options}
+
+
+def test_a_users_file_in_the_way_of_a_rename_is_asked_about(tmp_path):
+    """The rule "Fatura" silently replaced the user's own Fatura.pdf."""
+    src, out = _folders(tmp_path)
+    make_pdf(src / "a.pdf")
+    (out / "Fatura.pdf").write_bytes(b"kullanicinin faturasi")
+
+    assert tools.existing_target("batch", _batch("rename", src, out, rename_rule="Fatura")) == \
+        str(out / "Fatura.pdf")
+
+
+def test_every_file_in_the_way_is_counted(tmp_path, copy_instead_of_compress):
+    src, out = _folders(tmp_path)
+    for name in ("a.pdf", "b.pdf", "c.pdf"):
+        make_pdf(src / name)
+    batch.batch_compress_dir(str(src), str(out), "ebook")
+
+    assert tools.existing_target("batch", _batch("compress", src, out)) == \
+        f"{out / 'compressed_a.pdf'}\n{_('overwrite_more').format(count=2)}"
+
+
+def test_nothing_in_the_way_asks_nothing(tmp_path):
+    src, out = _folders(tmp_path)
+    make_pdf(src / "a.pdf")
+    (out / "baska.pdf").write_bytes(b"x")
+
+    for mode in ("compress", "convert", "rename"):
+        assert tools.existing_target("batch", _batch(mode, src, out)) is None
+
+
+def test_an_image_folder_that_already_holds_pages_is_asked_about(tmp_path):
+    src, out = _folders(tmp_path)
+    make_pdf(src / "rapor.pdf")
+    (out / "rapor").mkdir()
+    (out / "rapor" / "rapor_001.png").write_bytes(b"x")
+
+    assert tools.existing_target("batch", _batch("convert", src, out)) == str(out / "rapor")
+
+
+@pytest.mark.parametrize("rule", ["", "   ", "...", "CON", "nul", "Aux.yedek", "COM1"])
+def test_a_rule_that_gives_no_usable_name_is_refused(tmp_path, rule):
+    """An empty rule wrote '.pdf', '.pdf (2)', '.pdf (3)'."""
+    src, out = _folders(tmp_path)
+    make_pdf(src / "a.pdf")
+
+    assert tools.check("batch", _batch("rename", src, out, rename_rule=rule)) == _("err_rename_rule_invalid")
+
+    success, errors = batch_rename_dir(str(src), str(out), rule)
+    assert success == 0 and len(errors) == 1
+    assert pdf_names(out) == []
+
+
+def test_characters_windows_forbids_are_replaced():
+    assert batch.rename_stem("a<b>|c:\td ", batch.SAMPLE_RENAME_VALUES) == "a_b__c__d"
+
+
+@pytest.mark.parametrize("options, named", [
+    ({"mode": "zip"}, "zip"),
+    ({"mode": "convert", "convert_mode": "pdf2xyz"}, "pdf2xyz"),
+    ({"mode": "compress", "quality": "best"}, "ebook"),
+])
+def test_unknown_modes_are_refused_before_the_run(tmp_path, options, named):
+    src, out = _folders(tmp_path)
+    params = {**_batch("compress", src, out), **options}
+
+    assert named in tools.check("batch", params)
+
+
+def test_an_unknown_conversion_is_a_clear_error(tmp_path):
+    """It ended in "UnboundLocalError: ... 'files'"."""
+    src, out = _folders(tmp_path)
+
+    with pytest.raises(ValueError, match="pdf2xyz"):
+        batch_convert_dir(str(src), str(out), "pdf2xyz")
+
+
+# ── PDF -> Images ─────────────────────────────────────────────────────────
+
+def test_page_images_are_named_after_the_document(tmp_path):
+    """They were sayfa_001.png, in Turkish in every language, and a second
+    document replaced the first one's pages."""
+    from src.core.convert import pdf_to_images
+    first = make_pdf(tmp_path / "rapor.pdf", pages=2, size=(60, 80))
+    second = make_pdf(tmp_path / "ek.pdf", pages=1, size=(60, 80))
+    folder = tmp_path / "resimler"
+
+    pdf_to_images(first, str(folder), dpi=20)
+    pdf_to_images(second, str(folder), dpi=20)
+
+    assert sorted(os.listdir(folder)) == ["ek_001.png", "rapor_001.png", "rapor_002.png"]
+
+
+def test_page_images_already_in_the_folder_are_asked_about(tmp_path):
+    src = make_pdf(tmp_path / "rapor.pdf", pages=3)
+    folder = tmp_path / "resimler"
+    folder.mkdir()
+    (folder / "baska.png").write_bytes(b"x")
+    params = {"mode": "pdf2img", "input": src, "output": str(folder), "fmt": "PNG", "dpi": "300"}
+    assert tools.existing_target("convert", params) is None
+
+    (folder / "rapor_002.png").write_bytes(b"x")
+    assert tools.existing_target("convert", params) == str(folder / "rapor_002.png")
 
 
 # ── Scanning ──────────────────────────────────────────────────────────────

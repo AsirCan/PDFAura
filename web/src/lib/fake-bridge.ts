@@ -135,9 +135,14 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
     },
     async existing_target(tool, params) {
       record("existing_target", [tool, params]);
-      // Like tools.existing_target: the output file, never PDF -> Images' folder.
-      const target = tool === "convert" && params.mode === "pdf2img" ? "" : String(params.output ?? "");
-      return target && existing?.has(target) ? target : null;
+      if (!existing) return null;
+      // Like tools.existing_target: the output file; for a batch or PDF ->
+      // Images, the first file already in the output folder.
+      const folder = tool === "batch" ? String(params.output_dir ?? "")
+        : tool === "convert" && params.mode === "pdf2img" ? String(params.output ?? "") : "";
+      if (folder) return [...existing].find((path) => path.startsWith(`${folder}\\`)) ?? null;
+      const target = String(params.output ?? "");
+      return target && existing.has(target) ? target : null;
     },
     async suggest_output(tool, source, mode) {
       record("suggest_output", [tool, source, mode]);

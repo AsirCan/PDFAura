@@ -412,5 +412,13 @@ def test_every_tool_that_writes_a_file_names_it_so_the_ui_can_ask(tmp_path, tool
     assert tools.existing_target(tool, {**params, "output": str(target)}) == str(target)
 
 
-def test_a_folder_of_images_is_not_asked_about(tmp_path):
-    assert tools.existing_target("convert", {"mode": "pdf2img", "input": "a.pdf", "output": str(tmp_path)}) is None
+def test_an_image_folder_is_asked_about_only_for_pages_it_already_holds(tmp_path):
+    """The folder itself is not replaced; same-named page images are (#34)."""
+    source = make_pdf(tmp_path / "a.pdf", pages=2)
+    folder = tmp_path / "images"
+    folder.mkdir()
+    params = {"mode": "pdf2img", "input": source, "output": str(folder)}
+    assert tools.existing_target("convert", params) is None
+    (folder / "a_001.png").write_bytes(b"x")
+    assert tools.existing_target("convert", params) == str(folder / "a_001.png")
+    assert tools.existing_target("convert", {**params, "input": str(tmp_path / "missing.pdf")}) is None

@@ -95,18 +95,20 @@ def unique_path(path, taken=None, check_disk=True):
 
 
 def mirrored_output(input_path, input_root, output_root, prefix="", ext=None, taken=None,
-                    check_disk=False):
+                    check_disk=False, create=True):
     """Place *input_path* under *output_root* keeping its folder structure.
 
     Flattening the tree meant 'rapor.pdf' and 'alt/rapor.pdf' both wrote to
-    'compressed_rapor.pdf' and one of them was lost.
+    'compressed_rapor.pdf' and one of them was lost. *create* False only
+    plans the name, without making its folder.
     """
     relative = os.path.relpath(input_path, input_root)
     folder, name = os.path.split(relative)
     stem, original_ext = os.path.splitext(name)
     target_ext = ext if ext is not None else original_ext
     target_dir = os.path.join(output_root, folder) if folder not in ("", ".") else output_root
-    os.makedirs(target_dir, exist_ok=True)
+    if create:
+        os.makedirs(target_dir, exist_ok=True)
     return unique_path(os.path.join(target_dir, f"{prefix}{stem}{target_ext}"), taken, check_disk)
 
 

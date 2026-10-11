@@ -3,6 +3,28 @@ from contextlib import contextmanager
 
 from src.core.lang_manager import _
 
+def _image_ext(img_format):
+    return "png" if str(img_format).lower() == "png" else "jpg"
+
+
+def page_image_path(input_pdf, output_folder, index, img_format="png"):
+    """Where page *index* (0-based) of *input_pdf* goes: '<name>_001.png'.
+
+    The pages used to be 'sayfa_001.png', in Turkish in every language, so
+    two documents put in one folder replaced each other's pages (#34).
+    """
+    stem = os.path.splitext(os.path.basename(input_pdf))[0]
+    return os.path.join(output_folder, f"{stem}_{index + 1:03d}.{_image_ext(img_format)}")
+
+
+def page_image_paths(input_pdf, output_folder, img_format="png"):
+    """Every file pdf_to_images would write for *input_pdf*."""
+    import fitz
+    with fitz.open(input_pdf) as doc:
+        count = doc.page_count
+    return [page_image_path(input_pdf, output_folder, index, img_format) for index in range(count)]
+
+
 def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None):
     """Render PDF pages to images with PyMuPDF. Returns number of created files.
 
@@ -12,7 +34,7 @@ def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None)
     import fitz
 
     os.makedirs(output_folder, exist_ok=True)
-    ext = "png" if img_format.lower() == "png" else "jpg"
+    ext = _image_ext(img_format)
 
     if ctx:
         ctx.check_cancelled()
@@ -30,7 +52,7 @@ def pdf_to_images(input_pdf, output_folder, dpi=300, img_format="png", ctx=None)
             if ctx:
                 ctx.check_cancelled()
             pixmap = doc.load_page(index).get_pixmap(dpi=dpi)
-            target = os.path.join(output_folder, f"sayfa_{index + 1:03d}.{ext}")
+            target = page_image_path(input_pdf, output_folder, index, ext)
             if ext == "jpg":
                 pixmap.save(target, jpg_quality=95)
             else:
