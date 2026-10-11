@@ -79,7 +79,7 @@ def test_a_failed_download_says_why(tmp_path, monkeypatch):
 def test_a_cancelled_download_is_a_cancel_and_leaves_no_part_file(tmp_path, monkeypatch):
     """The manager wrapped every error, a cancel too, as a failed download."""
     class Response(io.BytesIO):
-        headers = {"Content-Length": str(1024 * 512)}
+        headers = {"Content-Length": str(model_manager.DEFAULT_MODEL_SPECS[0].size_bytes)}
 
         def __enter__(self):
             return self
@@ -94,7 +94,7 @@ def test_a_cancelled_download_is_a_cancel_and_leaves_no_part_file(tmp_path, monk
         raise CancelledError()
     with pytest.raises(CancelledError):
         manager.download_model("scanner_u2netp", progress=cancel)
-    assert list((tmp_path / "vision").glob("*.part")) == []
+    assert list((tmp_path / "vision").iterdir()) == []    # no partial or temporary file
 
 
 def test_testing_a_model_answers_ok_and_why(tmp_path):

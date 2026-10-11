@@ -17,15 +17,20 @@ from pathlib import Path
 
 MODELS = {
     "mobilenet_corner_detector": {
-        # Çalışan HuggingFace URL'si (chwshuang reposu)
-        "url": "https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/main/u2netp.onnx",
+        # The app's own download (src/ai/model_manager.py): a fixed commit,
+        # checked against its SHA-256 before it is kept (#35).
+        "url": "https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/"
+               "b89fabdfd832c6adc357cfc7430e5eb60357a8ff/u2netp.onnx",
+        "sha256": "16fb536473a41b2e101bd3a6ff788f599b95e32ecbe20624c552b3d8ba91a11a",
+        "size_bytes": 4571475,
         "filename": "u2netp_document.onnx",
         "size_mb": 4.7,
         "description": "Hafif U2-Net-P modeli (ONNX) - Önerilen",
         "optional": False,
     },
     "u2net_document": {
-        # Alternatif: GitHub releases üzerinden
+        # Alternatif: GitHub releases üzerinden. No checksum is published for
+        # this release asset, so only its size is checked.
         "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx",
         "filename": "u2net_document.onnx",
         "size_mb": 168,  # Gerçek boyut ~167.8 MB
@@ -35,6 +40,24 @@ MODELS = {
 }
 
 MODELS_DIR = Path(__file__).parent / "models"
+
+
+def download_checked(model_info, destination):
+    """Download a model with a known SHA-256: kept only if it matches."""
+    from src.utils.download import DownloadError, download_verified
+
+    def progress(done, total):
+        print(f"\r   {done * 100 / total:.1f}% ({done / 1048576:.1f}/{total / 1048576:.1f} MB)", end="")
+
+    print(f"\n📥 İndiriliyor: {model_info['description']}")
+    try:
+        download_verified(model_info["url"], str(destination), model_info["size_bytes"],
+                          sha256=model_info["sha256"], progress=progress)
+    except DownloadError as e:
+        print(f"\n   ❌ Hata: {e}")
+        return False
+    print("\n   ✅ İndirme tamamlandı ve doğrulandı!")
+    return True
 
 
 def download_file(url, destination, description=""):
@@ -123,7 +146,12 @@ def download_all_models(skip_optional=False):
         destination = MODELS_DIR / model_info['filename']
 
         if destination.exists():
-            if verify_file(destination, model_info['size_mb']):
+            if "sha256" in model_info:
+                from src.utils.download import file_matches
+                intact = file_matches(str(destination), model_info["size_bytes"], sha256=model_info["sha256"])
+            else:
+                intact = verify_file(destination, model_info['size_mb'])
+            if intact:
                 print(f"✅ Model zaten mevcut: {destination.name}")
                 success_count += 1
                 continue
@@ -131,8 +159,13 @@ def download_all_models(skip_optional=False):
                 print(f"⚠ Mevcut model bozuk, yeniden indiriliyor...")
                 destination.unlink()
 
+        if "sha256" in model_info:
+            if download_checked(model_info, destination):
+                success_count += 1
+            else:
+                fail_count += 1
         # URL varsa normal indir
-        if model_info['url']:
+        elif model_info['url']:
             ok = download_file(model_info['url'], destination, model_info['description'])
             if ok and verify_file(destination, model_info['size_mb']):
                 success_count += 1

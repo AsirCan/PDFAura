@@ -29,7 +29,9 @@ class ModelSpec:
     required: bool = False
     license_name: str = ""
     source_url: str = ""
-    download_url: str = ""
+    download_url: str = ""          # at a fixed revision, never a branch
+    sha256: str = ""                # of the file at download_url
+    size_bytes: int = 0             # likewise; nothing is downloaded without both
     hardware_profile: str = "Hafif"
     notes: str = ""
 
@@ -59,7 +61,12 @@ DEFAULT_MODEL_SPECS: tuple[ModelSpec, ...] = (
         required=True,
         license_name="Model kaynağına göre kontrol edilmeli",
         source_url="https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model",
-        download_url="https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/main/u2netp.onnx",
+        # Pinned to a commit and checked: "resolve/main" loaded whatever the
+        # third-party repository held that day into ONNX Runtime (#35).
+        download_url="https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/"
+                     "b89fabdfd832c6adc357cfc7430e5eb60357a8ff/u2netp.onnx",
+        sha256="16fb536473a41b2e101bd3a6ff788f599b95e32ecbe20624c552b3d8ba91a11a",
+        size_bytes=4571475,
         hardware_profile="Hafif",
         notes="Mevcut scanner algoritmasının hızlı AI fallback modelidir.",
     ),
@@ -348,38 +355,22 @@ class ModelManager:
             raise ModelDownloadError("Bu model için doğrudan indirme bağlantısı tanımlı değil.")
         if not spec.filenames:
             raise ModelDownloadError("Bu model için hedef dosya adı tanımlı değil.")
+        if not spec.sha256 or not spec.size_bytes:
+            raise ModelDownloadError(_("err_download_no_checksum"))
 
         self.ensure_directories()
         destination = self.model_dir(spec) / spec.filenames[0]
-        part = destination.with_suffix(destination.suffix + ".part")
 
-        import urllib.request
+        from src.utils.download import download_verified
         try:
-            req = urllib.request.Request(spec.download_url, headers={"User-Agent": "PDFAura/1.0"})
-            with urllib.request.urlopen(req, timeout=30) as response:
-                total = int(response.headers.get("Content-Length", 0))
-                downloaded = 0
-                with open(part, "wb") as handle:
-                    while True:
-                        chunk = response.read(1024 * 128)
-                        if not chunk:
-                            break
-                        handle.write(chunk)
-                        downloaded += len(chunk)
-                        if progress:
-                            progress(downloaded, total)
-            part.replace(destination)
+            download_verified(spec.download_url, str(destination), spec.size_bytes, sha256=spec.sha256,
+                              progress=progress)
             return destination
-        except BaseException as exc:
-            try:
-                if part.exists():
-                    part.unlink()
-            except OSError:
-                pass
+        except CancelledError:
             # A cancel from the progress callback stays a cancel, not a
             # failed download.
-            if isinstance(exc, CancelledError) or not isinstance(exc, Exception):
-                raise
+            raise
+        except Exception as exc:
             raise ModelDownloadError(str(exc)) from exc
 
     def test_model(self, model_id: str) -> tuple[bool, str]:
