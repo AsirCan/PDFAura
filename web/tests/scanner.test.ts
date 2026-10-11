@@ -105,6 +105,24 @@ describe("the scanner page", () => {
     expect(calls("scanner_remove")).toEqual([["p1"]]);
   });
 
+  it("turns and removes a page from its card", async () => {
+    await withPages();
+    const action = (index: number, name: string) => pages()[index].querySelector(`[data-action="${name}"]`)!;
+    await fireEvent.click(action(2, "cw"));
+    await waitFor(() => expect(calls("scanner_rotate")).toEqual([["p3", 90]]));
+    // The page turned is the one shown.
+    await waitFor(() => expect(screen.getByText("Sayfa 3/3")).toBeInTheDocument());
+    await fireEvent.click(action(0, "ccw"));
+    await waitFor(() => expect(calls("scanner_rotate")).toContainEqual(["p1", -90]));
+    // A double click on an action is not a rename, and takes one page only.
+    await fireEvent.dblClick(action(1, "ccw"));
+    expect(screen.queryByLabelText("scanner_page_rename")).toBeNull();
+    await fireEvent.click(action(1, "remove"), { detail: 1 });
+    await fireEvent.click(action(1, "remove"), { detail: 2 });
+    await waitFor(() => expect(pages()).toHaveLength(2));
+    expect(calls("scanner_remove")).toEqual([["p2"]]);
+  });
+
   it("asks before clearing every page", async () => {
     await withPages();
     await fireEvent.click(screen.getByRole("button", { name: "scanner_clear_all" }));

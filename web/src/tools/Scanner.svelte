@@ -32,6 +32,8 @@
   let previewLoaded = $state(false);
   let workW = $state(0);
   let workH = $state(0);
+  /** The corners hint under the photo; 0 while a short window hides it. */
+  let hintH = $state(0);
   let sashDrag: { x: number; width: number; moved: boolean } | null = null;
   let dragWidth = $state<number | null>(null);
 
@@ -61,7 +63,7 @@
         // The median: one odd landscape page doesn't reshape a portrait document.
         const half = Math.floor(aspects.length / 2);
         const median = aspects.length % 2 ? aspects[half] : (aspects[half - 1] + aspects[half]) / 2;
-        want = workW - SASH - ((workH - FIT_MARGIN) * median + FIT_MARGIN);
+        want = workW - SASH - ((workH - hintH - FIT_MARGIN) * median + FIT_MARGIN);
       }
     }
     return Math.round(Math.max(STRIP_MIN, Math.min(max, want)));
@@ -271,6 +273,8 @@
         <div class="stage">
           {#if page}
             <CornerEditor {page} {locked} oncommit={commit} />
+            <!-- Under the photo it is about, level with the strip's buttons. -->
+            <p class="hint corners" bind:offsetHeight={hintH}>{t("scanner_corners_hint")}</p>
           {:else}
             <button class="empty" type="button" disabled={locked} onclick={addPhotos}>
               <Icon name="SCAN" size={30} />
@@ -280,7 +284,6 @@
         </div>
       </div>
 
-      <p class="hint corners">{t("scanner_corners_hint")}</p>
       <div class="options">
         <label class="field-label" for="scanner-mode">{t("scanner_scan_mode")}</label>
         <span class="select-wrap mode">
@@ -419,6 +422,7 @@
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
+    flex-direction: column;
   }
   .empty {
     flex: 1;
@@ -437,7 +441,13 @@
     color: var(--stage-muted);
   }
   .corners {
-    margin: 6px 0 0;
+    flex: none;
+    min-height: 36px;
+    margin: 0;
+    padding-top: 8px;
+    display: grid;
+    place-items: center;
+    text-align: center;
   }
   .options {
     display: grid;
@@ -464,18 +474,21 @@
     margin: 0 0 10px;
   }
   .preview {
+    position: relative;
     flex: 1 1 auto;
     min-height: 140px;
-    display: grid;
-    place-items: center;
-    padding: 12px;
     background: var(--sunken);
     border-radius: var(--radius);
     overflow: hidden;
   }
+  /* Out of the flow, so a long receipt is fitted to the box instead of
+     stretching it past the bottom, where it was cut off. */
   .preview img {
-    max-width: 100%;
-    max-height: 100%;
+    position: absolute;
+    inset: 12px;
+    margin: auto;
+    max-width: calc(100% - 24px);
+    max-height: calc(100% - 24px);
     display: block;
     background: var(--surface);
     box-shadow: 1px 3px 0 var(--border-subtle);
