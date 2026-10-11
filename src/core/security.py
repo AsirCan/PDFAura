@@ -15,18 +15,19 @@ def check_new_password(password, confirm=None):
 
 
 def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
-    """Encrypt a PDF with the given password (AES-256)."""
+    """Encrypt a PDF with the given password (AES-256).
+
+    The whole document is copied, so bookmarks, document info and form
+    fields stay; copying only the pages lost them (#32).
+    """
     from pypdf import PdfWriter
     check_new_password(password)
     reader = open_pdf_reader(input_pdf)
-    writer = PdfWriter()
-    total = len(reader.pages)
-
-    for i, page in enumerate(reader.pages, 1):
-        if ctx:
-            ctx.check_cancelled()
-            ctx.report_progress(i, total + 1, _("progress_page_of").format(current=i, total=total))
-        writer.add_page(page)
+    if ctx:
+        ctx.check_cancelled()
+        ctx.report_progress(0, 1, _("progress_starting"))
+    writer = PdfWriter(clone_from=reader)
+    total = len(writer.pages)
 
     writer.encrypt(user_password=password, algorithm="AES-256")
 
@@ -36,7 +37,7 @@ def encrypt_pdf(input_pdf, output_pdf, password, ctx=None):
         ctx.report_progress(total + 1, total + 1, _("progress_finished"))
 
 def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
-    """Decrypt a PDF using the given password."""
+    """Decrypt a PDF using the given password, keeping everything else."""
     from pypdf import PdfReader, PdfWriter
     if not PdfReader(input_pdf).is_encrypted:
         raise ValueError(_("err_pdf_not_encrypted"))
@@ -44,15 +45,11 @@ def decrypt_pdf(input_pdf, output_pdf, password, ctx=None):
     reader = open_pdf_reader(input_pdf, password)
 
     if ctx:
+        ctx.check_cancelled()
         ctx.report_progress(1, 3, _("progress_starting"))
 
-    writer = PdfWriter()
-    total = len(reader.pages)
-    for i, page in enumerate(reader.pages, 1):
-        if ctx:
-            ctx.check_cancelled()
-            ctx.report_progress(i, total + 1, _("progress_page_of").format(current=i, total=total))
-        writer.add_page(page)
+    writer = PdfWriter(clone_from=reader)
+    total = len(writer.pages)
 
     write_pdf(writer, output_pdf)
 
@@ -174,11 +171,12 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
         ctx.report_progress(1, 10, _("progress_starting"))
 
     reader = open_pdf_reader(input_pdf)
-    writer = PdfWriter()
-    total = len(reader.pages)
+    # The whole document, stamped in place: bookmarks, info and forms stay.
+    writer = PdfWriter(clone_from=reader)
+    total = len(writer.pages)
     stamps = {}
 
-    for i, page in enumerate(reader.pages, 1):
+    for i, page in enumerate(writer.pages, 1):
         if ctx:
             ctx.check_cancelled()
             ctx.report_progress(i, total, _("progress_page_of").format(current=i, total=total))
@@ -189,11 +187,8 @@ def add_watermark_to_pdf(input_pdf, output_pdf, text, opacity=0.3, angle=45, fon
             stamps[key] = _build_watermark_page(text, width, height, rotation,
                                                 opacity, angle, font_size)
 
-        # Attach the page to the writer before merging: pypdf needs the page
-        # to have a writer to rewrite its content stream reliably.
-        new_page = writer.add_page(page)
         # Shift the stamp onto the crop box when it does not start at (0, 0).
-        new_page.merge_translated_page(stamps[key], x0, y0, expand=False)
+        page.merge_translated_page(stamps[key], x0, y0, expand=False)
 
     write_pdf(writer, output_pdf)
 

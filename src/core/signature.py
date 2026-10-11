@@ -47,7 +47,8 @@ def stamp_visual_signature(input_pdf, output_pdf, image_path, page_num=1,
     scale = _to_number(scale, "scale")
 
     reader = open_pdf_reader(input_pdf)
-    writer = PdfWriter()
+    # The whole document, stamped in place: bookmarks, info and forms stay.
+    writer = PdfWriter(clone_from=reader)
 
     total_pages = len(reader.pages)
     if page_num < 1 or page_num > total_pages:
@@ -89,10 +90,7 @@ def stamp_visual_signature(input_pdf, output_pdf, image_path, page_num=1,
     a, b, c, d, e, f = _rotation_matrix(rotation, width, height)
     matrix = (a, b, c, d, e + x0, f + y0)
 
-    for i, page in enumerate(reader.pages):
-        new_page = writer.add_page(page)
-        if i == page_num - 1:
-            new_page.merge_transformed_page(stamp_page, matrix, expand=False)
+    writer.pages[page_num - 1].merge_transformed_page(stamp_page, matrix, expand=False)
 
     write_pdf(writer, output_pdf)
 

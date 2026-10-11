@@ -39,13 +39,13 @@ def update_metadata(input_pdf, output_pdf, title=None, author=None, subject=None
 
     With clean=True both the Info dictionary and the XMP stream are dropped,
     so no producer string survives.
+
+    The rest of the document is copied as it is: copying only the pages lost
+    the bookmarks and form fields (#32).
     """
     from pypdf import PdfWriter
     reader = open_pdf_reader(input_pdf)
-    writer = PdfWriter()
-
-    for page in reader.pages:
-        writer.add_page(page)
+    writer = PdfWriter(clone_from=reader)
 
     if clean:
         # metadata = None drops the whole Info dictionary, including the
@@ -64,18 +64,25 @@ def update_metadata(input_pdf, output_pdf, title=None, author=None, subject=None
     if source_meta:
         new_meta.update(source_meta)
 
+    changed = False
     for name, value in (("title", title), ("author", author),
                         ("subject", subject), ("creator", creator)):
         if value is None:
             continue  # not supplied: leave whatever the document had
         key = _FIELD_KEYS[name]
         if value == "":
-            new_meta.pop(key, None)  # explicitly emptied
+            changed |= new_meta.pop(key, None) is not None  # explicitly emptied
         else:
+            changed |= new_meta.get(key) != value
             new_meta[key] = value
 
     new_meta["/ModDate"] = datetime.now().strftime("D:%Y%m%d%H%M%S")
 
-    writer.add_metadata(new_meta)
+    # Replaces the copied Info, so an emptied field goes.
+    writer.metadata = new_meta
+    if changed:
+        # The XMP copy still holds the old values, and some viewers read it
+        # before the Info dictionary.
+        writer.xmp_metadata = None
 
     write_pdf(writer, output_pdf)

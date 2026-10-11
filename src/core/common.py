@@ -22,6 +22,22 @@ def open_pdf_reader(pdf_path, password=None):
     return reader
 
 
+def pick_pages(reader, indices):
+    """A new PdfWriter with *reader*'s pages at *indices* (0-based, in that
+    order), the bookmarks and form fields on those pages, and the document
+    info.
+
+    Copying pages one by one with add_page() kept only the pages: the
+    bookmarks, the title and fillable form fields were silently lost (#32).
+    """
+    from pypdf import PdfWriter
+    writer = PdfWriter()
+    writer.append(reader, pages=list(indices), import_outline=True)
+    if reader.metadata:
+        writer.add_metadata(reader.metadata)
+    return writer
+
+
 def get_pdf_page_count(pdf_path):
     """Return the total number of pages in a PDF."""
     return len(open_pdf_reader(pdf_path).pages)
