@@ -15,7 +15,25 @@ from collections import OrderedDict
 
 JPEG_QUALITY = 88
 MAX_RENDER_WIDTH = 4096       # px; a page zoomed to 500 % in the viewer
+# A long page (a receipt, a web page printed on one sheet: PDF allows
+# 14400 pt) drawn at the asked width came out taller than JPEG allows
+# (65500 px), so it showed as a broken image, after taking up to 1.2 GB
+# while every other preview waited for the lock (#36). The height and the
+# pixel count are capped too; past them the page is drawn smaller and the
+# viewer scales it up. A4 at 4096 px wide stays under both.
+MAX_RENDER_HEIGHT = 16384
+MAX_RENDER_PIXELS = 4096 * 6144
 _OPEN_DOCUMENTS = 4
+
+
+def render_zoom(page_width, page_height, width):
+    """The zoom that draws a page ``width`` px wide, or less when that would
+    pass MAX_RENDER_HEIGHT or MAX_RENDER_PIXELS. A pixel is kept in hand
+    for PyMuPDF rounding the size up."""
+    page_width, page_height = max(1.0, page_width), max(1.0, page_height)
+    return min(width / page_width,
+               (MAX_RENDER_HEIGHT - 1) / page_height,
+               ((MAX_RENDER_PIXELS - MAX_RENDER_WIDTH - MAX_RENDER_HEIGHT - 1) / (page_width * page_height)) ** 0.5)
 
 
 class ImageCache:
@@ -124,7 +142,7 @@ class PdfPages:
             if doc.needs_pass or not 0 <= index < len(doc):
                 return None
             page = doc.load_page(index)
-            zoom = width / max(1.0, page.rect.width)
+            zoom = render_zoom(page.rect.width, page.rect.height, width)
             pixmap = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
             return pixmap.tobytes("jpeg", jpg_quality=JPEG_QUALITY)
 

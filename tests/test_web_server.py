@@ -160,3 +160,40 @@ def test_a_closing_window_does_not_break_the_sender():
     bus = EventBus(broken)
     bus.ready()
     bus.emit("job", {"id": 1})
+
+
+# ── Long pages (#36) ──────────────────────────────────────────────────────
+
+def _drawn_size(jpeg):
+    import io
+    from PIL import Image
+    with Image.open(io.BytesIO(jpeg)) as picture:
+        return picture.size
+
+
+@pytest.mark.parametrize("size, width", [
+    ((200, 14400), 560), ((200, 14400), 1000), ((200, 14400), 4096), ((612, 14400), 4096),
+    ((14400, 200), 4096),
+])
+def test_a_very_long_page_is_drawn_at_every_zoom_within_bounds(tmp_path, size, width):
+    """200 x 14400 pt failed past w=560 ("Maximum supported image dimension
+    is 65500 pixels") and 612 x 14400 pt at 500 % held ~1.2 GB."""
+    from src.app.images import MAX_RENDER_HEIGHT, MAX_RENDER_PIXELS
+    path = make_pdf(tmp_path / "fis.pdf", pages=1, size=size)
+    pages = PdfPages()
+
+    jpeg = pages.render(pages.register(path), 0, width)
+
+    assert jpeg is not None
+    drawn_width, drawn_height = _drawn_size(jpeg)
+    assert drawn_height <= MAX_RENDER_HEIGHT
+    assert drawn_width * drawn_height <= MAX_RENDER_PIXELS
+    pages.close()
+
+
+def test_an_ordinary_page_still_gets_the_width_it_asks_for(tmp_path):
+    path = make_pdf(tmp_path / "a4.pdf", pages=1, size=(595, 842))
+    pages = PdfPages()
+    for width in (300, 1200, 4096):
+        assert _drawn_size(pages.render(pages.register(path), 0, width))[0] in (width, width + 1)
+    pages.close()
