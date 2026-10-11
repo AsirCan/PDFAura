@@ -19,8 +19,7 @@ MODELS = {
     "mobilenet_corner_detector": {
         # The app's own download (src/ai/model_manager.py): a fixed commit,
         # checked against its SHA-256 before it is kept (#35).
-        "url": "https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/"
-               "b89fabdfd832c6adc357cfc7430e5eb60357a8ff/u2netp.onnx",
+        "url": "https://huggingface.co/chwshuang/Stable_diffusion_remove_background_model/resolve/b89fabdfd832c6adc357cfc7430e5eb60357a8ff/u2netp.onnx",
         "sha256": "16fb536473a41b2e101bd3a6ff788f599b95e32ecbe20624c552b3d8ba91a11a",
         "size_bytes": 4571475,
         "filename": "u2netp_document.onnx",
