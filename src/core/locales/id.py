@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "Urutan halaman harus mencantumkan semua {total} halaman tepat satu kali. {problems}",
     "err_metadata_read":        "Metadata tidak dapat dibaca:",
     "assist_need_password":     "Enkripsi memerlukan kata sandi. Contoh: enkripsi laporan.pdf dengan abc123.",
+    "assist_password_used":     "Kata sandi yang digunakan: {password}",
     "assist_merge_needs_two":   "Penggabungan memerlukan minimal dua nama file. Contoh: gabungkan a.pdf dan b.pdf.",
     "assist_merge_name":        "Gabungan",
     "assist_not_understood":    "Saya tidak mengerti, silakan ulangi.",

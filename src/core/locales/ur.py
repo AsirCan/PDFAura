@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "صفحات کی ترتیب میں تمام {total} صفحات ٹھیک ایک ایک بار ہونے چاہییں۔ {problems}",
     "err_metadata_read":        "میٹا ڈیٹا پڑھا نہیں جا سکا:",
     "assist_need_password":     "انکرپٹ کرنے کے لیے پاس ورڈ چاہیے۔ مثال: report.pdf کو abc123 سے انکرپٹ کرو۔",
+    "assist_password_used":     "استعمال شدہ پاس ورڈ: {password}",
     "assist_merge_needs_two":   "ضم کرنے کے لیے کم از کم دو فائلوں کے نام چاہییں۔ مثال: a.pdf اور b.pdf ضم کرو۔",
     "assist_merge_name":        "ضم شدہ",
     "assist_not_understood":    "میں سمجھ نہیں سکا، براہ کرم دوبارہ کہیں۔",

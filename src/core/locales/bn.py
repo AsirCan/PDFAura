@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "পেজের ক্রমে মোট {total}টি পেজের প্রতিটি ঠিক একবার থাকতে হবে। {problems}",
     "err_metadata_read":        "মেটাডেটা পড়া যায়নি:",
     "assist_need_password":     "এনক্রিপ্ট করতে পাসওয়ার্ড লাগবে। যেমন: report.pdf কে abc123 দিয়ে এনক্রিপ্ট করো।",
+    "assist_password_used":     "ব্যবহৃত পাসওয়ার্ড: {password}",
     "assist_merge_needs_two":   "মার্জ করতে অন্তত দুটি ফাইলের নাম লাগবে। যেমন: a.pdf আর b.pdf মার্জ করো।",
     "assist_merge_name":        "মার্জ",
     "assist_not_understood":    "বুঝতে পারিনি, অনুগ্রহ করে আবার বলুন।",

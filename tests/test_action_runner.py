@@ -46,6 +46,19 @@ def test_encrypt_with_a_password_produces_the_file(home, spoken):
     assert reader.decrypt("abc123")
 
 
+def test_encrypt_keeps_the_case_of_the_password_and_says_it(home, spoken):
+    """'Gizli123' used to lock the file with 'gizli123', and nobody was told (#29)."""
+    make_pdf(home / "rapor.pdf")
+
+    action_runner.execute_intent(parse_intent("rapor.pdf dosyasını Gizli123 ile şifrele"))
+
+    from pypdf import PdfReader
+    reader = PdfReader(str(home / "rapor_aura.pdf"))
+    assert not reader.decrypt("gizli123")
+    assert reader.decrypt("Gizli123")
+    assert "Gizli123" in spoken[-1]
+
+
 def test_merge_combines_both_files(home, spoken):
     make_pdf(home / "a.pdf", pages=2)
     make_pdf(home / "b.pdf", pages=3)

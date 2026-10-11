@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "पेज क्रम में सभी {total} पेज ठीक एक-एक बार होने चाहिए। {problems}",
     "err_metadata_read":        "मेटाडेटा पढ़ा नहीं जा सका:",
     "assist_need_password":     "एन्क्रिप्ट करने के लिए पासवर्ड चाहिए। उदाहरण: report.pdf को abc123 से एन्क्रिप्ट करो।",
+    "assist_password_used":     "उपयोग किया गया पासवर्ड: {password}",
     "assist_merge_needs_two":   "मर्ज करने के लिए कम से कम दो फ़ाइल नाम चाहिए। उदाहरण: a.pdf और b.pdf मर्ज करो।",
     "assist_merge_name":        "मर्ज",
     "assist_not_understood":    "मैं समझ नहीं पाया, कृपया फिर से कहें।",

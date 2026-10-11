@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "Die Reihenfolge muss alle {total} Seiten genau einmal enthalten. {problems}",
     "err_metadata_read":        "Die Metadaten konnten nicht gelesen werden:",
     "assist_need_password":     "Zum Verschlüsseln wird ein Passwort benötigt. Zum Beispiel: verschlüssele bericht.pdf mit abc123.",
+    "assist_password_used":     "Verwendetes Passwort: {password}",
     "assist_merge_needs_two":   "Zum Zusammenführen werden mindestens zwei Dateinamen benötigt. Zum Beispiel: füge a.pdf und b.pdf zusammen.",
     "assist_merge_name":        "Zusammengeführt",
     "assist_not_understood":    "Das habe ich nicht verstanden, bitte noch einmal sagen.",

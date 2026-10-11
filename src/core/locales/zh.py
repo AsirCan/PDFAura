@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "页面顺序必须恰好列出全部 {total} 页各一次。{problems}",
     "err_metadata_read":        "无法读取元数据：",
     "assist_need_password":     "加密需要密码。例如：用 abc123 加密 报告.pdf。",
+    "assist_password_used":     "使用的密码：{password}",
     "assist_merge_needs_two":   "合并至少需要两个文件名。例如：合并 a.pdf 和 b.pdf。",
     "assist_merge_name":        "合并",
     "assist_not_understood":    "我没听懂，请再说一遍。",

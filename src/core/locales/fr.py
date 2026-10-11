@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "L'ordre doit contenir les {total} pages une seule fois chacune. {problems}",
     "err_metadata_read":        "Impossible de lire les métadonnées :",
     "assist_need_password":     "Le chiffrement nécessite un mot de passe. Par exemple : chiffre rapport.pdf avec abc123.",
+    "assist_password_used":     "Mot de passe utilisé : {password}",
     "assist_merge_needs_two":   "La fusion nécessite au moins deux noms de fichier. Par exemple : fusionne a.pdf et b.pdf.",
     "assist_merge_name":        "Fusion",
     "assist_not_understood":    "Je n'ai pas compris, pouvez-vous répéter ?",

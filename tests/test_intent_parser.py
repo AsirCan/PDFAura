@@ -38,6 +38,34 @@ def test_encrypt_with_a_spoken_password_uses_it():
     assert kwargs_of("rapor.pdf dosyasını abc123 ile şifrele", "encrypt")["password"] == "abc123"
 
 
+# ── Passwords (#29): exactly as written, or ask ───────────────────────────
+
+@pytest.mark.parametrize("command, password", [
+    # The table in issue #29.
+    ("rapor.pdf dosyasını Gizli123 ile şifrele", "Gizli123"),
+    ("rapor.pdf dosyasını parola ile şifrele", None),
+    ("rapor.pdf dosyasını şifrelemek istiyorum", None),
+    ("rapor.pdf dosyasını şifreler misin", None),
+    ("rapor.pdf dosyasını şifreleyin", None),
+    ("protect report.pdf with a password please", None),
+    # Other ways of saying it.
+    ("rapor.pdf dosyasını güvenli42 ile şifrele", "güvenli42"),
+    ("rapor.pdf dosyasını şifrele, şifre: Gizli123.", "Gizli123"),
+    ("rapor.pdf parolası Kedi-99 olsun, şifrele", "Kedi-99"),
+    ("rapor.pdf dosyasını Gizli123 parolası ile koru", "Gizli123"),
+    ('rapor.pdf dosyasını "Gizli 123" ile şifrele', "Gizli 123"),
+    ("rapor.pdf'e şifre ekle", None),
+    ("encrypt report.pdf with Secret99", "Secret99"),
+    ("encrypt report.pdf, password: Secret99", "Secret99"),
+])
+def test_password_is_taken_as_written_or_asked_for(command, password):
+    encrypt = kwargs_of(command, "encrypt")
+    if password is None:
+        assert encrypt == {"needs_password": True}
+    else:
+        assert encrypt == {"password": password}
+
+
 def test_filename_containing_kes_is_not_a_split():
     """'herkes.pdf' contains 'kes'; it must not trigger a split."""
     assert actions_of("herkes.pdf dosyasını sıkıştır") == ["compress"]

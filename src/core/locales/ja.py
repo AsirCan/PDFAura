@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "ページ順には全 {total} ページを 1 回ずつ指定してください。{problems}",
     "err_metadata_read":        "メタデータを読み込めませんでした:",
     "assist_need_password":     "暗号化にはパスワードが必要です。例: 報告書.pdf を abc123 で暗号化して。",
+    "assist_password_used":     "使用したパスワード: {password}",
     "assist_merge_needs_two":   "結合には 2 つ以上のファイル名が必要です。例: a.pdf と b.pdf を結合して。",
     "assist_merge_name":        "結合",
     "assist_not_understood":    "よく分かりませんでした。もう一度言ってください。",

@@ -217,6 +217,67 @@ def _parse_split_range(text):
     return None
 
 
+# ── Passwords ──
+#
+# A password is only taken where the command marks it: "şifre: X",
+# "parola X", "X ile şifrele", "with X". It is read from the command as
+# typed, because PDF passwords are case-sensitive; the lowered text turned
+# "Gizli123" into "gizli123", and the suffix of "şifrelemek" or "şifreler
+# misin" passed for a password.
+
+_QUOTES = "\"'“”‘’«»"
+# A bare password: no spaces or quotes, 3+ characters, Turkish letters too.
+_BARE = rf"[^\s{_QUOTES}]{{3,64}}"
+_QUOTED = rf"[{_QUOTES}]([^{_QUOTES}]{{1,64}})[{_QUOTES}]"
+_TOKEN = rf"(?:{_QUOTED}|({_BARE}))"
+_MARKER = r"\b(?:şifre|sifre|parola|password|passcode)(?:si|sı)?"
+
+_PASSWORD_PATTERNS = [
+    # şifre: X, parola X, password = X, şifresi X olsun, şifre olarak X
+    re.compile(rf"{_MARKER}(?:\s*[:=]\s*|\s+(?:olarak\s+|is\s+|as\s+)?){_TOKEN}", re.IGNORECASE),
+    # X ile şifrele, X şifresiyle şifrele, X parolası ile koru, X diye şifrele
+    re.compile(rf"{_TOKEN}\s+(?:(?:şifre|sifre|parola)(?:si|sı)?\s+)?"
+               rf"(?:ile|şifresiyle|sifresiyle|parolasıyla|parolasiyla|diye)\s+"
+               rf"(?:şifrele|sifrele|parola|kilitle|koru)", re.IGNORECASE),
+    # encrypt report.pdf with X, protect it with the password X
+    re.compile(rf"\b(?:encrypt|protect|lock)\b.*?\bwith\s+(?:the\s+)?(?:password\s+)?{_TOKEN}",
+               re.IGNORECASE),
+]
+
+# Words that stand where a password could and never are one: "parola ile
+# şifrele" is not a password of "parola".
+_NOT_PASSWORDS = {
+    "ile", "ve", "bir", "olarak", "olsun", "ekle", "koy", "koru", "kilitle", "lütfen", "lutfen",
+    "şifre", "sifre", "şifresi", "sifresi", "şifreyle", "sifreyle", "şifrele", "sifrele",
+    "parola", "parolası", "parolasi", "parolayla", "güçlü", "guclu", "yeni", "bunu", "onu",
+    "dosya", "dosyayı", "dosyayi", "dosyasını", "dosyasini", "belgeyi", "pdf'i", "pdf'yi",
+    "password", "passcode", "please", "the", "and", "with", "this", "that", "file", "pdf",
+    "encrypt", "protect", "lock", "strong", "new", "is", "as", "for", "my", "your",
+}
+
+
+def parse_password(text):
+    """The password a command names, exactly as written, or None.
+
+    None means "ask for it": a wrong guess locks the user's document with a
+    password they do not know.
+    """
+    for pattern in _PASSWORD_PATTERNS:
+        for match in pattern.finditer(text):
+            quoted, bare = match.group(1), match.group(2)
+            if quoted is not None:
+                if quoted.strip():
+                    return quoted
+                continue
+            candidate = bare.rstrip(".,;:!?")
+            if len(candidate) < 3 or candidate.lower() in _NOT_PASSWORDS:
+                continue
+            if candidate.lower().endswith(".pdf"):
+                continue        # a file name, not a password
+            return candidate
+    return None
+
+
 def parse_actions(text: str, clean_text: str = None) -> list:
     """Work out which operations were asked for.
 
@@ -260,9 +321,7 @@ def parse_actions(text: str, clean_text: str = None) -> list:
 
     # ── Encrypt ──
     if _matches(KEYWORDS["encrypt"], lowered):
-        match = re.search(r'([a-zA-Z0-9]+)\s+(?:ile|şifresiyle|diye|with)\s+şifre', lowered) or \
-                re.search(r'(?:şifre|parola|password)\s*[:=]?\s*([a-zA-Z0-9]{3,})', lowered)
-        password = match.group(1) if match else None
+        password = parse_password(text)
         # No default password, ever: "123456" silently encrypted people's
         # files with a password they were never told.
         actions.append({"action": "encrypt",

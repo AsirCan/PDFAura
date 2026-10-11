@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "El orden debe incluir las {total} páginas exactamente una vez. {problems}",
     "err_metadata_read":        "No se pudieron leer los metadatos:",
     "assist_need_password":     "Para cifrar hace falta una contraseña. Por ejemplo: cifra informe.pdf con abc123.",
+    "assist_password_used":     "Contraseña utilizada: {password}",
     "assist_merge_needs_two":   "Para unir hacen falta al menos dos nombres de archivo. Por ejemplo: une a.pdf y b.pdf.",
     "assist_merge_name":        "Unido",
     "assist_not_understood":    "No lo he entendido, repítelo por favor.",

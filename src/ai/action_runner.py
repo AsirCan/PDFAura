@@ -59,6 +59,7 @@ def execute_intent(intent: dict):
 
     current_input = found_path
     temp_files = []
+    password_used = None
 
     try:
         for i, act in enumerate(actions):
@@ -89,6 +90,7 @@ def execute_intent(intent: dict):
                     speak(_("assist_need_password"))
                     return
                 encrypt_pdf(current_input, current_output, password)
+                password_used = password
             elif action_type == "merge":
                 extra = extra_paths
                 if not extra:
@@ -112,6 +114,10 @@ def execute_intent(intent: dict):
         action_names = [_get_action_name(a["action"]) for a in actions]
         action_summary = ", ".join(action_names)
         msg = _("assist_result").format(actions=action_summary, target=target_str)
+        if password_used:
+            # The password was read out of a sentence; say which one locks
+            # the file, or a misheard one could never be opened again.
+            msg += " " + _("assist_password_used").format(password=password_used)
         speak(msg)
 
     except FileNotFoundError as e:

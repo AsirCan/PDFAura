@@ -138,6 +138,7 @@ STRINGS = {
     "err_order_not_permutation": "Порядок должен содержать все {total} стр., каждую ровно один раз. {problems}",
     "err_metadata_read":        "Не удалось прочитать метаданные:",
     "assist_need_password":     "Для шифрования нужен пароль. Например: зашифруй отчёт.pdf паролем abc123.",
+    "assist_password_used":     "Использованный пароль: {password}",
     "assist_merge_needs_two":   "Для объединения нужны как минимум два имени файла. Например: объедини a.pdf и b.pdf.",
     "assist_merge_name":        "Объединённый",
     "assist_not_understood":    "Я не понял, повторите, пожалуйста.",
