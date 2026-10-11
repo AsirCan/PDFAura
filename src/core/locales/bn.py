@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice {seconds} সেকেন্ডের মধ্যে শেষ হয়নি।",
     "err_pywin32_missing":      "pywin32 প্যাকেজ পাওয়া যায়নি। এভাবে ইনস্টল করুন: pip install pywin32",
     "err_office_failed":        "Microsoft {app} দিয়ে কনভার্সন ব্যর্থ হয়েছে:",
+    "err_office_macros":        "Microsoft {app} ম্যাক্রো বন্ধ করতে দেয়নি, তাই নিরাপত্তার জন্য নথিটি এতে খোলা হয়নি। রূপান্তর করতে LibreOffice ইনস্টল করুন: libreoffice.org",
     "err_order_invalid_token":  "পেজের ক্রমে অচেনা মান: {token}",
     "err_order_empty":          "অন্তত একটি পেজ নম্বর লিখুন।",
     "err_order_out_of_range":   "এই পেজগুলো ডকুমেন্টে নেই: {pages}। ডকুমেন্টে {total}টি পেজ আছে।",

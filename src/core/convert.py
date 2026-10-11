@@ -198,10 +198,16 @@ _COM_NOT_INSTALLED = (-2147221005, -2147221164)  # invalid class string, class n
 WD_EXPORT_FORMAT_PDF = 17
 PP_SAVE_AS_PDF = 32
 XL_TYPE_PDF = 0
+# Application.AutomationSecurity: no macro runs, and nobody is asked.
+MSO_AUTOMATION_SECURITY_FORCE_DISABLE = 3
 
 
 class OfficeNotInstalledError(RuntimeError):
     """The Microsoft Office application a conversion needs is not installed."""
+
+
+class OfficeMacroGuardError(RuntimeError):
+    """Office would not switch its macros off, so the document was not opened in it."""
 
 
 def _require_win32com():
@@ -246,7 +252,7 @@ def _office_to_pdf(com_convert, app_name, input_path, output_pdf, ctx):
         # intact if it stops halfway (LibreOffice's path does the same).
         with atomic_output(output_abs) as temp_path:
             com_convert(input_abs, temp_path)
-    except (OfficeNotInstalledError, ImportError):
+    except (OfficeNotInstalledError, OfficeMacroGuardError, ImportError):
         soffice = find_libreoffice()
         if soffice is None:
             raise
@@ -289,6 +295,18 @@ def _office_app(prog_id, app_name, single_instance=False):
         except Exception:
             pass  # PowerPoint rejects this in some versions
 
+        # Office started over COM runs every macro (msoAutomationSecurityLow),
+        # and Protected View does not cover files opened from code: turning an
+        # untrusted .doc into a PDF could run its AutoOpen without a word.
+        # Switch macros off before anything is opened, or do not open it here.
+        try:
+            app.AutomationSecurity = MSO_AUTOMATION_SECURITY_FORCE_DISABLE
+            guarded = app.AutomationSecurity == MSO_AUTOMATION_SECURITY_FORCE_DISABLE
+        except Exception:
+            guarded = False
+        if not guarded:
+            raise OfficeMacroGuardError(_("err_office_macros").format(app=app_name))
+
         yield app
     finally:
         if app is not None and not user_had_it_open:
@@ -307,6 +325,11 @@ def word_to_pdf(input_docx, output_pdf, ctx=None):
 
 def _word_to_pdf_com(input_abs, output_abs):
     with _office_app("Word.Application", "Word") as word:
+        try:
+            # AutoOpen/AutoExec, on top of AutomationSecurity.
+            word.WordBasic.DisableAutoMacros(1)
+        except Exception:
+            pass        # AutomationSecurity already keeps them from running
         doc = None
         try:
             doc = word.Documents.Open(input_abs, ReadOnly=True, AddToRecentFiles=False,

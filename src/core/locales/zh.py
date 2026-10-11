@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice 未在 {seconds} 秒内完成。",
     "err_pywin32_missing":      "未找到 pywin32 包。请使用以下命令安装：pip install pywin32",
     "err_office_failed":        "Microsoft {app} 转换失败：",
+    "err_office_macros":        "Microsoft {app} 不允许关闭宏，为安全起见未在其中打开该文档。安装 LibreOffice 即可转换：libreoffice.org",
     "err_order_invalid_token":  "页面顺序中有无法识别的值：{token}",
     "err_order_empty":          "请至少输入一个页码。",
     "err_order_out_of_range":   "文档中没有这些页：{pages}。文档共有 {total} 页。",

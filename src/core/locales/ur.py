@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice {seconds} سیکنڈ میں مکمل نہیں ہوا۔",
     "err_pywin32_missing":      "pywin32 پیکیج نہیں ملا۔ اسے اس طرح انسٹال کریں: pip install pywin32",
     "err_office_failed":        "Microsoft {app} سے تبدیلی ناکام ہو گئی:",
+    "err_office_macros":        "Microsoft {app} نے میکروز بند کرنے نہیں دیے، اس لیے حفاظت کی خاطر دستاویز اس میں نہیں کھولی گئی۔ اسے تبدیل کرنے کے لیے LibreOffice انسٹال کریں: libreoffice.org",
     "err_order_invalid_token":  "صفحات کی ترتیب میں نامعلوم قدر: {token}",
     "err_order_empty":          "کم از کم ایک صفحہ نمبر لکھیں۔",
     "err_order_out_of_range":   "یہ صفحات دستاویز میں نہیں ہیں: {pages}۔ دستاویز میں {total} صفحات ہیں۔",

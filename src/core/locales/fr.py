@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice n'a pas terminé en {seconds} secondes.",
     "err_pywin32_missing":      "Le paquet pywin32 est introuvable. Installez-le avec : pip install pywin32",
     "err_office_failed":        "La conversion Microsoft {app} a échoué :",
+    "err_office_macros":        "Microsoft {app} n'a pas accepté de désactiver les macros ; par sécurité, le document n'y a pas été ouvert. Installez LibreOffice pour le convertir : libreoffice.org",
     "err_order_invalid_token":  "Valeur non reconnue dans l'ordre des pages : {token}",
     "err_order_empty":          "Saisissez au moins un numéro de page.",
     "err_order_out_of_range":   "Page(s) absente(s) du document : {pages}. Le document compte {total} pages.",

@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice tidak selesai dalam {seconds} detik.",
     "err_pywin32_missing":      "Paket pywin32 tidak ditemukan. Pasang dengan: pip install pywin32",
     "err_office_failed":        "Konversi Microsoft {app} gagal:",
+    "err_office_macros":        "Microsoft {app} tidak mengizinkan makro dimatikan, jadi demi keamanan dokumen tidak dibuka di dalamnya. Pasang LibreOffice untuk mengonversinya: libreoffice.org",
     "err_order_invalid_token":  "Nilai tidak dikenal dalam urutan halaman: {token}",
     "err_order_empty":          "Masukkan minimal satu nomor halaman.",
     "err_order_out_of_range":   "Halaman tidak ada dalam dokumen: {pages}. Dokumen memiliki {total} halaman.",

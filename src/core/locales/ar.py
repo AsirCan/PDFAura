@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "لم ينتهِ LibreOffice خلال {seconds} ثانية.",
     "err_pywin32_missing":      "لم يُعثر على الحزمة pywin32. ثبّتها بالأمر: pip install pywin32",
     "err_office_failed":        "فشل التحويل باستخدام Microsoft {app}:",
+    "err_office_macros":        "لم يسمح Microsoft {app} بإيقاف وحدات الماكرو، لذلك لم يُفتح المستند فيه حفاظًا على الأمان. ثبّت LibreOffice لتحويله: libreoffice.org",
     "err_order_invalid_token":  "قيمة غير معروفة في ترتيب الصفحات: {token}",
     "err_order_empty":          "أدخل رقم صفحة واحدًا على الأقل.",
     "err_order_out_of_range":   "صفحات غير موجودة في المستند: {pages}. يحتوي المستند على {total} صفحة.",

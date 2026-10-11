@@ -55,6 +55,14 @@ class FakeCollection:
         return FakeDocument(self.rec, self.kind, kwargs)
 
 
+class FakeWordBasic:
+    def __init__(self, rec):
+        self.rec = rec
+
+    def DisableAutoMacros(self, flag):
+        self.rec.log("DisableAutoMacros", flag)
+
+
 class FakeApp:
     def __init__(self, rec, prog_id):
         self.rec = rec
@@ -62,10 +70,16 @@ class FakeApp:
         self.Documents = FakeCollection(rec, "word")
         self.Presentations = FakeCollection(rec, "ppt")
         self.Workbooks = FakeCollection(rec, "excel")
+        self.WordBasic = FakeWordBasic(rec)
+        object.__setattr__(self, "AutomationSecurity", 1)    # msoAutomationSecurityLow, COM's default
 
     def __setattr__(self, name, value):
-        if name in ("DisplayAlerts", "Visible", "Interactive"):
+        if name in ("DisplayAlerts", "Visible", "Interactive", "AutomationSecurity"):
             self.rec.log("set", name, value)
+        if name == "AutomationSecurity" and getattr(self.rec, "macro_guard", "ok") != "ok":
+            if self.rec.macro_guard == "raises":
+                raise FakeComError(-2147352573)     # member not found: an old Office
+            return                                  # accepted, but nothing changed
         object.__setattr__(self, name, value)
 
     def Quit(self):
@@ -178,6 +192,49 @@ def test_powerpoint_we_started_is_quit(tmp_path, fake_com):
     convert.ppt_to_pdf(str(src), str(tmp_path / "out.pdf"))
 
     assert ("quit", "PowerPoint.Application") in fake_com.events
+
+
+# ── Macros stay off (#31) ──────────────────────────────────────────────────
+#
+# Office started over COM runs every macro by default and Protected View does
+# not cover files opened from code, so a converted .doc could run AutoOpen.
+
+@pytest.mark.parametrize("func, name, prog_id", CONVERTERS)
+def test_macros_are_switched_off_before_the_document_opens(tmp_path, fake_com, func, name, prog_id):
+    src = tmp_path / name
+    src.write_bytes(b"x")
+
+    func(str(src), str(tmp_path / "out.pdf"))
+
+    guard = fake_com.events.index(("set", "AutomationSecurity", convert.MSO_AUTOMATION_SECURITY_FORCE_DISABLE))
+    opened = fake_com.names().index("open")
+    assert guard < opened
+
+
+def test_word_also_disables_its_auto_macros_before_opening(tmp_path, fake_com):
+    src = tmp_path / "in.doc"
+    src.write_bytes(b"x")
+
+    convert.word_to_pdf(str(src), str(tmp_path / "out.pdf"))
+
+    assert fake_com.events.index(("DisableAutoMacros", 1)) < fake_com.names().index("open")
+
+
+@pytest.mark.parametrize("refusal", ["raises", "ignored"])
+@pytest.mark.parametrize("func, name, prog_id", CONVERTERS)
+def test_office_that_keeps_macros_on_never_opens_the_file(tmp_path, fake_com, no_libreoffice, refusal, func,
+                                                         name, prog_id):
+    fake_com.macro_guard = refusal
+    src = tmp_path / name
+    src.write_bytes(b"x")
+
+    with pytest.raises(RuntimeError) as excinfo:
+        func(str(src), str(tmp_path / "out.pdf"))
+
+    assert "open" not in fake_com.names()
+    assert prog_id.split(".")[0] in str(excinfo.value)
+    assert "makro" in str(excinfo.value).lower()
+    assert fake_com.names()[-1] == "CoUninitialize"
 
 
 @pytest.fixture
@@ -355,6 +412,19 @@ def test_cancel_stops_libreoffice(tmp_path, libreoffice):
 
     assert "taskkill" in libreoffice.rec.names() or "kill" in libreoffice.rec.names()
     assert not (tmp_path / "out.pdf").exists()
+
+
+def test_office_that_keeps_macros_on_hands_the_file_to_libreoffice(tmp_path, libreoffice):
+    libreoffice.rec.dispatch_error = None       # Word is there...
+    libreoffice.rec.macro_guard = "raises"      # ...but will not switch macros off (#31)
+    src = tmp_path / "in.doc"
+    src.write_bytes(b"x")
+    out = tmp_path / "out.pdf"
+
+    convert.word_to_pdf(str(src), str(out))
+
+    assert out.read_bytes() == b"%PDF-1.7 from libreoffice"
+    assert "open" not in libreoffice.rec.names()
 
 
 def test_office_is_preferred_when_installed(tmp_path, fake_com, monkeypatch):

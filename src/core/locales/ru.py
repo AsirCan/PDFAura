@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice не завершил работу за {seconds} с.",
     "err_pywin32_missing":      "Пакет pywin32 не найден. Установите его командой: pip install pywin32",
     "err_office_failed":        "Преобразование через Microsoft {app} не удалось:",
+    "err_office_macros":        "Microsoft {app} не позволил отключить макросы, поэтому из соображений безопасности документ в нём не открывался. Установите LibreOffice, чтобы преобразовать его: libreoffice.org",
     "err_order_invalid_token":  "Непонятное значение в порядке страниц: {token}",
     "err_order_empty":          "Введите хотя бы один номер страницы.",
     "err_order_out_of_range":   "Страниц(ы) нет в документе: {pages}. В документе {total} стр.",

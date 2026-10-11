@@ -130,6 +130,7 @@ STRINGS = {
     "err_libreoffice_timeout":  "LibreOffice が {seconds} 秒以内に終了しませんでした。",
     "err_pywin32_missing":      "pywin32 パッケージが見つかりません。次のコマンドでインストールしてください: pip install pywin32",
     "err_office_failed":        "Microsoft {app} での変換に失敗しました:",
+    "err_office_macros":        "Microsoft {app} でマクロを無効にできなかったため、安全のため文書はそこで開きませんでした。LibreOffice をインストールすると変換できます: libreoffice.org",
     "err_order_invalid_token":  "ページ順に認識できない値があります: {token}",
     "err_order_empty":          "ページ番号を 1 つ以上入力してください。",
     "err_order_out_of_range":   "文書にないページ: {pages}。この文書は {total} ページです。",
