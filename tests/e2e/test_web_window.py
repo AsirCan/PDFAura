@@ -178,6 +178,21 @@ def test_nothing_leaves_the_computer(window, tmp_path):
     assert window.requests and outside == []
 
 
+def test_the_window_never_leaves_the_apps_page(window, tmp_path):
+    """#37: pywebview gives the bridge to every page the window loads. The
+    window cancels any navigation away from the app's own server -- a
+    dropped .html file, a link, a script -- and keeps answering its page."""
+    origin = window.page.evaluate("location.origin")
+    stray = tmp_path / "birakilan.html"
+    stray.write_text("<p>not the app</p>", encoding="utf-8")
+    for url in (stray.as_uri(), "https://example.com/"):
+        window.page.evaluate("url => { location.href = url; }", url)
+        time.sleep(1.5)
+        assert window.page.evaluate("location.origin") == origin
+        assert window.page.evaluate("!!document.querySelector('.shell')")
+    assert window.page.evaluate("window.pywebview.api.settings().then(s => typeof s.sound_enabled)") == "boolean"
+
+
 def _top_window(pid):
     import win32gui
     import win32process

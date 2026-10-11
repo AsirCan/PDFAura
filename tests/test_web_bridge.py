@@ -52,6 +52,11 @@ class Shell:
         return [data for name, data in self.sent if name == "job"]
 
     # window
+    ours = True     # the window shows the app's own page
+
+    def page_is_ours(self):
+        return self.ours
+
     def style_title_bar(self, name):
         self.title_bars.append(name)
 

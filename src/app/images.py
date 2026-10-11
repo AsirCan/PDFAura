@@ -88,6 +88,12 @@ class PdfPages:
         with self._lock:
             return self._paths.get(doc_id)
 
+    def knows(self, path):
+        """True if ``path`` was registered: a document the page has shown."""
+        target = os.path.normcase(os.path.abspath(path))
+        with self._lock:
+            return any(os.path.normcase(known) == target for known in self._ids)
+
     def _document(self, path):
         """An open document for ``path``, reopened if the file changed.
         Call with the lock held.

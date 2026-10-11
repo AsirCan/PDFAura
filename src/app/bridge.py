@@ -10,12 +10,20 @@ paths from the page are checked before they are opened.
 
 Results that come later (job progress, assistant replies, dropped files)
 are events; see events.py and web/src/lib/bridge.ts.
+
+pywebview puts the bridge into whatever page the window loads, without
+looking where it came from, so every call first checks that the window
+shows the app's own page (#37); window.py also keeps the window from
+leaving it.
 """
+import functools
+import inspect
 import os
 import subprocess
 import threading
 import time
 from dataclasses import asdict
+from urllib.parse import urlsplit
 
 from src.app.api import Api
 from src.app.jobs import call_now
@@ -66,6 +74,35 @@ def file_info(path):
             "size": size, "exists": exists, "is_dir": is_dir}
 
 
+def same_origin(url, app_url):
+    """True if *url* is on the app's own local server, *app_url*."""
+    try:
+        here, ours = urlsplit(str(url or "")), urlsplit(str(app_url or ""))
+        return bool(ours.scheme) and (here.scheme, here.hostname, here.port) == (ours.scheme, ours.hostname,
+                                                                                  ours.port)
+    except ValueError:
+        return False
+
+
+def _from_our_page(method):
+    """Refuse a call unless the window shows the app's own page."""
+    @functools.wraps(method)
+    def call(self, *args, **kwargs):
+        if not self._shell.page_is_ours():
+            raise PermissionError("PDF Aura's bridge only answers PDF Aura's own page")
+        return method(self, *args, **kwargs)
+    # pywebview names the page's functions' parameters after this signature.
+    call.__signature__ = inspect.signature(method)
+    return call
+
+
+def _guarded(cls):
+    for name, member in list(vars(cls).items()):
+        if not name.startswith("_") and inspect.isfunction(member):
+            setattr(cls, name, _from_our_page(member))
+    return cls
+
+
 def _outcome(outcome):
     return {"title": outcome.title, "message": outcome.message, "output": outcome.output_path,
             "tone": outcome.tone, "details": outcome.details}
@@ -79,9 +116,12 @@ class JobEvents:
     Job, so the callbacks wait for bind() to give them the id.
     """
 
-    def __init__(self, emit, sounds=True):
+    def __init__(self, emit, sounds=True, remember=None):
+        """``remember(path)`` learns what a finished job wrote, which the
+        page may then open."""
         self._emit = emit
         self._sounds = sounds
+        self._remember = remember
         self._id = None
         self._bound = threading.Event()
 
@@ -102,6 +142,8 @@ class JobEvents:
         self._send({"type": "progress", "current": current, "total": total, "message": message})
 
     def _done(self, outcome):
+        if self._remember and outcome.output_path:
+            self._remember(outcome.output_path)
         # The result sounds; the setting in Settings decides.
         if self._sounds:
             from src.core.notify import play_error, play_success
@@ -121,6 +163,7 @@ class JobEvents:
         self._send({"type": "cancelled"})
 
 
+@_guarded
 class Bridge:
     def __init__(self, shell):
         """``shell`` is the window side (window.py): the pywebview window,
@@ -130,6 +173,7 @@ class Bridge:
         self._api = Api(post=call_now)
         self._assistant = None
         self._models = None
+        self._written = set()     # what jobs wrote, normalised; the page may open these
 
     # ── Start-up, language, theme, settings ───────────────────────────
     def boot(self):
@@ -223,16 +267,35 @@ class Bridge:
             result = result[0] if result else None
         return result or None
 
+    def _remember_output(self, path):
+        self._written.add(os.path.normcase(os.path.abspath(path)))
+
+    def _may_open(self, path):
+        """Only what the app wrote, previews or lists as recent, and only
+        documents and folders: os.startfile runs whatever it is given, and
+        the page could name any path (#37)."""
+        if not isinstance(path, str) or not path or not os.path.exists(path):
+            return False
+        full = os.path.normcase(os.path.abspath(path))
+        if not os.path.isdir(full) and os.path.splitext(full)[1] not in KINDS:
+            return False
+        known = set(self._written)
+        known.update(os.path.normcase(os.path.abspath(p)) for p in cfg.get_recent_files())
+        if self._models is not None:
+            known.add(os.path.normcase(os.path.abspath(self._models.root)))
+        return full in known or self._shell.pages.knows(full)
+
     def open_path(self, path):
-        """Open a file or folder the way Explorer would. False if it is gone."""
-        if not path or not os.path.exists(path):
+        """Open a file or folder the way Explorer would. False if it is gone,
+        or not one the page may open."""
+        if not self._may_open(path):
             return False
         os.startfile(path)
         return True
 
     def reveal_path(self, path):
         """Show a file selected in its folder (or open a folder)."""
-        if not path or not os.path.exists(path):
+        if not self._may_open(path):
             return False
         if os.path.isdir(path):
             os.startfile(path)
@@ -261,7 +324,7 @@ class Bridge:
             return {"problem": problem}
         busy = self._api.busy_text(tool, params)
         cancellable = self._api.cancellable(tool, params)
-        events = JobEvents(self._events.emit)
+        events = JobEvents(self._events.emit, remember=self._remember_output)
         job = events.bind(self._api.start(tool, params, **events.callbacks()))
         return {"job": job.id, "busy": busy, "cancellable": cancellable}
 
@@ -367,7 +430,7 @@ class Bridge:
     def scanner_export(self):
         """Write the PDF; like start(), its progress and result arrive as
         "job" events."""
-        events = JobEvents(self._events.emit)
+        events = JobEvents(self._events.emit, remember=self._remember_output)
         job = self._shell.scans.export(self._api.start_work, events.callbacks())
         if isinstance(job, dict):
             return job

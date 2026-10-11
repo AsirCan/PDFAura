@@ -14,7 +14,7 @@ import sys
 import threading
 
 from src.app import native
-from src.app.bridge import Bridge, file_info
+from src.app.bridge import Bridge, file_info, same_origin
 from src.app.events import EventBus
 from src.app.images import ImageCache, PdfPages
 from src.app.scanboard import ScannerBoard
@@ -114,6 +114,7 @@ class Shell:
             "PDF Aura", url=make_app(self.token, self.images, self.pages, self.scans), js_api=self.bridge,
             width=width, height=height, min_size=_min_size(), background_color=theme.palette.canvas)
         self.events.attach(self.window.run_js)
+        self.window.events.before_show += self._guard_navigation
         self.window.events.closing += self._on_closing
         self.window.events.loaded += self._on_loaded
         self.window.events.shown += lambda: self.style_title_bar(_starting_theme())
@@ -160,6 +161,27 @@ class Shell:
 
     def _on_loaded(self):
         self._listen_for_drops()
+
+    # ── The window stays on the app's page ───────────────────────────
+    # pywebview puts the bridge into every page the window loads, without
+    # looking where it came from (#37). The bridge answers only the app's
+    # own page, and the window never leaves it: a file dropped before the
+    # page had set up its drop handler opened in the window itself.
+    def page_is_ours(self):
+        window = self.window
+        return window is not None and same_origin(window.get_current_url(), window.real_url)
+
+    def _guard_navigation(self):
+        """Runs on the UI thread as the window is created, before it shows."""
+        try:
+            control = self.window.native.browser.webview
+            control.NavigationStarting += self._on_navigation_starting
+        except Exception:
+            logging.getLogger(__name__).exception("The navigation guard could not be installed")
+
+    def _on_navigation_starting(self, _sender, args):
+        if not same_origin(str(args.Uri), self.window.real_url):
+            args.Cancel = True
 
     # ── Title bar ─────────────────────────────────────────────────────
     def style_title_bar(self, name):
