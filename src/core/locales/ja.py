@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF を Word に変換しました。",
     "assist_text_done":         "テキストを抽出してテキストファイルに保存しました。",
     "assist_result":            "{actions}が完了しました。ファイルは{target}に保存されました。",
+    "assist_saved_as":          "保存先: {name}",
     "assist_not_heard":         "聞き取れませんでした。もう一度お試しください。",
     "assist_target_desktop":    "デスクトップ",
     "assist_target_documents":  "ドキュメント フォルダー",

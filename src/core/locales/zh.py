@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF 已转换为 Word。",
     "assist_text_done":         "文本已提取并保存为文本文件。",
     "assist_result":            "{actions}已完成。文件已保存到{target}。",
+    "assist_saved_as":          "已保存为：{name}",
     "assist_not_heard":         "我没有听到你的声音，请重试。",
     "assist_target_desktop":    "桌面",
     "assist_target_documents":  "“文档”文件夹",

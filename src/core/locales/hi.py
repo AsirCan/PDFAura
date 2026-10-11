@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF को Word में बदल दिया गया।",
     "assist_text_done":         "टेक्स्ट निकालकर टेक्स्ट फ़ाइल में सेव कर दिया गया।",
     "assist_result":            "{actions} पूरा हुआ। आपकी फ़ाइल {target} में सेव हो गई है।",
+    "assist_saved_as":          "इस नाम से सहेजा गया: {name}",
     "assist_not_heard":         "मैं आपको सुन नहीं पाया, कृपया फिर से कोशिश करें।",
     "assist_target_desktop":    "डेस्कटॉप",
     "assist_target_documents":  "डॉक्यूमेंट्स फ़ोल्डर",

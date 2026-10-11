@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF Word-এ কনভার্ট হয়েছে।",
     "assist_text_done":         "টেক্সট বের করে একটি টেক্সট ফাইলে সেভ করা হয়েছে।",
     "assist_result":            "{actions} শেষ হয়েছে। আপনার ফাইল {target}-এ সেভ হয়েছে।",
+    "assist_saved_as":          "এই নামে সংরক্ষিত: {name}",
     "assist_not_heard":         "আপনার কথা শুনতে পাইনি, আবার চেষ্টা করুন।",
     "assist_target_desktop":    "ডেস্কটপ",
     "assist_target_documents":  "ডকুমেন্টস ফোল্ডার",

@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF преобразован в Word.",
     "assist_text_done":         "Текст извлечён и сохранён в текстовый файл.",
     "assist_result":            "{actions}: готово. Файл сохранён: {target}.",
+    "assist_saved_as":          "Сохранено как: {name}",
     "assist_not_heard":         "Я вас не расслышал, попробуйте ещё раз.",
     "assist_target_desktop":    "рабочий стол",
     "assist_target_documents":  "папка «Документы»",

@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "Le PDF a été converti en Word.",
     "assist_text_done":         "Le texte a été extrait et enregistré dans un fichier texte.",
     "assist_result":            "{actions} terminé. Votre fichier a été enregistré dans {target}.",
+    "assist_saved_as":          "Enregistré sous : {name}",
     "assist_not_heard":         "Je ne vous ai pas entendu, réessayez.",
     "assist_target_desktop":    "le Bureau",
     "assist_target_documents":  "le dossier Documents",

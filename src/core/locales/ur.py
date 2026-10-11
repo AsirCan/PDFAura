@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF کو Word میں تبدیل کر دیا گیا۔",
     "assist_text_done":         "متن نکال کر متن کی فائل میں محفوظ کر دیا گیا۔",
     "assist_result":            "{actions} مکمل ہو گیا۔ آپ کی فائل {target} میں محفوظ ہو گئی ہے۔",
+    "assist_saved_as":          "اس نام سے محفوظ کیا گیا: {name}",
     "assist_not_heard":         "میں آپ کو سن نہیں سکا، براہ کرم دوبارہ کوشش کریں۔",
     "assist_target_desktop":    "ڈیسک ٹاپ",
     "assist_target_documents":  "دستاویزات فولڈر",

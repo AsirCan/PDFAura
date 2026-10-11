@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "تم تحويل ملف PDF إلى Word.",
     "assist_text_done":         "تم استخراج النص وحفظه في ملف نصي.",
     "assist_result":            "اكتملت عملية {actions}. تم حفظ ملفك في {target}.",
+    "assist_saved_as":          "حُفظ باسم: {name}",
     "assist_not_heard":         "لم أسمعك، يُرجى المحاولة مرة أخرى.",
     "assist_target_desktop":    "سطح المكتب",
     "assist_target_documents":  "مجلد المستندات",

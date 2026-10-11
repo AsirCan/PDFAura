@@ -153,6 +153,7 @@ STRINGS = {
     "assist_word_done":         "PDF diubah menjadi Word.",
     "assist_text_done":         "Teks diekstrak dan disimpan ke file teks.",
     "assist_result":            "{actions} selesai. File Anda disimpan di {target}.",
+    "assist_saved_as":          "Disimpan sebagai: {name}",
     "assist_not_heard":         "Saya tidak mendengar Anda, silakan coba lagi.",
     "assist_target_desktop":    "Desktop",
     "assist_target_documents":  "folder Dokumen",

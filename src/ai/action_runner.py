@@ -11,6 +11,7 @@ from src.core.compress import compress_pdf
 from src.core.edit import delete_pages_from_pdf, rotate_pages_in_pdf
 from src.core.convert import pdf_to_images, pdf_to_word, pdf_to_txt
 from src.core.ocr import perform_ocr_to_text
+from src.core.output_paths import unique_path
 from src.ai.text_speaker import speak
 
 
@@ -55,11 +56,14 @@ def execute_intent(intent: dict):
         os.makedirs(output_target_dir, exist_ok=True)
 
     base_name = Path(found_path).stem
-    final_output_path = os.path.join(output_target_dir, f"{base_name}_aura.pdf")
+    # Never over a file that is already there: "rapor.pdf'yi word'e çevir"
+    # replaced the user's own rapor.docx with pdf2docx's lossy copy (#30).
+    final_output_path = unique_path(os.path.join(output_target_dir, f"{base_name}_aura.pdf"))
 
     current_input = found_path
     temp_files = []
     password_used = None
+    saved = []          # names of the files written, for the reply
 
     try:
         for i, act in enumerate(actions):
@@ -68,7 +72,9 @@ def execute_intent(intent: dict):
 
             # Özel çıktı formatları (PDF olmayan)
             if action_type in NON_PDF_ACTIONS:
-                _run_non_pdf_action(action_type, current_input, output_target_dir, base_name, kwargs)
+                written = _run_non_pdf_action(action_type, current_input, output_target_dir, base_name, kwargs)
+                if written:
+                    saved.append(os.path.basename(written))
                 continue
 
             # Son PDF action mı?
@@ -108,12 +114,16 @@ def execute_intent(intent: dict):
                 shutil.copy(current_input, current_output)
 
             current_input = current_output
+            if is_last_pdf:
+                saved.append(os.path.basename(final_output_path))
 
         # Sonuç mesajı
         target_str = _get_target_display_name(output_target_dir)
         action_names = [_get_action_name(a["action"]) for a in actions]
         action_summary = ", ".join(action_names)
         msg = _("assist_result").format(actions=action_summary, target=target_str)
+        if saved:
+            msg += " " + _("assist_saved_as").format(name=", ".join(saved))
         if password_used:
             # The password was read out of a sentence; say which one locks
             # the file, or a misheard one could never be opened again.
@@ -175,32 +185,41 @@ def _find_file(input_file: str) -> str:
 
 
 def _run_non_pdf_action(action_type, input_path, output_dir, base_name, kwargs):
-    """PDF olmayan çıktı üreten işlemleri yönetir."""
+    """PDF olmayan çıktı üreten işlemleri yönetir.
+
+    Returns the file or folder written. Each gets a name nothing has yet
+    (rapor (2).docx), so the user's own files are never replaced.
+    """
     try:
         if action_type == "ocr":
-            output_txt = os.path.join(output_dir, f"{base_name}_ocr.txt")
+            output_txt = unique_path(os.path.join(output_dir, f"{base_name}_ocr.txt"))
             perform_ocr_to_text(input_path, output_txt)
             speak(_("assist_ocr_done"))
+            return output_txt
 
         elif action_type == "pdf_to_image":
-            img_folder = os.path.join(output_dir, f"{base_name}_resimler")
+            img_folder = unique_path(os.path.join(output_dir, f"{base_name}_resimler"))
             fmt = kwargs.get("format", "png")
             count = pdf_to_images(input_path, img_folder, dpi=300, img_format=fmt)
             speak(_("assist_images_done").format(count=count, fmt=fmt.upper()))
+            return img_folder
 
         elif action_type == "pdf_to_word":
-            output_docx = os.path.join(output_dir, f"{base_name}.docx")
+            output_docx = unique_path(os.path.join(output_dir, f"{base_name}.docx"))
             pdf_to_word(input_path, output_docx)
             speak(_("assist_word_done"))
+            return output_docx
 
         elif action_type == "pdf_to_text":
-            output_txt = os.path.join(output_dir, f"{base_name}.txt")
+            output_txt = unique_path(os.path.join(output_dir, f"{base_name}.txt"))
             pdf_to_txt(input_path, output_txt)
             speak(_("assist_text_done"))
+            return output_txt
 
     except Exception as e:
         print(f"[Non-PDF Action Error] {e}")
         speak(_("assist_error").format(error=e))
+    return None
 
 
 def _get_target_display_name(output_target_dir: str) -> str:

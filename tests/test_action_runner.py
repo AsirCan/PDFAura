@@ -83,6 +83,37 @@ def test_convert_to_word_does_not_write_a_rotated_pdf(home, spoken, monkeypatch)
     assert not (home / "rapor_aura.pdf").exists()
 
 
+# ── Files that are already there stay as they are (#30) ──────────────────
+
+def _fake_writer(content):
+    def write(_input, output, *args, **kwargs):
+        with open(output, "w", encoding="utf-8") as handle:
+            handle.write(content)
+    return write
+
+
+@pytest.mark.parametrize("command, existing, written", [
+    ("rapor.pdf dosyasını word'e çevir", "rapor.docx", "rapor (2).docx"),
+    ("rapor.pdf dosyasını metne çevir", "rapor.txt", "rapor (2).txt"),
+    ("rapor.pdf dosyasına ocr yap", "rapor_ocr.txt", "rapor_ocr (2).txt"),
+    ("rapor.pdf dosyasını sıkıştır", "rapor_aura.pdf", "rapor_aura (2).pdf"),
+])
+def test_an_existing_output_is_kept_and_the_new_name_is_said(home, spoken, monkeypatch, command, existing,
+                                                             written):
+    """'rapor.pdf'yi word'e çevir' replaced the user's own rapor.docx."""
+    make_pdf(home / "rapor.pdf")
+    monkeypatch.setattr(action_runner, "pdf_to_word", _fake_writer("donusturuldu"))
+    monkeypatch.setattr(action_runner, "pdf_to_txt", _fake_writer("metin"))
+    monkeypatch.setattr(action_runner, "perform_ocr_to_text", _fake_writer("ocr"))
+    (home / existing).write_bytes(b"kullanicinin kendi dosyasi")
+
+    action_runner.execute_intent(parse_intent(command))
+
+    assert (home / existing).read_bytes() == b"kullanicinin kendi dosyasi"
+    assert (home / written).exists()
+    assert written in spoken[-1]
+
+
 def test_missing_file_is_reported(home, spoken):
     action_runner.execute_intent(parse_intent("yok.pdf dosyasını sıkıştır"))
     assert any("bulamad" in m.lower() for m in spoken)
