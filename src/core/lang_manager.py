@@ -11,6 +11,7 @@ _STRINGS = {
         "txt_security":     "Güvenlik",
         "txt_advanced":     "Gelişmiş",
         "txt_batch":        "Toplu İşlemler",
+        "txt_ai":           "AI Asistan",
         "txt_settings":     "Ayarlar",
         "txt_scan":         "Belge Tara",
 
@@ -91,6 +92,9 @@ _STRINGS = {
         "err_select_valid_input_dir": "Lütfen geçerli bir girdi klasörü seçin.",
         "err_select_valid_output_dir": "Lütfen geçerli bir çıktı klasörü seçin.",
         "err_watermark_empty":      "Filigran metni boş olamaz.",
+        "err_watermark_image":      "Filigran resmi (png/jpg) okunamadı.",
+        "err_watermark_position":   "Geçersiz filigran konumu: {position}",
+        "err_watermark_opacity":    "Opaklık 0 ile 1 arasında olmalı: {opacity}",
         "err_reportlab_missing":    "Filigran eklemek icin reportlab kutuphanesi gerekli (pip install reportlab).",
         "err_watermark_font_missing": "Filigran metnindeki Turkce karakterler icin uygun bir yazi tipi bulunamadi. Turkce karakter icermeyen bir metin kullanin.",
         "err_invalid_coordinate":   "{name} degeri sayi olmali: {value}",
@@ -294,7 +298,23 @@ _STRINGS = {
         "security_watermark":       "Filigran Ekle",
         "security_password":        "Parola:",
         "security_password_confirm": "Parola (tekrar):",
+        "security_owner_password":  "Sahip parolası (isteğe bağlı):",
+        "security_permissions":     "İzinler",
+        "security_allow_print":     "Yazdırma",
+        "security_allow_modify":    "Düzenleme",
+        "security_allow_copy":      "Kopyalama",
+        "security_allow_annotate":  "Not ekleme",
         "security_watermark_text":  "Filigran Metni:",
+        "security_watermark_image": "Logo (PNG/JPG):",
+        "security_watermark_opacity": "Opaklık (0-1):",
+        "security_watermark_angle": "Açı (derece):",
+        "security_watermark_position": "Konum:",
+        "security_position_center": "Merkez",
+        "security_position_top_left": "Sol üst",
+        "security_position_top_right": "Sağ üst",
+        "security_position_bottom_left": "Sol alt",
+        "security_position_bottom_right": "Sağ alt",
+        "security_position_tiled": "Döşeme",
         "security_running":         "{mode} işleniyor...",
         "security_dialog_input":    "PDF Seç",
         "security_dialog_output":   "PDF Kaydet",
@@ -457,6 +477,65 @@ _STRINGS = {
         "settings_ai_test_fail":    "Model testi başarısız.",
         "settings_ai_folder_ready": "Model klasörleri hazırlandı.",
 
+        # ── AI Asistan & Özet (Faz 4 + 5) ──
+        "ai_tab_chat":              "PDF ile Sohbet",
+        "ai_tab_summary":           "Akıllı Özet",
+        "ai_section_chat":          "PDF ile Sohbet",
+        "ai_section_summary":       "Akıllı Özet Modları",
+        "ai_question_label":        "Sorunuz:",
+        "ai_question_placeholder":  "Belge hakkında bir soru sorun (örn. Sözleşmenin fesih şartları nelerdir?)...",
+        "ai_ask_btn":               "Sor",
+        "ai_asking":                "Cevaplanıyor...",
+        "ai_cancel":                "İptal Et",
+        "ai_cancelling":            "İptal ediliyor...",
+        "ai_answer_label":          "Cevap:",
+        "ai_answer_title":          "Cevap",
+        "ai_not_found":             "Belgede bulunamadı",
+        "ai_not_found_message":     "Bu bilgiyi belgede bulamadım.",
+        "ai_not_found_hint":        "Sorduğunuz konu belgede açıkça geçmiyor olabilir. Soruyu farklı kelimelerle sormayı deneyebilirsiniz.",
+        "ai_sources_title":         "Kaynak Sayfalar",
+        "ai_source_card":           "Sayfa {page}",
+        "ai_source_quote":          "Alıntı:",
+        "ai_source_jump":           "Sayfaya Git",
+        "ai_source_open_viewer":    "Görüntüleyicide Aç",
+        "ai_source_jump_title":     "Önizlemede {page}. sayfayı aç",
+        "ai_badge_llm":             "Yerel LLM",
+        "ai_badge_extractive":      "Doğrudan Alıntı",
+        "ai_summary_mode_label":    "Özet Türü:",
+        "ai_mode_kisa":             "Kısa Özet",
+        "ai_mode_detayli":          "Detaylı Özet",
+        "ai_mode_ogrenci":          "Öğrenci Özeti",
+        "ai_mode_toplanti":         "Toplantı / Yönetici",
+        "ai_mode_hukuki":           "Hukuki / Kontrat",
+        "ai_mode_ask":              "Soru Cevap",
+        "ai_mode_summary":          "Özetleme",
+        "ai_mode_save":             "Kaydet",
+        "ai_summarize_btn":         "Özetle",
+        "ai_summarizing":           "Özetleniyor...",
+        "ai_summary_result_label":  "Özet Metni:",
+        "ai_summary_points_label":  "Önemli Noktalar:",
+        "ai_summary_sources_label": "Kaynak Sayfalar:",
+        "ai_save_txt":              "TXT Olarak Kaydet",
+        "ai_save_pdf":              "PDF Olarak Kaydet",
+        "ai_copy":                  "Kopyala",
+        "ai_copied":                "Kopyalandı!",
+        "ai_clear_history":         "Temizle",
+        "ai_fail":                  "AI İşlemi Başarısız",
+        "ai_ask_running":           "Soru yanıtlanıyor...",
+        "ai_summary_running":       "Belge özetleniyor...",
+        "ai_saving_pdf":            "PDF özeti kaydediliyor...",
+        "ai_saving_txt":            "Metin özeti kaydediliyor...",
+        "ai_err_summary_empty":     "Kaydedilecek özet metni boş.",
+        "ai_err_format":            "Geçersiz format: txt veya pdf olmalı.",
+        "ai_err_question":          "Lütfen bir soru yazın.",
+        "ai_err_summary_mode":      "Geçersiz özet modu.",
+        "ai_summary_title":         "Özet",
+        "ai_summary_done":          "Belge özeti hazır.",
+        "ai_summary_saved_title":   "Özet Kaydedildi",
+        "ai_saved":                 "Özet kaydedildi: {output}",
+        "ai_no_summary_yet":        "Henüz bir özet oluşturulmadı. Yukarıdan mod seçip 'Özetle' butonuna basın.",
+        "ai_no_chat_yet":           "Belgenize dilediğiniz soruyu sorun. Cevaplar sayfa numarası ve alıntı kaynaklarıyla birlikte gösterilir.",
+
         # ── System Tray ──
         "tray_open":   "Aç",
         "tray_quit":   "Çıkış",
@@ -489,6 +568,10 @@ _STRINGS = {
         "page_meta_batch_eyebrow": "OTOMASYON",
         "page_meta_batch_title": "Toplu işlemler",
         "page_meta_batch_body": "Klasör bazlı toplu sıkıştırma, dönüştürme ve yeniden adlandırma akışları.",
+        "page_meta_ai_eyebrow":     "YAPAY ZEKA ASİSTANI",
+        "page_meta_ai_title":       "AI PDF Asistanı",
+        "page_meta_ai_body":        "Belgenizle sohbet edin, soru sorun ve akıllı özetler çıkarın.",
+        "hint_ai":                  "PDF seçin; belge hakkında sorular sorun veya tek tıkla akıllı özet oluşturun.",
         "feedback_ready_badge": "HAZIR",
         "feedback_ready_title": "Araç kullanıma hazır",
         "feedback_ready_body": "Bir dosya seçip işlemi başlatabilirsin.",
@@ -600,6 +683,7 @@ _STRINGS = {
         "txt_security":     "Security",
         "txt_advanced":     "Advanced",
         "txt_batch":        "Batch Process",
+        "txt_ai":           "AI Assistant",
         "txt_settings":     "Settings",
         "txt_scan":         "Scan",
 
@@ -680,6 +764,9 @@ _STRINGS = {
         "err_select_valid_input_dir": "Please select a valid input folder.",
         "err_select_valid_output_dir": "Please select a valid output folder.",
         "err_watermark_empty":      "Watermark text cannot be empty.",
+        "err_watermark_image":      "The watermark image (png/jpg) could not be read.",
+        "err_watermark_position":   "Invalid watermark position: {position}",
+        "err_watermark_opacity":    "Opacity must be between 0 and 1: {opacity}",
         "err_reportlab_missing":    "Adding a watermark requires the reportlab package (pip install reportlab).",
         "err_watermark_font_missing": "No font supporting the special characters in the watermark text was found. Use text without them.",
         "err_invalid_coordinate":   "{name} must be a number: {value}",
@@ -883,7 +970,23 @@ _STRINGS = {
         "security_watermark":       "Add Watermark",
         "security_password":        "Password:",
         "security_password_confirm": "Password (again):",
+        "security_owner_password":  "Owner password (optional):",
+        "security_permissions":     "Permissions",
+        "security_allow_print":     "Printing",
+        "security_allow_modify":    "Modifying",
+        "security_allow_copy":      "Copying",
+        "security_allow_annotate":  "Annotating",
         "security_watermark_text":  "Watermark Text:",
+        "security_watermark_image": "Logo (PNG/JPG):",
+        "security_watermark_opacity": "Opacity (0-1):",
+        "security_watermark_angle": "Angle (degrees):",
+        "security_watermark_position": "Position:",
+        "security_position_center": "Center",
+        "security_position_top_left": "Top left",
+        "security_position_top_right": "Top right",
+        "security_position_bottom_left": "Bottom left",
+        "security_position_bottom_right": "Bottom right",
+        "security_position_tiled": "Tiled",
         "security_running":         "Processing {mode}...",
         "security_dialog_input":    "Select PDF",
         "security_dialog_output":   "Save PDF",
@@ -1046,6 +1149,65 @@ _STRINGS = {
         "settings_ai_test_fail":    "Model test failed.",
         "settings_ai_folder_ready": "Model folders are ready.",
 
+        # ── AI Assistant & Summary (Faz 4 + 5) ──
+        "ai_tab_chat":              "Chat with PDF",
+        "ai_tab_summary":           "Smart Summary",
+        "ai_section_chat":          "Chat with PDF",
+        "ai_section_summary":       "Smart Summary Modes",
+        "ai_question_label":        "Question:",
+        "ai_question_placeholder":  "Ask a question about the document (e.g. What are the termination clauses?)...",
+        "ai_ask_btn":               "Ask",
+        "ai_asking":                "Answering...",
+        "ai_cancel":                "Cancel",
+        "ai_cancelling":            "Cancelling...",
+        "ai_answer_label":          "Answer:",
+        "ai_answer_title":          "Answer",
+        "ai_not_found":             "Not found in document",
+        "ai_not_found_message":     "I could not find this information in the document.",
+        "ai_not_found_hint":        "The question may not be directly answered in the text. You can try rephrasing your question.",
+        "ai_sources_title":         "Source Pages",
+        "ai_source_card":           "Page {page}",
+        "ai_source_quote":          "Quote:",
+        "ai_source_jump":           "Jump to Page",
+        "ai_source_open_viewer":    "Open in Viewer",
+        "ai_source_jump_title":     "Open page {page} in preview",
+        "ai_badge_llm":             "Local LLM",
+        "ai_badge_extractive":      "Extractive",
+        "ai_summary_mode_label":    "Summary Mode:",
+        "ai_mode_kisa":             "Short Summary",
+        "ai_mode_detayli":          "Detailed Summary",
+        "ai_mode_ogrenci":          "Student Summary",
+        "ai_mode_toplanti":         "Meeting / Executive",
+        "ai_mode_hukuki":           "Legal / Contract",
+        "ai_mode_ask":              "Q&A",
+        "ai_mode_summary":          "Summary",
+        "ai_mode_save":             "Save",
+        "ai_summarize_btn":         "Summarize",
+        "ai_summarizing":           "Summarizing...",
+        "ai_summary_result_label":  "Summary Text:",
+        "ai_summary_points_label":  "Key Points:",
+        "ai_summary_sources_label": "Source Pages:",
+        "ai_save_txt":              "Save as TXT",
+        "ai_save_pdf":              "Save as PDF",
+        "ai_copy":                  "Copy",
+        "ai_copied":                "Copied!",
+        "ai_clear_history":         "Clear",
+        "ai_fail":                  "AI Operation Failed",
+        "ai_ask_running":           "Answering question...",
+        "ai_summary_running":       "Summarizing document...",
+        "ai_saving_pdf":            "Saving PDF summary...",
+        "ai_saving_txt":            "Saving text summary...",
+        "ai_err_summary_empty":     "Summary text to save is empty.",
+        "ai_err_format":            "Invalid format: must be txt or pdf.",
+        "ai_err_question":          "Please type a question.",
+        "ai_err_summary_mode":      "Invalid summary mode.",
+        "ai_summary_title":         "Summary",
+        "ai_summary_done":          "Document summary is ready.",
+        "ai_summary_saved_title":   "Summary Saved",
+        "ai_saved":                 "Summary saved: {output}",
+        "ai_no_summary_yet":        "No summary generated yet. Choose a mode above and click 'Summarize'.",
+        "ai_no_chat_yet":           "Ask any question about your document. Answers will be presented with page numbers and source quotes.",
+
         # ── System Tray ──
         "tray_open":   "Open",
         "tray_quit":   "Quit",
@@ -1078,6 +1240,10 @@ _STRINGS = {
         "page_meta_batch_eyebrow": "AUTOMATION",
         "page_meta_batch_title": "Batch processing",
         "page_meta_batch_body": "Run folder-based compression, conversion, and renaming flows.",
+        "page_meta_ai_eyebrow":     "ARTIFICIAL INTELLIGENCE",
+        "page_meta_ai_title":       "AI PDF Assistant",
+        "page_meta_ai_body":        "Chat with your document, ask questions, and extract smart summaries.",
+        "hint_ai":                  "Select a PDF, ask questions about the document or create smart summaries with one click.",
         "feedback_ready_badge": "READY",
         "feedback_ready_title": "Tool is ready",
         "feedback_ready_body": "Pick a file and start the action.",
@@ -1215,6 +1381,85 @@ LANGUAGES = {
 RTL_LANGUAGES = {"ar", "ur"}
 
 
+class LanguageMetadata(dict):
+    """Metadata for a supported language."""
+
+    def __init__(self, code, name, rtl=False):
+        super().__init__({
+            "code": code,
+            "name": name,
+            "rtl": rtl,
+            "is_rtl": rtl,
+            "direction": "rtl" if rtl else "ltr",
+        })
+        self.code = code
+        self.name = name
+        self.rtl = rtl
+        self.is_rtl = rtl
+        self.direction = "rtl" if rtl else "ltr"
+
+    def __str__(self):
+        return self.name
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other or self.code == other
+        return super().__eq__(other)
+
+
+class AvailableLanguages(dict):
+    """Mapping and callable for available languages."""
+
+    def __init__(self, languages, rtl_languages):
+        super().__init__()
+        for code, name in languages.items():
+            self[code] = LanguageMetadata(code, name, rtl=code in rtl_languages)
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __contains__(self, item):
+        if isinstance(item, dict) and "code" in item:
+            return item["code"] in self
+        return super().__contains__(item)
+
+
+class TranslationDict(dict):
+    """Dictionary of translations with language and RTL metadata."""
+
+    def __init__(self, language, strings):
+        super().__init__(strings)
+        is_rtl_flag = language in RTL_LANGUAGES
+        self.language = language
+        self.code = language
+        self.rtl = is_rtl_flag
+        self.is_rtl = is_rtl_flag
+        self.direction = "rtl" if is_rtl_flag else "ltr"
+        self.strings = dict(strings)
+        self["language"] = language
+        self["code"] = language
+        self["rtl"] = is_rtl_flag
+        self["is_rtl"] = is_rtl_flag
+        self["direction"] = self.direction
+        self["strings"] = self.strings
+
+    def get_text(self, key, default=None):
+        return self.get(key, default if default is not None else key)
+
+
+available_languages = AvailableLanguages(LANGUAGES, RTL_LANGUAGES)
+
+
+def get_available_languages():
+    """Returns available languages mapping with metadata."""
+    return available_languages
+
+
+def is_rtl(language="tr"):
+    """Return True if language is written right-to-left."""
+    return language in RTL_LANGUAGES
+
+
 def get_text(key):
     """
     Returns the mapped string depending on the active language from config.
@@ -1240,3 +1485,16 @@ def strings_for(language):
     if language not in _STRINGS:
         language = "en"
     return {**_STRINGS["en"], **_STRINGS[language]}
+
+
+def get_translations(language=None):
+    """Return translation strings and RTL metadata for the given language.
+
+    If language is omitted, uses the current configured language.
+    """
+    if language is None:
+        language = cfg.get("language", "tr")
+    if language not in _STRINGS:
+        language = "en"
+    strings = strings_for(language)
+    return TranslationDict(language, strings)
