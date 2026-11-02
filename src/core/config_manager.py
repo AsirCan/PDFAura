@@ -56,6 +56,12 @@ class ConfigManager:
             "ai_model_paths": {},
             "scanner_session_enabled": True,
             "scanner_strip_width": 0,      # 0 = auto (fit beside the photo)
+            # Otomatik güncelleme: açılışta sürüm kontrolü ve sessiz kurulum.
+            "auto_check": True,
+            "silent_update": False,
+            # Opt-in stub: this build never sends crash reports over the
+            # network; they stay in %APPDATA%\PDFAura\crash_reports.
+            "anonymous_crash_reporting": False,
         }
 
         self.config = self.default_config.copy()

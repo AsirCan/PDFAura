@@ -134,6 +134,19 @@ def detect_document_corners(image_path: str):
     return _default_corners((w, h))
 
 
+def detect_document_with_quality(image_path: str):
+    """Corners for one photo plus the Faz 8 quality report.
+
+    Same detection as :func:`detect_document_corners`, returned as
+    ``{"corners": [...], "quality": {...}}`` so the scanner screen can show
+    the warnings next to the handles. The existing function keeps its
+    list return value, so no caller changes.
+    """
+    corners = detect_document_corners(image_path)
+    from src.core.scan_quality import assess_quality
+    return {"corners": corners, "quality": assess_quality(image_path, corners)}
+
+
 def _detect_document_corners_lines(img):
     """Detect page borders from strong top/bottom/left/right line candidates."""
     orig_h, orig_w = img.shape[:2]
