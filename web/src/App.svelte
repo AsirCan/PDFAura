@@ -20,10 +20,11 @@
   import Organize from "./tools/Organize.svelte";
   import Scanner from "./tools/Scanner.svelte";
   import Security from "./tools/Security.svelte";
+  import AiAssistant from "./tools/AiAssistant.svelte";
 
   const TOOLS: Record<Page, Component> = {
     compress: Compress, organize: Organize, scanner: Scanner, convert: Convert, security: Security,
-    advanced: Advanced, batch: Batch,
+    advanced: Advanced, batch: Batch, ai: AiAssistant,
   };
 
   let command: HTMLInputElement | undefined = $state();
@@ -33,12 +34,14 @@
   const opened = new SvelteSet<Page>(["compress"]);
 
   $effect(() => {
-    opened.add(app.page);
+    if ((PAGES as readonly string[]).includes(app.page)) {
+      opened.add(app.page);
+    }
   });
 
   $effect(() => {
     document.documentElement.dataset.theme = app.shown;
-    if (app.ready) void api().theme_shown(app.shown);
+    if (app.ready) void api().theme_shown(app.shown).catch(() => {});
   });
 
   onMount(() => {

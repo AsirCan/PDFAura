@@ -7,7 +7,7 @@ import { createFakeBridge } from "../src/lib/fake-bridge";
 
 const STRINGS: Record<string, string> = {
   txt_compress: "Sıkıştır", txt_edit: "Düzenle", txt_scan: "Belge Tara", txt_convert: "Dönüştür",
-  txt_security: "Güvenlik", txt_advanced: "Gelişmiş", txt_batch: "Toplu İşlemler", txt_settings: "Ayarlar",
+  txt_security: "Güvenlik", txt_advanced: "Gelişmiş", txt_batch: "Toplu İşlemler", txt_ai: "AI Asistan", txt_settings: "Ayarlar",
   page_meta_compress_title: "PDF sıkıştırma", page_meta_organize_title: "Sayfaları düzenle",
   str_input_pdf: "Girdi PDF",
 };
@@ -29,15 +29,15 @@ describe("the window", () => {
     app.ready = false;
   });
 
-  it("lists the seven tools in order", async () => {
+  it("lists the tools in order", async () => {
     await start();
     const items = screen.getAllByRole("button").filter((button) => button.closest(".nav"));
     expect(items.map((item) => item.querySelector("span")?.textContent)).toEqual([
-      "Sıkıştır", "Düzenle", "Belge Tara", "Dönüştür", "Güvenlik", "Gelişmiş", "Toplu İşlemler"]);
+      "Sıkıştır", "Düzenle", "Belge Tara", "Dönüştür", "Güvenlik", "Gelişmiş", "Toplu İşlemler", "AI Asistan"]);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("PDF sıkıştırma");
   });
 
-  it("switches tools with Ctrl+1…7 and opens Settings with Ctrl+,", async () => {
+  it("switches tools with Ctrl+1…8 and opens Settings with Ctrl+,", async () => {
     await start();
     await fireEvent.keyDown(window, { key: "2", ctrlKey: true });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sayfaları düzenle");

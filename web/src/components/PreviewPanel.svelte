@@ -40,12 +40,13 @@
     return { width, height, render };
   });
 
-  let src = $derived(doc?.base && fit ? `${doc.base}0?w=${fit.render}&v=${doc.version}` : null);
+  let pageIndex = $derived(doc?.pages ? Math.min(Math.max(0, app.previewPage), doc.pages - 1) : 0);
+  let src = $derived(doc?.base && fit ? `${doc.base}${pageIndex}?w=${fit.render}&v=${doc.version}` : null);
   let failed = $derived(Boolean(doc?.error && doc.error !== "not-a-pdf"));
   let sizeMb = $derived(doc ? doc.size / (1024 * 1024) : 0);
 
   function openViewer() {
-    if (doc && !doc.error) app.viewer = doc.path;
+    if (doc && !doc.error) { app.viewerPage = pageIndex; app.viewer = doc.path; }
   }
 </script>
 

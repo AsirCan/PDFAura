@@ -18,6 +18,7 @@ from src.app.bridge import Bridge, file_info, same_origin
 from src.app.events import EventBus
 from src.app.images import ImageCache, PdfPages
 from src.app.scanboard import ScannerBoard
+from src.core.app_logging import setup_logging
 from src.core.config_manager import cfg
 from src.core.lang_manager import _
 
@@ -283,4 +284,6 @@ def _app_version():
 
 
 def run(debug_port=None):
+    setup_logging()
+    logging.getLogger(__name__).info("PDF Aura starting (debug_port=%s)", debug_port)
     return Shell(debug_port).run()

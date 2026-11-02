@@ -9,7 +9,7 @@
 
   let { path }: { path: string } = $props();
   let doc = $state<PdfDocument | null>(null);
-  let page = $state(0);
+  let page = $state(app.viewerPage ?? 0);
   let zoom = $state(1);
   let loaded = $state(false);
   let stage: HTMLElement | undefined = $state();

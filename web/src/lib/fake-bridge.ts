@@ -162,7 +162,7 @@ export function createFakeBridge(options: FakeOptions = {}): Api & { calls: [str
         const output = String(params.output ?? "C:\\Belgeler\\cikti.pdf");
         recent = [info(output), ...recent.filter((file) => file.path !== output)].slice(0, 5);
         emit("job", { id, type: "done", outcome: { title: "Tamam", message: `${tool} bitti`, output, tone: "success",
-                                                   details: {} } });
+                                                   details: tool === "ai" ? (params.mode === "ask" ? { kind: "answer", answer: "Örnek cevap", found: true, used_llm: false, sources: [{ page: 1, quote: "Örnek kaynak" }] } : { kind: "summary", text: "Örnek özet", summary_mode: "kisa", points: ["Örnek nokta"], sources: [1], used_llm: false }) : {} } });
       }, ms));
       timers.set(id, steps);
       return { job: id, busy: `${tool}…`, cancellable: true };

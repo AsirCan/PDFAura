@@ -6,7 +6,7 @@ import win32service
 import win32gui
 import time
 
-def launch():
+def launch(wait=False):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     # Prefer the project's venv, then the interpreter running this script.
     # A path baked in from one machine only ever worked on that machine.
@@ -51,8 +51,11 @@ def launch():
             if "PDF Aura" in title:
                 found.append((hwnd, title, win32gui.IsWindowVisible(hwnd)))
                 # Bring to front
-                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                win32gui.SetForegroundWindow(hwnd)
+                try:
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                    win32gui.SetForegroundWindow(hwnd)
+                except Exception:
+                    pass
             return True
             
         win32gui.EnumWindows(enum_cb, None)
@@ -63,5 +66,11 @@ def launch():
     except Exception as e:
         print(f"Desktop check note: {e}")
 
+    if wait:
+        import win32event
+        print("Application is running. Keeping process alive...")
+        win32event.WaitForSingleObject(hProcess, win32event.INFINITE)
+
 if __name__ == "__main__":
-    launch()
+    wait = "--wait" in sys.argv
+    launch(wait=wait)

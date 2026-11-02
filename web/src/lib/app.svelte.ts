@@ -5,7 +5,7 @@ import { language } from "./i18n.svelte";
 import type { AssistantState, Boot, FileInfo, Settings, ThemeName, ThemePreference } from "./types";
 import type { IconName } from "./generated/icons";
 
-export const PAGES = ["compress", "organize", "scanner", "convert", "security", "advanced", "batch"] as const;
+export const PAGES = ["compress", "organize", "scanner", "convert", "security", "advanced", "batch", "ai"] as const;
 export type Page = (typeof PAGES)[number];
 
 // Sidebar order; Ctrl+1 … Ctrl+7 follow it.
@@ -17,6 +17,7 @@ export const NAV: { page: Page; icon: IconName; label: string }[] = [
   { page: "security", icon: "SECURITY", label: "txt_security" },
   { page: "advanced", icon: "ADVANCED", label: "txt_advanced" },
   { page: "batch", icon: "BATCH", label: "txt_batch" },
+  { page: "ai", icon: "SPARK", label: "txt_ai" },
 ];
 
 /** Pages that bring their own preview (the scanner) hide the shared one. */
@@ -37,8 +38,10 @@ class AppState {
   token = $state("");
   /** The PDF in the preview panel. */
   preview = $state<string | null>(null);
+  previewPage = $state<number>(0);
   /** The PDF open in the full-window viewer. */
   viewer = $state<string | null>(null);
+  viewerPage = $state<number>(0);
   assistant = $state<AssistantState>("idle");
   assistantHeard = $state("");
   reply = $state<string | null>(null);
@@ -67,7 +70,7 @@ class AppState {
 
   /** Files dropped on the window go to the page that is showing. */
   drop(files: FileInfo[]) {
-    if (this.settingsOpen || this.viewer) return;
+    if (this.settingsOpen || this.viewer || !Array.isArray(files)) return;
     this.dropTargets.get(this.page)?.(files);
   }
 }
@@ -77,33 +80,59 @@ export const app = new AppState();
 // ── Actions ────────────────────────────────────────────────────────────
 
 export function showPage(page: Page) {
-  app.page = page;
+  if ((PAGES as readonly string[]).includes(page)) {
+    app.page = page;
+  }
 }
 
 export async function setTheme(preference: ThemePreference) {
   app.theme = preference;
-  await api().set_theme(preference);
+  try {
+    await api().set_theme(preference);
+  } catch {
+    // bridge unavailable or error
+  }
 }
 
 export async function setLanguage(code: string) {
-  language.apply(await api().set_language(code));
+  try {
+    language.apply(await api().set_language(code));
+  } catch {
+    // bridge unavailable or error
+  }
 }
 
 export async function refreshRecent() {
-  app.recent = await api().recent_files();
+  try {
+    app.recent = await api().recent_files();
+  } catch {
+    // bridge unavailable or error
+  }
 }
 
-export function previewFile(path: string | null) {
-  app.preview = path && path.toLowerCase().endsWith(".pdf") ? path : null;
+export function previewFile(path: string | null, page: number = 0) {
+  const clean = typeof path === "string" ? path.trim() : null;
+  app.preview = clean && clean.toLowerCase().endsWith(".pdf") ? clean : null;
+  app.previewPage = Math.max(0, page);
+}
+
+export function openViewer(path: string | null, page: number = 0) {
+  const clean = typeof path === "string" ? path.trim() : null;
+  if (!clean || !clean.toLowerCase().endsWith(".pdf")) {
+    app.viewer = null;
+    return;
+  }
+  app.viewer = clean;
+  app.viewerPage = Math.max(0, page);
 }
 
 /** Wire the events Python sends that the window as a whole handles. */
 export function listen(): () => void {
   const undo = [
-    on("drop", ({ files }) => app.drop(files)),
+    on("drop", ({ files }) => files && app.drop(files)),
     on("assistant", ({ state, detail }) => {
       app.assistant = state;
-      app.assistantHeard = state === "heard" ? detail : "";
+      app.assistantHeard = state === "heard" ? (detail || "") : "";
     }),
     on("assistant-reply", ({ text }) => {
       app.reply = text;
@@ -117,6 +146,9 @@ export function listen(): () => void {
 
 /** Follow Windows' light/dark setting while the preference is "system". */
 export function followSystemTheme(): () => void {
+  if (typeof window === "undefined" || !window.matchMedia) {
+    return () => {};
+  }
   const query = window.matchMedia("(prefers-color-scheme: dark)");
   app.systemDark = query.matches;
   const change = (event: MediaQueryListEvent) => {

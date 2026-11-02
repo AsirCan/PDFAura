@@ -15,7 +15,22 @@ if sys.stderr is None:
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
 
+def _set_app_id():
+    """Own taskbar identity: run from source, the taskbar button showed
+    python.exe's icon instead of ours. Not in the built exe: it already has
+    its own icon, and an ID its Start-menu shortcut lacks would split a
+    pinned taskbar button from the running window."""
+    if sys.platform != "win32" or getattr(sys, "frozen", False):
+        return
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("PDFAura.PDFAura")
+    except Exception:
+        pass
+
+
 def main():
+    _set_app_id()
     sys.exit(run_web(_debug_port(sys.argv[1:])))
 
 
