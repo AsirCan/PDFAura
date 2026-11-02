@@ -29,6 +29,14 @@ PrivilegesRequired=admin
 CloseApplications=yes
 RestartApplications=no
 
+; Silent install/uninstall (Inno's standard switches, no extra work needed):
+;   PDFAura-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+;   /TASKS="desktopicon,contextmenu,fileassoc" picks the integrations; leave a
+;   name out to skip it, e.g. /TASKS="desktopicon". Silent installs never open
+;   the app and never wait for the WebView2 failure question.
+;   Uninstall: unins000.exe /VERYSILENT /SUPPRESSMSGBOXES
+;   Add /REMOVESETTINGS=1 to that command to delete %APPDATA%\PDFAura too.
+
 [Files]
 Source: "dist\PDFAura\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -37,7 +45,35 @@ Name: "{group}\PDF Aura"; Filename: "{app}\PDFAura.exe"
 Name: "{autodesktop}\PDF Aura"; Filename: "{app}\PDFAura.exe"; Tasks: desktopicon
 
 [Tasks]
-Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"
+Name: "desktopicon"; Description: "Masaüstü kısayolu oluştur"; Flags: checkedonce
+Name: "contextmenu"; Description: "PDF dosyalarına sağ tık menüsü ekle (Sıkıştır, Kes, Birleştir)"; Flags: checkedonce
+Name: "fileassoc"; Description: "PDF Aura'yı PDF dosyaları için ""Birlikte aç"" listesine ekle"; Flags: checkedonce
+
+[Registry]
+; Per-user entries: no administrator rights are needed and uninstalling the
+; app removes them again (uninsdeletekey). The Python module that shows the
+; same entries from Settings writes exactly this layout.
+; "Sıkıştır" and "Kes" receive the clicked file as %1; "Birleştir" receives
+; every selected file as %* and is offered for multi-selections.
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Compress"; ValueType: string; ValueName: ""; ValueData: "PDF Aura ile Sıkıştır"; Flags: uninsdeletekey; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Compress"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\PDFAura.exe,0"; Flags: uninsdeletevalue; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Compress\command"; ValueType: string; ValueName: ""; ValueData: """{app}\PDFAura.exe"" compress ""%1"" -q ebook"; Flags: uninsdeletekey; Tasks: contextmenu
+
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Split"; ValueType: string; ValueName: ""; ValueData: "PDF Aura ile Kes"; Flags: uninsdeletekey; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Split"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\PDFAura.exe,0"; Flags: uninsdeletevalue; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Split\command"; ValueType: string; ValueName: ""; ValueData: """{app}\PDFAura.exe"" split ""%1"" --pages 1-1"; Flags: uninsdeletekey; Tasks: contextmenu
+
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Merge"; ValueType: string; ValueName: ""; ValueData: "PDF Aura ile Birleştir"; Flags: uninsdeletekey; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Merge"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\PDFAura.exe,0"; Flags: uninsdeletevalue; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Merge"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Flags: uninsdeletevalue; Tasks: contextmenu
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\PDFAura.Merge\command"; ValueType: string; ValueName: ""; ValueData: """{app}\PDFAura.exe"" merge %*"; Flags: uninsdeletekey; Tasks: contextmenu
+
+; "Birlikte aç" only: the default .pdf handler is left alone. OpenWithProgids
+; is shared, so only our value is removed on uninstall.
+Root: HKA; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "PDFAura.Document"; ValueData: ""; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\PDFAura.Document"; ValueType: string; ValueName: ""; ValueData: "PDF Belgesi"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\PDFAura.Document\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\PDFAura.exe,0"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\PDFAura.Document\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\PDFAura.exe"" ""%1"""; Flags: uninsdeletekey; Tasks: fileassoc
 
 [Run]
 Filename: "{app}\PDFAura.exe"; Description: "PDF Aura'yı başlat"; Flags: nowait postinstall skipifsilent
@@ -46,6 +82,7 @@ Filename: "{app}\PDFAura.exe"; Description: "PDF Aura'yı başlat"; Flags: nowai
 WebView2Title=Microsoft Edge WebView2
 WebView2Body=PDF Aura'nın penceresini çizen WebView2 çalışma zamanı indirilip kuruluyor...
 WebView2Failed=Microsoft Edge WebView2 çalışma zamanı kurulamadı. PDF Aura onsuz açılmaz; daha sonra https://go.microsoft.com/fwlink/p/?LinkId=2124703 adresinden kurabilirsiniz.%n%nKuruluma yine de devam edilsin mi?
+RemoveSettingsPrompt=PDF Aura'nın kullanıcı ayarları ve son açılan dosya listesi de silinsin mi?%n%nAyarları saklamak için Hayır'ı seçin.
 
 [Code]
 // PDF Aura's window is drawn by the Edge WebView2 runtime. Windows 11 and
@@ -103,5 +140,27 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
   if (CurPageID = wpReady) and not WebView2Installed and not InstallWebView2 then
-    Result := MsgBox(CustomMessage('WebView2Failed'), mbConfirmation, MB_YESNO) = IDYES;
+    // A silent install has nobody to answer this question; keep going and
+    // let the app explain the missing runtime if it cannot start.
+    Result := WizardSilent or
+      (MsgBox(CustomMessage('WebView2Failed'), mbConfirmation, MB_YESNO) = IDYES);
+end;
+
+// Uninstall keeps %APPDATA%\PDFAura (preferences, recent files, logs) by
+// default, so reinstalling does not lose the user's setup. The question is
+// skipped in silent mode; pass /REMOVESETTINGS=1 there to clear it too.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep <> usPostUninstall then
+    Exit;
+
+  if UninstallSilent then
+  begin
+    if ExpandConstant('{param:REMOVESETTINGS|0}') = '1' then
+      DelTree(ExpandConstant('{userappdata}\PDFAura'), True, True, True);
+    Exit;
+  end;
+
+  if MsgBox(CustomMessage('RemoveSettingsPrompt'), mbConfirmation, MB_YESNO) = IDYES then
+    DelTree(ExpandConstant('{userappdata}\PDFAura'), True, True, True);
 end;
