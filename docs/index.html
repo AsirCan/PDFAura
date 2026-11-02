@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Aura — Yerel Yapay Zeka & Gizlilik Odaklı Masaüstü PDF Aracı</title>
+  <meta name="description" content="PDF Aura: %100 çevrimdışı (offline-first), yerel yapay zeka (Local AI) destekli, gizlilik odaklı hepsi bir arada masaüstü PDF yönetim aracı. Sıkıştırma, bölme, birleştirme, OCR, şifreleme ve AI asistanı.">
+  <meta name="keywords" content="PDF Aura, PDF sıkıştırma, PDF birleştirme, yerel AI, Local AI, PDF OCR, PDF şifreleme, PDF düzenleme, Windows PDF, gizlilik odaklı PDF">
+  <meta name="author" content="PDF Aura Team">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph / Facebook / LinkedIn -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="PDF Aura — Yerel Yapay Zeka & Gizlilik Odaklı Masaüstü PDF Aracı">
+  <meta property="og:description" content="Belgeleriniz asla buluta gönderilmez. %100 çevrimdışı, yerel LLM destekli PDF sohbeti, sıkıştırma, OCR, redaksiyon ve dönüştürme aracı.">
+  <meta property="og:url" content="https://pdfaura.app/">
+  <meta property="og:image" content="assets/appicon.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PDF Aura — Local AI & Privacy-First PDF Suite">
+  <meta name="twitter:description" content="100% Offline. Zero Cloud Uploads. Powerful Local AI RAG, Compression, OCR, Encryption and CLI tools.">
+  <meta name="twitter:image" content="assets/appicon.png">
+
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-hover: rgba(31, 41, 55, 0.95);
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --accent-primary: #6366f1;
+      --accent-secondary: #8b5cf6;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+      --accent-glow: rgba(99, 102, 241, 0.25);
+      --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      --code-bg: #1e293b;
+      --badge-bg: rgba(99, 102, 241, 0.15);
+      --badge-text: #a5b4fc;
+      --tag-green-bg: rgba(16, 185, 129, 0.15);
+      --tag-green-text: #34d399;
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-card: rgba(255, 255, 255, 0.9);
+      --bg-card-hover: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --border-focus: #4f46e5;
+      --accent-primary: #4f46e5;
+      --accent-secondary: #7c3aed;
+      --accent-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+      --accent-glow: rgba(79, 70, 229, 0.15);
+      --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+      --code-bg: #f1f5f9;
+      --badge-bg: rgba(79, 70, 229, 0.1);
+      --badge-text: #4f46e5;
+      --tag-green-bg: rgba(16, 185, 129, 0.1);
+      --tag-green-text: #059669;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      transition: var(--transition);
+      overflow-x: hidden;
+    }
+
+    a {
+      color: var(--accent-primary);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header & Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-secondary);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      transition: var(--transition);
+    }
+
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .logo-badge {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      background: var(--accent-gradient);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+    .nav-links a:hover {
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: var(--transition);
+      text-decoration: none !important;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #ffffff;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-focus);
+      transform: translateY(-2px);
+    }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 0.85rem;
+    }
+
+    .theme-toggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: var(--transition);
+    }
+    .theme-toggle:hover {
+      border-color: var(--border-focus);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 90px 0 60px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      border: 1px solid var(--border-color);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.3rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 span.gradient {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p.lead {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      max-width: 780px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    .hero-meta span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Interactive Interface Demo / Showcase */
+    .showcase-wrapper {
+      margin: 40px auto 0;
+      max-width: 1000px;
+      border-radius: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .window-header {
+      padding: 12px 18px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .window-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .demo-tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      overflow-x: auto;
+    }
+
+    .demo-tab-btn {
+      padding: 12px 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: var(--transition);
+    }
+    .demo-tab-btn.active {
+      color: var(--accent-primary);
+      border-bottom-color: var(--accent-primary);
+      background: var(--bg-card);
+    }
+
+    .demo-content {
+      padding: 32px;
+      display: none;
+    }
+    .demo-content.active {
+      display: block;
+    }
+
+    /* Privacy Banner */
+    .privacy-banner {
+      padding: 60px 0;
+      margin: 80px 0;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .privacy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+    }
+
+    .privacy-card {
+      padding: 24px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+    }
+
+    .privacy-icon {
+      font-size: 2rem;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    .privacy-card h3 {
+      font-size: 1.15rem;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+
+    .privacy-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* Section Headers */
+    .section-header {
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto 56px;
+    }
+
+    .section-header .sub {
+      color: var(--accent-primary);
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .section-header h2 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .section-header p {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+    }
+
+    /* Feature Cards Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+      margin-bottom: 80px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 28px;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--card-shadow);
+      border-color: var(--border-focus);
+    }
+
+    .feature-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      background: var(--badge-bg);
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .feature-tag {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: var(--tag-green-bg);
+      color: var(--tag-green-text);
+      font-weight: 600;
+    }
+
+    .feature-card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      flex-grow: 1;
+      margin-bottom: 16px;
+    }
+
+    .feature-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      padding-top: 12px;
+    }
+
+    /* CLI Showcase */
+    .cli-section {
+      padding: 80px 0;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 80px;
+    }
+
+    .cli-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      overflow-x: auto;
+      color: #38bdf8;
+    }
+    .cli-comment {
+      color: var(--text-muted);
+    }
+
+    /* FAQ Accordion */
+    .faq-section {
+      padding: 60px 0 100px;
+    }
+
+    .faq-list {
+      max-width: 840px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .faq-item:hover {
+      border-color: var(--border-focus);
+    }
+
+    .faq-question {
+      width: 100%;
+      text-align: left;
+      padding: 20px 24px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .faq-arrow {
+      transition: transform 0.25s ease;
+      font-size: 1.1rem;
+      color: var(--accent-primary);
+    }
+
+    .faq-item.open .faq-arrow {
+      transform: rotate(180deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s ease;
+      padding: 0 24px;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .faq-item.open .faq-answer {
+      padding: 0 24px 20px 24px;
+    }
+
+    /* Download Section */
+    .download-section {
+      padding: 80px 0;
+      text-align: center;
+      background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 70%);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .download-cards {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+
+    .download-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 320px;
+      text-align: center;
+      transition: var(--transition);
+    }
+    .download-card:hover {
+      border-color: var(--accent-primary);
+      transform: translateY(-4px);
+      box-shadow: var(--card-shadow);
+    }
+
+    .download-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+    }
+    .download-card p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 48px 0 32px;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .footer-brand p {
+      margin-top: 12px;
+      max-width: 360px;
+      color: var(--text-muted);
+    }
+
+    .footer-links h4 {
+      color: var(--text-primary);
+      font-size: 1rem;
+      margin-bottom: 16px;
+    }
+    .footer-links ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .footer-links a {
+      color: var(--text-secondary);
+    }
+    .footer-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border-color);
+      padding-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .demo-content {
+        padding: 20px;
+      }
+      .hero-cta {
+        flex-direction: column;
+        width: 100%;
+      }
+      .hero-cta .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header>
+    <div class="container nav-container">
+      <a href="#" class="logo" aria-label="PDF Aura Ana Sayfa">
+        <span class="logo-badge">⚡</span>
+        <span>PDF Aura</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#features">Özellikler</a></li>
+        <li><a href="#privacy">Gizlilik & Local AI</a></li>
+        <li><a href="#cli">CLI Desteği</a></li>
+        <li><a href="#faq">SSS</a></li>
+        <li><a href="USER_GUIDE.md">Kullanım Kılavuzu</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button id="themeToggle" class="theme-toggle" aria-label="Açık/Koyu Tema Değiştir">
+          🌙
+        </button>
+        <a href="#download" class="btn btn-primary btn-sm">İndir</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span>🛡️</span> %100 Çevrimdışı &bull; Yerel Yapay Zeka &bull; Gizlilik Odaklı
+      </div>
+
+      <h1>
+        Belgeleriniz Cihazınızda Güvende.<br>
+        <span class="gradient">Hızlı, Akıllı ve Bağımsız PDF Çözümü</span>
+      </h1>
+
+      <p class="lead">
+        PDF Aura; sıkıştırma, birleştirme, OCR, şifreleme ve gelişmiş yapay zeka araçlarını hiçbir bulut bağımlılığı olmadan doğrudan masaüstünüze getirir. Sıfır veri sızıntısı, sıfır abonelik.
+      </p>
+
+      <div class="hero-cta">
+        <a href="#download" class="btn btn-primary">
+          <span>🚀</span> Windows İçin İndir (v1.0.0)
+        </a>
+        <a href="USER_GUIDE.md" class="btn btn-secondary">
+          <span>📖</span> Kılavuzu İncele (User Guide)
+        </a>
+      </div>
+
+      <div class="hero-meta">
+        <span>✓ Windows 10 & 11 (64-bit)</span>
+        <span>✓ Bulut veya İnternet Gerektirmez</span>
+        <span>✓ Açık Kaynak & Ücretsiz</span>
+      </div>
+
+      <!-- Interactive UI Demo / Showcase Mockup -->
+      <div class="showcase-wrapper">
+        <div class="window-header">
+          <div class="window-dots">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+          </div>
+          <div class="window-title">PDF Aura v1.0.0 — Modern Masaüstü Çalışma Alanı</div>
+        </div>
+
+        <div class="demo-tabs">
+          <button class="demo-tab-btn active" data-tab="ai-chat">🤖 Yerel AI Sohbeti (RAG)</button>
+          <button class="demo-tab-btn" data-tab="compress">⚡ Akıllı Sıkıştırma</button>
+          <button class="demo-tab-btn" data-tab="scanner">📷 AI Tarama & Kalite</button>
+          <button class="demo-tab-btn" data-tab="security">🔒 Askeri Düzey Güvenlik</button>
+        </div>
+
+        <!-- Tab 1: AI Chat -->
+        <div id="ai-chat" class="demo-content active">
+          <div style="background: var(--bg-secondary); border-radius: 8px; padding: 18px; border: 1px solid var(--border-color);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:14px; font-size:0.85rem; color:var(--text-muted);">
+              <span>Belge: <strong>Sözleşme_2026_Final.pdf</strong> (48 sayfa)</span>
+              <span style="color:var(--tag-green-text);">● Model: Qwen-2.5 7B (Offline / Yerel CPU)</span>
+            </div>
+            <div style="background: var(--bg-card); padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 0.95rem;">
+              <strong>Kullanıcı:</strong> Bu sözleşmede gecikme faizi ve fesih ihbar süresi ne kadar?
+            </div>
+            <div style="background: var(--badge-bg); border-left: 3px solid var(--accent-primary); padding: 12px 16px; border-radius: 8px; font-size: 0.95rem; line-height: 1.6;">
+              <strong>PDF Aura AI:</strong><br>
+              • <strong>Fesih İhbar Süresi:</strong> Madde 14.2 uyarınca taraflar sözleşmeyi en az <strong>30 gün</strong> öncesinden yazılı bildirim ile feshedebilir. <em style="color:var(--accent-primary);">(Kaynak: Sayfa 12)</em><br>
+              • <strong>Gecikme Faizi:</strong> Madde 9.1'e göre geciken ödemelerde aylık <strong>%2.5</strong> oranında temerrüt faizi uygulanır. <em style="color:var(--accent-primary);">(Kaynak: Sayfa 8)</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Compress -->
+        <div id="compress" class="demo-content">
+          <div style="background: var(--bg-secondary); border-radius: 8px; padding: 24px; border: 1px solid var(--border-color); text-align: center;">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">📉</div>
+            <h4 style="margin-bottom: 8px;">Akıllı DPI Optimizasyonu ile Boyut Küçültme</h4>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 16px;">
+              Giriş: <code>Teknik_Sartname.pdf</code> (24.8 MB) ➔ Çıktı: <code>Teknik_Sartname_compressed.pdf</code> (3.9 MB)
+            </p>
+            <div style="display: inline-block; background: var(--tag-green-bg); color: var(--tag-green-text); font-weight: 700; padding: 6px 16px; border-radius: 9999px;">
+              %84 Boyut Tasarrufu Sağlandı (E-Book 150 DPI Modu)
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Scanner -->
+        <div id="scanner" class="demo-content">
+          <div style="background: var(--bg-secondary); border-radius: 8px; padding: 20px; border: 1px solid var(--border-color);">
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">AI Tarama Kalite Raporu</div>
+                <div style="font-weight: 700; font-size: 1.1rem; color: var(--tag-green-text); margin-bottom: 8px;">✓ Kalite: Yüksek (94/100)</div>
+                <ul style="list-style: none; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.8;">
+                  <li>✓ Netlik & Bulanıklık: Net (Laplacian Skoru: 420)</li>
+                  <li>✓ Parlama / Aşırı Pozlama: Yok</li>
+                  <li>✓ Perspektif Düzeltme: Otomatik Hizalandı</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Security -->
+        <div id="security" class="demo-content">
+          <div style="background: var(--bg-secondary); border-radius: 8px; padding: 20px; border: 1px solid var(--border-color);">
+            <h4 style="margin-bottom: 10px;">🛡️ Gerçek Redaksiyon & Kalıcı İmha</h4>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 14px;">
+              TC Kimlik Numaraları, IBAN ve telefon numaraları dosyanın ham bayt yapısından tamamen silinir. Metin kopyalama veya arama ile geri döndürülemez.
+            </p>
+            <div style="background: var(--code-bg); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.85rem;">
+              [REDACTED] TC: *********** | IBAN: TR** **** **** **** **** | Tel: +90 (***) *** ** **
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy & Local AI Highlights -->
+  <section id="privacy" class="privacy-banner">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub">Gizlilik İlkemiz</span>
+        <h2>Verileriniz Yalnızca Sizin Cihazınızda Kalır</h2>
+        <p>Geleneksel bulut tabanlı PDF dönüştürücüler dosyalarınızı uzak sunuculara yükler. PDF Aura ise %100 yerel çalışır.</p>
+      </div>
+
+      <div class="privacy-grid">
+        <div class="privacy-card">
+          <div class="privacy-icon">💻</div>
+          <h3>%100 Yerel AI (Local-First)</h3>
+          <p>Yapay zeka modelleri doğrudan bilgisayarınızın işlemcisi veya ekran kartı üzerinde koşar. Hiçbir sorgu internete aktarılmaz.</p>
+        </div>
+
+        <div class="privacy-card">
+          <div class="privacy-icon">🚫</div>
+          <h3>Sıfır Telemetri & Takip</h3>
+          <p>Kullanım alışkanlıklarınız, dosya adlarınız veya içerikleriniz kaydedilmez; analiz sunucularına veri gönderilmez.</p>
+        </div>
+
+        <div class="privacy-card">
+          <div class="privacy-icon">🔐</div>
+          <h3>AES-256 Şifreleme</h3>
+          <p>Belgeleriniz askeri düzeyde 256-bit AES algoritması ile korunur. Yetkisiz erişim, kopyalama ve yazdırma kısıtlamaları tam denetiminizdedir.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Cards Grid -->
+  <section id="features" class="container" style="padding: 60px 24px;">
+    <div class="section-header">
+      <span class="sub">Tüm Araçlar Tek Çatıda</span>
+      <h2>Güçlü, Kapsamlı ve Hızlı PDF Araç Seti</h2>
+      <p>Günlük PDF gereksinimlerinizden kurumsal yapay zeka iş akışlarına kadar her şey hazır.</p>
+    </div>
+
+    <div class="features-grid">
+
+      <!-- 1. Compress -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">🗜️</div>
+        <span class="feature-tag">Hızlı</span>
+        <h3>PDF Sıkıştırma (Compress)</h3>
+        <p>E-kitap, ekran, ofis baskısı ve matbaa profilleriyle görsel kaliteyi bozmadan dosya boyutlarını %80'e kadar küçültün.</p>
+        <div class="feature-meta">Modlar: screen, ebook, printer, prepress</div>
+      </div>
+
+      <!-- 2. Split & Merge -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">📑</div>
+        <span class="feature-tag">Temel</span>
+        <h3>Bölme & Birleştirme (Split & Merge)</h3>
+        <p>İstediğiniz sayfa aralıklarını ayıklayın veya yüzlerce PDF belgesini tek tıkla sıralı olarak tek dosyada birleştirin.</p>
+        <div class="feature-meta">Esnek aralıklar (örn: 1-5, 12, 20-30)</div>
+      </div>
+
+      <!-- 3. Convert -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">🔄</div>
+        <span class="feature-tag">Dönüştürücü</span>
+        <h3>Geniş Format Dönüştürme (Convert)</h3>
+        <p>PDF'ten Word (DOCX), Resim (PNG/JPG), TXT formatlarına ve Word/Görsellerden doğrudan PDF'e çift yönlü kayıpsız dönüştürme.</p>
+        <div class="feature-meta">PDF ↔ Word, Görseller ↔ PDF, Tablolar</div>
+      </div>
+
+      <!-- 4. OCR -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">👁️</div>
+        <span class="feature-tag">OCR</span>
+        <h3>Optik Karakter Tanıma (OCR)</h3>
+        <p>Taranmış dokümanları ve resimleri arama yapılabilir (Searchable PDF) metin katmanına çevirin. Türkçe ve çok dilli Tesseract & PaddleOCR desteği.</p>
+        <div class="feature-meta">Türkçe, İngilizce, Almanca ve 10+ dil</div>
+      </div>
+
+      <!-- 5. Security & Redaction -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">🔒</div>
+        <span class="feature-tag">Güvenlik</span>
+        <h3>Şifreleme & Sansürleme (Redact)</h3>
+        <p>AES-256 şifre koruması, filigran damgalama ve TC kimlik, IBAN gibi hassas verilerin PDF baytlarından kalıcı olarak imha edilmesi.</p>
+        <div class="feature-meta">True Redaction & Parola Yönetimi</div>
+      </div>
+
+      <!-- 6. Scanner & Quality -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">📷</div>
+        <span class="feature-tag">AI Vizyon</span>
+        <h3>Akıllı Belge Tarayıcı & Kalite Skoru</h3>
+        <p>Fotoğraf köşelerini otomatik algılar, perspektif yamukluklarını düzeltir; bulanıklık, parlama ve gölge kontrolüyle kalite puanı üretir.</p>
+        <div class="feature-meta">Laplacian Netlik Ölçümü & Kenar Bulma</div>
+      </div>
+
+      <!-- 7. AI Chat & RAG -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">💬</div>
+        <span class="feature-tag">Yerel LLM</span>
+        <h3>AI Doküman Sohbeti & RAG</h3>
+        <p>50+ sayfalık sözleşmeler ve kitaplarla doğal dilde konuşun. Her cevabın yanında doğrulanabilir sayfa referansı ve alıntısı bulunur.</p>
+        <div class="feature-meta">Sıfır halüsinasyon, sayfa kaynaklı</div>
+      </div>
+
+      <!-- 8. Summarizer -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">📝</div>
+        <span class="feature-tag">Özetleyici</span>
+        <h3>Akıllı Özetleme Modları</h3>
+        <p>Tek tıkla Yönetici Özeti, Akademik Özet, Sözleşme Maddeleri Analizi ve Öğrenci Özeti çıkarın; TXT veya PDF raporu olarak kaydedin.</p>
+        <div class="feature-meta">Kısa, Detaylı, Kontrat ve Öğrenci</div>
+      </div>
+
+      <!-- 9. Compare -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">⚖️</div>
+        <span class="feature-tag">Karşılaştırma</span>
+        <h3>PDF Karşılaştırma & Fark Açıklama</h3>
+        <p>İki belge versiyonunu karşılaştırarak eklenen, silinen ve değişen maddeleri tespit eder; riskli anlam değişikliklerini AI ile sınıflandırır.</p>
+        <div class="feature-meta">Semantik Fark & Risk Değerlendirmesi</div>
+      </div>
+
+      <!-- 10. Smart Naming -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">🏷️</div>
+        <span class="feature-tag">Düzenleyici</span>
+        <h3>Akıllı Adlandırma & Sıralama</h3>
+        <p>Belge içeriğindeki tarih, kurum ve konuyu okuyarak şablon bazlı otomatik dosya adı üretir (Örn: Fatura_Turkcell_Nisan_2026.pdf).</p>
+        <div class="feature-meta">{belge_turu}_{tarih}_{konu}</div>
+      </div>
+
+      <!-- 11. Student Mode -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">🎓</div>
+        <span class="feature-tag">Eğitim</span>
+        <h3>Öğrenci Çalışma Modu</h3>
+        <p>Ders notlarınızdan 10 soruluk testler, boşluk doldurma alıştırmaları, flashcard kartları ve yazdırılabilir sınav çalışma kağıdı üretir.</p>
+        <div class="feature-meta">Sınav Soruları, Flashcard & Notlar</div>
+      </div>
+
+      <!-- 12. Presentation Generator -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">📊</div>
+        <span class="feature-tag">Sunum</span>
+        <h3>PDF'ten Slayt / Sunum Oluşturucu</h3>
+        <p>Rapor veya makaleleri 6-10 slaytlık profesyonel Microsoft PowerPoint (.pptx) taslağına dönüştürür; slaytlara kaynak referansı ekler.</p>
+        <div class="feature-meta">Otomatik .PPTX Çıktısı</div>
+      </div>
+
+      <!-- 13. CLI -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">💻</div>
+        <span class="feature-tag">Otomasyon</span>
+        <h3>Komut Satırı Arayüzü (CLI)</h3>
+        <p>Tüm temel işlevler komut satırından çalıştırılabilir. Shell betikleri ve sunucu otomasyonları için hafif ve bağımsız çalışır.</p>
+        <div class="feature-meta">pdfaura compress / split / merge / etc.</div>
+      </div>
+
+      <!-- 14. Batch Processing -->
+      <div class="feature-card">
+        <div class="feature-icon-wrapper">📦</div>
+        <span class="feature-tag">Toplu İşlem</span>
+        <h3>Toplu İşlem Merkezi</h3>
+        <p>Klasörler dolusu PDF dosyasını tek seferde sıkıştırın, dönüştürün veya yeniden adlandırın. Arka planda donmadan işler.</p>
+        <div class="feature-meta">Toplu Sıkıştırma, Dönüştürme, İsimlendirme</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CLI Demonstration Section -->
+  <section id="cli" class="cli-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub">Geliştiriciler & Sistem Yöneticileri</span>
+        <h2>Terminalden Tam Kontrol: PDF Aura CLI</h2>
+        <p>Arayüz açmadan betiklerinizde veya PowerShell üzerinden PDF Aura gücünden yararlanın.</p>
+      </div>
+
+      <div class="cli-box">
+<span class="cli-comment"># 1. PDF Sıkıştırma (ebook / screen / printer / prepress)</span>
+$ python -m src.cli compress buyuk_dosya.pdf -q ebook -o kucuk_dosya.pdf
+
+<span class="cli-comment"># 2. Belirli sayfaları bölme</span>
+$ python -m src.cli split katalog.pdf --pages 1-10 -o bolum1.pdf
+
+<span class="cli-comment"># 3. Çoklu PDF dosyalarını birleştirme</span>
+$ python -m src.cli merge rapor1.pdf rapor2.pdf rapor3.pdf -o birlesik_rapor.pdf
+
+<span class="cli-comment"># 4. Askeri düzey AES-256 şifreleme</span>
+$ python -m src.cli encrypt sozlesme.pdf -p GizliSifre2026 -o guvenli.pdf
+
+<span class="cli-comment"># 5. Filigran ekleme (açı, şeffaflık ve font boyutuyla)</span>
+$ python -m src.cli watermark taslak.pdf -t "KORUMALI BELGE" --opacity 0.25 -o filigranli.pdf
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Accordion -->
+  <section id="faq" class="container faq-section">
+    <div class="section-header">
+      <span class="sub">Merak Edilenler</span>
+      <h2>Sıkça Sorulan Sorular</h2>
+      <p>PDF Aura hakkında en çok yöneltilen soruların yanıtları.</p>
+    </div>
+
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">
+          <span>PDF Aura gerçekten tamamen offline mı çalışıyor?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          Evet. PDF Aura'nın mimari temeli "Offline-First" ve "Privacy-First" olarak inşa edilmiştir. Dosyalarınız, görselleriniz ve belgeleriniz asla uzak bir sunucuya yüklenmez veya internete sızdırılmaz.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">
+          <span>Yapay zeka özellikleri için OpenAI veya harici API anahtarı gerekiyor mu?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          Hayır. PDF Aura kendi bünyesindeki yerel dil modellerini (GGUF formatında Qwen, Mistral vb.) doğrudan bilgisayarınızda çalıştırır. Herhangi bir harici API anahtarı, kredi kartı veya aylık abonelik gerekmez.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">
+          <span>Hangi işletim sistemleri destekleniyor?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          PDF Aura şu an Windows 10 ve Windows 11 (64-bit) işletim sistemleriyle tam uyumludur. Hem kurulum yapılabilen (.exe) hem de taşınabilir (portable .zip) sürümleri mevcuttur.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">
+          <span>Büyük PDF dosyalarında uygulama donar mı?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          Hayır. Tüm dönüştürme, sıkıştırma, OCR ve yapay zeka işlemleri arka plan iş parçacıklarında (background tasks) çalıştırılır. İşlem süresince arayüz akıcı kalır, ilerleme yüzdesi anlık gösterilir ve istenildiği an iptal edilebilir.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">
+          <span>Sansürleme (Redaction) işlemi güvenli mi?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          Evet. PDF Aura yüzeysel olarak siyah kutu çizmekle yetinmez; "True Redaction" ilkesiyle sansürlenen metni ve piksel verisini PDF'in ham dosya baytlarından kalıcı olarak söker. Metin seçme veya arama araçlarıyla geri döndürülemez.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">
+          <span>Komut satırından (CLI) toplu otomasyon yapabilir miyim?</span>
+          <span class="faq-arrow">▼</span>
+        </button>
+        <div class="faq-answer">
+          Kesinlikle. <code>python -m src.cli</code> veya <code>pdfaura</code> komutu ile sıkıştırma, birleştirme, bölme, döndürme, şifreleme ve resme dönüştürme gibi tüm araçları PowerShell, CMD veya bash betiklerinizde otomatikleştirebilirsiniz.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section id="download" class="download-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub">Hemen Başlayın</span>
+        <h2>PDF Aura'yı Bugün İndirin</h2>
+        <p>Windows 10 ve 11 için optimize edilmiş, temiz ve güvenli kurulum paketleri.</p>
+      </div>
+
+      <div class="download-cards">
+
+        <!-- Installer -->
+        <div class="download-card">
+          <div style="font-size: 2.2rem; margin-bottom: 12px;">💿</div>
+          <h3>Windows Kurulum (Setup)</h3>
+          <p>Windows Gezgini sağ tık entegrasyonu ve otomatik masaüstü kısayolları içerir.</p>
+          <a href="#" class="btn btn-primary" style="width: 100%;">
+            <span>⬇️</span> PDFAura_Setup.exe
+          </a>
+          <div style="margin-top: 14px; font-size: 0.8rem; color: var(--text-muted);">
+            v1.0.0 &bull; 64-bit &bull; Sessiz Kurulum Desteği
+          </div>
+        </div>
+
+        <!-- Portable -->
+        <div class="download-card">
+          <div style="font-size: 2.2rem; margin-bottom: 12px;">📦</div>
+          <h3>Taşınabilir Sürüm (Portable)</h3>
+          <p>Kurulum gerektirmez. ZIP dosyasını açıp doğrudan USB bellekten çalıştırın.</p>
+          <a href="#" class="btn btn-secondary" style="width: 100%;">
+            <span>📁</span> PDFAura_Portable.zip
+          </a>
+          <div style="margin-top: 14px; font-size: 0.8rem; color: var(--text-muted);">
+            v1.0.0 &bull; Kayıt Defterine Yazmaz &bull; Bağımsız
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo" style="margin-bottom: 8px;">
+            <span class="logo-badge">⚡</span>
+            <span>PDF Aura</span>
+          </a>
+          <p>
+            Yerel yapay zeka ile güçlendirilmiş, gizlilik odaklı modern masaüstü PDF yönetim aracı.
+          </p>
+        </div>
+
+        <div class="footer-links">
+          <h4>Belgeler & Kılavuz</h4>
+          <ul>
+            <li><a href="USER_GUIDE.md">Kullanım Kılavuzu (TR & EN)</a></li>
+            <li><a href="#features">Araçlar & Özellikler</a></li>
+            <li><a href="#cli">CLI Dokümantasyonu</a></li>
+            <li><a href="#privacy">Gizlilik İlkeleri</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links">
+          <h4>Proje</h4>
+          <ul>
+            <li><a href="#download">İndirme Linkleri</a></li>
+            <li><a href="#faq">Sıkça Sorulan Sorular</a></li>
+            <li><a href="https://github.com/" target="_blank" rel="noopener">GitHub Deposu</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>&copy; 2026 PDF Aura. Tüm hakları saklıdır. %100 Yerel ve Bağımsız.</div>
+        <div style="display: flex; gap: 16px;">
+          <span>Gizlilik Öncelikli Mimari</span>
+          <span>&bull;</span>
+          <span>Açık Kaynak Standartları</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Script for Theme Toggle, Tabs & Accordion -->
+  <script>
+    (function() {
+      // 1. Theme Toggle
+      const themeToggleBtn = document.getElementById('themeToggle');
+      const htmlElement = document.documentElement;
+
+      function setTheme(theme) {
+        htmlElement.setAttribute('data-theme', theme);
+        localStorage.setItem('pdfaura-theme', theme);
+        themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      }
+
+      const savedTheme = localStorage.getItem('pdfaura-theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      setTheme(savedTheme);
+
+      themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = htmlElement.getAttribute('data-theme');
+        setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+      });
+
+      // 2. Interactive Showcase Tabs
+      const tabButtons = document.querySelectorAll('.demo-tab-btn');
+      const tabContents = document.querySelectorAll('.demo-content');
+
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabButtons.forEach(b => b.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
+
+          btn.classList.add('active');
+          const target = btn.getAttribute('data-tab');
+          const content = document.getElementById(target);
+          if (content) content.classList.add('active');
+        });
+      });
+
+      // 3. FAQ Accordion
+      const faqQuestions = document.querySelectorAll('.faq-question');
+
+      faqQuestions.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const item = btn.parentElement;
+          const isOpen = item.classList.contains('open');
+
+          // Close all items
+          document.querySelectorAll('.faq-item').forEach(i => {
+            i.classList.remove('open');
+            i.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
+            const ans = i.querySelector('.faq-answer');
+            if (ans) ans.style.maxHeight = null;
+          });
+
+          // Toggle current
+          if (!isOpen) {
+            item.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+            const answer = item.querySelector('.faq-answer');
+            if (answer) answer.style.maxHeight = answer.scrollHeight + 30 + 'px';
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

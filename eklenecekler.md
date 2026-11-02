@@ -82,16 +82,16 @@
 ### PDF Şifreleme (Password Protection)
 - [x] PDF'ye açma şifresi ekleme
 - [x] 128-bit şifreleme
-- [ ] Düzenleme/yazdırma kısıtlaması
+- [x] Düzenleme/yazdırma kısıtlaması
 
 ### PDF Şifre Kaldırma
 - [x] Şifreli PDF'den şifreyi kaldırma (şifre biliniyorsa)
-- [ ] Toplu şifre kaldırma (Öncelik 5'te)
+- [x] Toplu şifre kaldırma (Öncelik 5'te)
 
 ### PDF Filigran (Watermark)
 - [x] Metin filigranı ekleme
-- [ ] Resim filigranı ekleme (logo vb.)
-- [ ] Opaklık, açı, konum ayarları
+- [x] Resim filigranı ekleme (logo vb.)
+- [x] Opaklık, açı, konum ayarları
 - [x] Tüm sayfalara uygulama
 
 ---
@@ -108,7 +108,7 @@
 - [x] Taranmış PDF'lerdeki metni tanıma
 - [x] Tesseract OCR entegrasyonu
 - [x] Türkçe dil desteği
-- [ ] Aranabilir PDF oluşturma
+- [x] Aranabilir PDF oluşturma
 
 ### Akıllı Belge Tarayıcı (Document Scanner)
 - [x] Görüntüden otomatik belge kenarı belirleme (Canny/Contours)
@@ -170,22 +170,22 @@
 ### Çoklu Dil Desteği (i18n)
 - [x] Türkçe (varsayılan)
 - [x] İngilizce
-- [ ] Almanca
-- [ ] Arapça
+- [x] Almanca
+- [x] Arapça
 
 ---
 
 ## 📌 Öncelik 7 — Teknik Altyapı ve Kalite
 
 ### Hata Yönetimi ve Loglama
-- [ ] Detaylı hata logları (AppData klasöründe)
-- [ ] Crash reporter (opsiyonel anonim hata bildirimi)
-- [ ] Kullanıcı dostu hata mesajları
+- [x] Detaylı hata logları (AppData klasöründe)
+- [x] Crash reporter (opsiyonel anonim hata bildirimi)
+- [x] Kullanıcı dostu hata mesajları
 
 ### Otomatik Güncelleme
-- [ ] Uygulama içi güncelleme kontrolü
-- [ ] Sürüm notları gösterimi
-- [ ] Sessiz (silent) güncelleme modu
+- [x] Uygulama içi güncelleme kontrolü
+- [x] Sürüm notları gösterimi
+- [x] Sessiz (silent) güncelleme modu
 
 ### Performans Optimizasyonu
 - [x] Büyük dosyalar için bellek optimizasyonu
@@ -195,8 +195,8 @@
 
 ### Test ve Kalite Kontrolü
 - [x] Unit test'ler
-- [ ] Farklı PDF formatları ile uyumluluk testleri
-- [ ] Windows 10/11 uyumluluk testleri
+- [x] Farklı PDF formatları ile uyumluluk testleri
+- [x] Windows 10/11 uyumluluk testleri
 - [x] Edge case testleri
 
 ---
@@ -207,18 +207,18 @@
 - [ ] Profesyonel uygulama ikonu
 - [ ] Splash screen
 - [ ] Hakkında (About) penceresi
-- [ ] Uygulama içi yardım / kullanım kılavuzu
+- [x] Uygulama içi yardım / kullanım kılavuzu
 
 ### Web Sitesi
-- [ ] Ürün tanıtım sayfası
-- [ ] İndirme linki
-- [ ] Ekran görüntüleri ve demo videosu
-- [ ] SSS bölümü
+- [x] Ürün tanıtım sayfası
+- [x] İndirme linki
+- [x] Ekran görüntüleri ve demo videosu
+- [x] SSS bölümü
 
 ### Installer İyileştirmeleri
-- [ ] Kurulum sırasında özellik seçimi
-- [ ] Sessiz kurulum desteği
-- [ ] Kaldırma sırasında ayarları temizleme seçeneği
+- [x] Kurulum sırasında özellik seçimi
+- [x] Sessiz kurulum desteği
+- [x] Kaldırma sırasında ayarları temizleme seçeneği
 - [ ] Dijital imza (code signing)
 
 ---
@@ -226,14 +226,14 @@
 ## 📌 Öncelik 9 — Entegrasyonlar
 
 ### Windows Sağ Tık Menüsü (Context Menu)
-- [ ] PDF'ye sağ tıklayınca "PDF Aura ile Sıkıştır" seçeneği
-- [ ] "PDF Aura ile Kes" seçeneği
-- [ ] "PDF Aura ile Birleştir" seçeneği
+- [x] PDF'ye sağ tıklayınca "PDF Aura ile Sıkıştır" seçeneği
+- [x] "PDF Aura ile Kes" seçeneği
+- [x] "PDF Aura ile Birleştir" seçeneği
 
 ### Komut Satırı (CLI) Desteği
-- [ ] Terminal üzerinden sıkıştırma: `pdfaura compress input.pdf -q ebook`
-- [ ] Terminal üzerinden kesme: `pdfaura split input.pdf --pages 1-100`
-- [ ] Otomasyon ve script entegrasyonu
+- [x] Terminal üzerinden sıkıştırma: `pdfaura compress input.pdf -q ebook`
+- [x] Terminal üzerinden kesme: `pdfaura split input.pdf --pages 1-100`
+- [x] Otomasyon ve script entegrasyonu
 
 ### Bulut Entegrasyonu (İleri Seviye)
 - [ ] Google Drive'dan dosya açma
@@ -249,11 +249,11 @@ PDF Aura'nın klasik PDF araç setinden daha yenilikçi bir doküman asistanına
 
 **Genel mimari yaklaşım:**
 - [x] `src/ai/` altında ortak AI altyapısı kurulacak: belge metni çıkarma, sayfa bazlı parçalara ayırma, embedding/indexleme, kaynak gösterme ve model çağırma katmanları ayrılacak.
-- [ ] AI özelliklerinde varsayılan yaklaşım **local-first** olacak; ürün çalışmak için OpenAI, Gemini, Claude veya benzeri ücretli API'lere mecbur kalmayacak.
-- [ ] Belge içeriği varsayılan olarak internet servisine gönderilmeyecek; yalnızca kullanıcının açıkça seçtiği opsiyonel online özelliklerde hangi verinin dışarı çıkacağı net gösterilecek.
-- [ ] AI cevapları mutlaka sayfa numarası ve kaynak metin parçası ile birlikte gösterilecek; kaynak bulunamayan cevaplar "emin değilim" davranışına düşecek.
-- [ ] Büyük PDF'lerde UI donmaması için tüm AI işlemleri arka plan thread/task sistemiyle çalışacak, progress/iptal desteği olacak.
-- [ ] Gizlilik modu eklenecek: kullanıcıya her işlem için "local çalışır", "internet gerekir" veya "opsiyonel online kalite modu" bilgisi net gösterilecek.
+- [x] AI özelliklerinde varsayılan yaklaşım **local-first** olacak; ürün çalışmak için OpenAI, Gemini, Claude veya benzeri ücretli API'lere mecbur kalmayacak.
+- [x] Belge içeriği varsayılan olarak internet servisine gönderilmeyecek; yalnızca kullanıcının açıkça seçtiği opsiyonel online özelliklerde hangi verinin dışarı çıkacağı net gösterilecek.
+- [x] AI cevapları mutlaka sayfa numarası ve kaynak metin parçası ile birlikte gösterilecek; kaynak bulunamayan cevaplar "emin değilim" davranışına düşecek.
+- [x] Büyük PDF'lerde UI donmaması için tüm AI işlemleri arka plan thread/task sistemiyle çalışacak, progress/iptal desteği olacak.
+- [x] Gizlilik modu eklenecek: kullanıcıya her işlem için "local çalışır", "internet gerekir" veya "opsiyonel online kalite modu" bilgisi net gösterilecek.
 
 **Local-first model stratejisi:**
 - [x] Ayarlar bölümüne **Local AI Model Yönetimi** ekranı eklenecek: model indirme, model yolu seçme, disk boyutu, RAM/VRAM ihtiyacı ve test çalıştırma kontrolleri bulunacak.
@@ -268,11 +268,11 @@ PDF Aura'nın klasik PDF araç setinden daha yenilikçi bir doküman asistanına
 - [x] PDF metin çıkarma: `PyMuPDF` / mevcut PDF okuma altyapısı; taranmış sayfalarda OCR fallback.
 - [x] OCR: temiz baskı belgelerde `Tesseract` fallback hazır; daha zor belge ve tablo işleri için `PaddleOCR` Faz 7 kalite katmanında değerlendirilecek.
 - [x] Embedding / arama: küçük ve hızlı bir local embedding fallback; FAISS veya benzeri yerel vektör indeksleme.
-- [ ] Yerel LLM: Türkçe ve İngilizce için küçük/orta boy `Qwen`, `Mistral` veya benzeri GGUF modeller; `llama.cpp`/`ctransformers` tarzı CPU çalışabilen runtime.
-- [ ] Gizli bilgi algılama: `Microsoft Presidio` + Türkiye'ye özel regex kuralları (TC kimlik, IBAN, telefon, vergi no, e-posta).
-- [ ] Tablo çıkarma: `PaddleOCR` + `pdfplumber`/`camelot` benzeri klasik tablo çıkarma yöntemleri birlikte kullanılacak.
-- [ ] Sesli asistan: öncelik `faster-whisper` ve `Piper` ile offline çalışma; doğruluk veya ses kalitesi yetmezse kullanıcı seçimiyle online ASR/TTS sağlayıcıları bağlanabilecek.
-- [ ] Tarama kalite kontrolü: mevcut ONNX kenar modeli + OpenCV bulanıklık/parlama/gölge ölçümleri.
+- [x] Yerel LLM: Türkçe ve İngilizce için küçük/orta boy `Qwen`, `Mistral` veya benzeri GGUF modeller; `llama.cpp`/`ctransformers` tarzı CPU çalışabilen runtime.
+- [x] Gizli bilgi algılama: `Microsoft Presidio` + Türkiye'ye özel regex kuralları (TC kimlik, IBAN, telefon, vergi no, e-posta).
+- [x] Tablo çıkarma: `PaddleOCR` + `pdfplumber`/`camelot` benzeri klasik tablo çıkarma yöntemleri birlikte kullanılacak.
+- [x] Sesli asistan: öncelik `faster-whisper` ve `Piper` ile offline çalışma; doğruluk veya ses kalitesi yetmezse kullanıcı seçimiyle online ASR/TTS sağlayıcıları bağlanabilecek.
+- [x] Tarama kalite kontrolü: mevcut ONNX kenar modeli + OpenCV bulanıklık/parlama/gölge ölçümleri.
 
 **Donanım profilleri:**
 - [ ] Hafif Mod: 8 GB RAM, CPU ağırlıklı kullanım, küçük LLM ve Tesseract ağırlıklı OCR.
@@ -280,108 +280,108 @@ PDF Aura'nın klasik PDF araç setinden daha yenilikçi bir doküman asistanına
 - [ ] Kaliteli Mod: 32 GB RAM veya GPU olan sistemlerde daha büyük LLM, daha iyi OCR ve daha uzun belge bağlamı.
 
 #### 1. AI PDF Sohbeti
-- [ ] Kullanıcı PDF seçip belge hakkında doğal dille soru sorabilecek.
-- [ ] Cevaplarda ilgili sayfa numarası, kısa kaynak alıntısı ve "sayfaya git" aksiyonu gösterilecek.
-- [ ] Çok sayfalı belgelerde önce OCR/metin çıkarımı yapılacak, sonra sayfa bazlı indeks oluşturulacak.
-- [ ] Örnek sorular: "Bu belge ne anlatıyor?", "2. sayfadaki ödeme şartı ne?", "Riskli madde var mı?", "Son tarih nerede yazıyor?"
-- [ ] Cevap kalitesi için hallucination önlemi: kaynak bulunamazsa tahmin üretmek yerine kullanıcıya net uyarı verilecek.
-- [ ] Kabul kriteri: En az 50 sayfalık PDF'te soru-cevap UI donmadan çalışmalı ve cevapların yanında doğru sayfa referansı görünmeli.
+- [x] Kullanıcı PDF seçip belge hakkında doğal dille soru sorabilecek.
+- [x] Cevaplarda ilgili sayfa numarası, kısa kaynak alıntısı ve "sayfaya git" aksiyonu gösterilecek.
+- [x] Çok sayfalı belgelerde önce OCR/metin çıkarımı yapılacak, sonra sayfa bazlı indeks oluşturulacak.
+- [x] Örnek sorular: "Bu belge ne anlatıyor?", "2. sayfadaki ödeme şartı ne?", "Riskli madde var mı?", "Son tarih nerede yazıyor?"
+- [x] Cevap kalitesi için hallucination önlemi: kaynak bulunamazsa tahmin üretmek yerine kullanıcıya net uyarı verilecek.
+- [x] Kabul kriteri: En az 50 sayfalık PDF'te soru-cevap UI donmadan çalışmalı ve cevapların yanında doğru sayfa referansı görünmeli.
 
 #### 2. Akıllı Özet Modları
-- [ ] Tek tıkla farklı özet türleri üretilecek: kısa özet, detaylı özet, öğrenci özeti, toplantı özeti, hukuki/kontrat özeti.
-- [ ] Özet sonucu kopyalanabilir, `.txt` olarak kaydedilebilir ve yeni PDF raporu olarak dışa aktarılabilir olacak.
-- [ ] Uzun belgelerde bölüm/sayfa bazlı özet çıkarılıp final özet birleştirilecek.
-- [ ] Kullanıcı özet dilini seçebilecek: Türkçe, İngilizce.
-- [ ] Kabul kriteri: 20+ sayfalık bir PDF'te özet üretimi arka planda ilerleme göstergesiyle tamamlanmalı.
+- [x] Tek tıkla farklı özet türleri üretilecek: kısa özet, detaylı özet, öğrenci özeti, toplantı özeti, hukuki/kontrat özeti.
+- [x] Özet sonucu kopyalanabilir, `.txt` olarak kaydedilebilir ve yeni PDF raporu olarak dışa aktarılabilir olacak.
+- [x] Uzun belgelerde bölüm/sayfa bazlı özet çıkarılıp final özet birleştirilecek.
+- [x] Kullanıcı özet dilini seçebilecek: Türkçe, İngilizce.
+- [x] Kabul kriteri: 20+ sayfalık bir PDF'te özet üretimi arka planda ilerleme göstergesiyle tamamlanmalı.
 
 #### 3. AI Tarama Asistanı
-- [ ] Mevcut belge tarayıcıdaki kenar algılama, kalite kontrol katmanıyla desteklenecek.
-- [ ] Fotoğraf bulanık, çok karanlık, çok parlak, gölgeli veya belge eksik kadrajdaysa kullanıcıya uyarı verilecek.
-- [ ] Kenar algılama sonrası AI kalite puanı gösterilecek: "iyi", "orta", "tekrar çekilmesi önerilir".
+- [x] Mevcut belge tarayıcıdaki kenar algılama, kalite kontrol katmanıyla desteklenecek.
+- [x] Fotoğraf bulanık, çok karanlık, çok parlak, gölgeli veya belge eksik kadrajdaysa kullanıcıya uyarı verilecek.
+- [x] Kenar algılama sonrası AI kalite puanı gösterilecek: "iyi", "orta", "tekrar çekilmesi önerilir".
 - [ ] Belge eğikliği, perspektif bozulması ve sayfa sınırı otomatik düzeltilecek; kullanıcı yine köşeleri elle düzenleyebilecek.
 - [ ] Kabul kriteri: Kullanıcının `Downloads\1.jpeg`, `2.jpeg`, `3.jpeg` test görsellerinde algılama UI'ı kilitlemeden çalışmalı ve köşeler görsel olarak doğruya yakın çıkmalı.
 
 #### 4. Otomatik Gizli Bilgi Sansürleme
-- [ ] PDF içinde TC kimlik, telefon, e-posta, IBAN, adres, imza alanı ve kredi kartı benzeri hassas veriler algılanacak.
+- [x] PDF içinde TC kimlik, telefon, e-posta, IBAN, adres, imza alanı ve kredi kartı benzeri hassas veriler algılanacak.
 - [ ] Kullanıcı bulunan alanları uygulamadan önce önizleyip tek tek onaylayabilecek.
-- [ ] Sansürleme gerçek PDF redaction mantığıyla yapılacak; sadece üstüne siyah kutu çizmekle kalmayacak, metin içeriği de çıkarılacak.
+- [x] Sansürleme gerçek PDF redaction mantığıyla yapılacak; sadece üstüne siyah kutu çizmekle kalmayacak, metin içeriği de çıkarılacak.
 - [ ] OCR tabanlı taranmış belgelerde görsel alan karartma uygulanacak.
-- [ ] Kabul kriteri: Sansürlenen bilgi PDF metninde arama/kopyalama ile geri getirilememeli.
+- [x] Kabul kriteri: Sansürlenen bilgi PDF metninde arama/kopyalama ile geri getirilememeli.
 
 #### 5. PDF Karşılaştırma ve Değişiklik Açıklama
-- [ ] İki PDF seçilerek metin, sayfa, başlık, tablo ve görsel farkları çıkarılacak.
-- [ ] AI, farkları "önemsiz biçim değişikliği", "anlam değişikliği", "riskli değişiklik" gibi sınıflandıracak.
-- [ ] Sözleşme/rapor senaryosu için "ne değişti?" raporu üretilecek.
-- [ ] Farklar sayfa bazlı gösterilecek ve dışa aktarılabilir özet PDF oluşturulacak.
-- [ ] Kabul kriteri: Aynı belgenin iki versiyonunda eklenen/silinen maddeler doğru sayfa referansıyla listelenmeli.
+- [x] İki PDF seçilerek metin, sayfa, başlık, tablo ve görsel farkları çıkarılacak.
+- [x] AI, farkları "önemsiz biçim değişikliği", "anlam değişikliği", "riskli değişiklik" gibi sınıflandıracak.
+- [x] Sözleşme/rapor senaryosu için "ne değişti?" raporu üretilecek.
+- [x] Farklar sayfa bazlı gösterilecek ve dışa aktarılabilir özet PDF oluşturulacak.
+- [x] Kabul kriteri: Aynı belgenin iki versiyonunda eklenen/silinen maddeler doğru sayfa referansıyla listelenmeli.
 
 #### 6. PDF'den Tablo ve Excel Çıkarma
-- [ ] Fatura, dekont, not çizelgesi, rapor tablosu gibi belgelerden tablo yapısı algılanacak.
-- [ ] Çıktı formatları: `.xlsx`, `.csv`, kopyalanabilir markdown tablo.
+- [x] Fatura, dekont, not çizelgesi, rapor tablosu gibi belgelerden tablo yapısı algılanacak.
+- [x] Çıktı formatları: `.xlsx`, `.csv`, kopyalanabilir markdown tablo.
 - [ ] OCR ile taranmış tablolarda hücre sınırları ve satır/sütun ilişkisi korunmaya çalışılacak.
 - [ ] Kullanıcı çıktı önizlemesinde hücreleri düzenleyebilecek.
-- [ ] Kabul kriteri: En az 3 farklı tablo düzeninde satır/sütun yapısı bozulmadan Excel çıktısı alınmalı.
+- [x] Kabul kriteri: En az 3 farklı tablo düzeninde satır/sütun yapısı bozulmadan Excel çıktısı alınmalı.
 
 #### 7. Akıllı Dosya Adlandırma ve Klasörleme
-- [ ] PDF içeriği okunarak otomatik dosya adı önerilecek.
-- [ ] Örnekler: `Matematik_Odev_2026-05-16.pdf`, `Elektrik_Faturasi_Nisan_2026.pdf`, `Kira_Sozlesmesi_Ahmet_Yilmaz.pdf`.
-- [ ] Toplu işlemde klasör içindeki PDF'ler belge türüne göre otomatik alt klasörlere ayrılabilecek.
-- [ ] Kullanıcı adlandırma şablonu belirleyebilecek: `{belge_turu}_{tarih}_{konu}`.
-- [ ] Kabul kriteri: Toplu yeniden adlandırma öncesi kullanıcıya eski/yeni ad tablosu gösterilmeli ve onay alınmalı.
+- [x] PDF içeriği okunarak otomatik dosya adı önerilecek.
+- [x] Örnekler: `Matematik_Odev_2026-05-16.pdf`, `Elektrik_Faturasi_Nisan_2026.pdf`, `Kira_Sozlesmesi_Ahmet_Yilmaz.pdf`.
+- [x] Toplu işlemde klasör içindeki PDF'ler belge türüne göre otomatik alt klasörlere ayrılabilecek.
+- [x] Kullanıcı adlandırma şablonu belirleyebilecek: `{belge_turu}_{tarih}_{konu}`.
+- [x] Kabul kriteri: Toplu yeniden adlandırma öncesi kullanıcıya eski/yeni ad tablosu gösterilmeli ve onay alınmalı.
 
 #### 8. AI Komut Çubuğu
-- [ ] Uygulama içinde tek satırlık komut alanı olacak: "Bu PDF'i küçült, ilk 3 sayfayı ayır, imza alanını kırp" gibi komutları anlayacak.
-- [ ] Komut, mevcut PDF Aura araçlarına işlem zinciri olarak çevrilecek.
-- [ ] Çalıştırmadan önce kullanıcıya plan gösterilecek: giriş dosyası, yapılacak adımlar, çıktı konumu.
-- [ ] Sesli asistan altyapısıyla aynı `intent_parser` ve `action_runner` modüllerini paylaşacak.
-- [ ] Kabul kriteri: En az sıkıştırma, kesme, birleştirme, filigran, OCR ve çıktı klasörü komutları desteklenmeli.
+- [x] Uygulama içinde tek satırlık komut alanı olacak: "Bu PDF'i küçült, ilk 3 sayfayı ayır, imza alanını kırp" gibi komutları anlayacak.
+- [x] Komut, mevcut PDF Aura araçlarına işlem zinciri olarak çevrilecek.
+- [x] Çalıştırmadan önce kullanıcıya plan gösterilecek: giriş dosyası, yapılacak adımlar, çıktı konumu.
+- [x] Sesli asistan altyapısıyla aynı `intent_parser` ve `action_runner` modüllerini paylaşacak.
+- [x] Kabul kriteri: En az sıkıştırma, kesme, birleştirme, filigran, OCR ve çıktı klasörü komutları desteklenmeli.
 
 #### 9. Öğrenci Modu
-- [ ] Ders notu/ödev PDF'i için konu özeti, önemli noktalar, test soruları ve flashcard üretilecek.
-- [ ] "Bu PDF'ten 10 soru hazırla", "boşluk doldurma yap", "sınav notu çıkar" aksiyonları eklenecek.
-- [ ] Çıktılar PDF, TXT veya yazdırılabilir çalışma kağıdı olarak kaydedilebilecek.
-- [ ] Kabul kriteri: Öğrenci modu çıktısında her önemli bilgi için kaynak sayfa gösterilmeli.
+- [x] Ders notu/ödev PDF'i için konu özeti, önemli noktalar, test soruları ve flashcard üretilecek.
+- [x] "Bu PDF'ten 10 soru hazırla", "boşluk doldurma yap", "sınav notu çıkar" aksiyonları eklenecek.
+- [x] Çıktılar PDF, TXT veya yazdırılabilir çalışma kağıdı olarak kaydedilebilecek.
+- [x] Kabul kriteri: Öğrenci modu çıktısında her önemli bilgi için kaynak sayfa gösterilmeli.
 
 #### 10. PDF'den Sunum Oluşturma
-- [ ] Rapor, ders notu veya makale PDF'i seçilip otomatik sunum taslağı üretilecek.
-- [ ] Her slayt için başlık, kısa madde listesi ve kaynak sayfa bilgisi üretilecek.
-- [ ] Çıktı formatı ilk etapta `.pptx`, alternatif olarak PDF sunum çıktısı olacak.
-- [ ] Kullanıcı slayt sayısı ve sunum tonu seçebilecek: kısa, akademik, yönetici özeti, ders anlatımı.
-- [ ] Kabul kriteri: En az 10 sayfalık bir PDF'ten 6-10 slaytlık düzenli bir sunum taslağı oluşturulmalı.
+- [x] Rapor, ders notu veya makale PDF'i seçilip otomatik sunum taslağı üretilecek.
+- [x] Her slayt için başlık, kısa madde listesi ve kaynak sayfa bilgisi üretilecek.
+- [x] Çıktı formatı ilk etapta `.pptx`, alternatif olarak PDF sunum çıktısı olacak.
+- [x] Kullanıcı slayt sayısı ve sunum tonu seçebilecek: kısa, akademik, yönetici özeti, ders anlatımı.
+- [x] Kabul kriteri: En az 10 sayfalık bir PDF'ten 6-10 slaytlık düzenli bir sunum taslağı oluşturulmalı.
 
 **Özellik bazlı local uygulama önerileri:**
-- [ ] AI PDF Sohbeti: PDF metni sayfa sayfa çıkarılacak, embedding ile yerel indeks kurulacak, küçük/orta yerel LLM sadece ilgili sayfa parçalarıyla cevap üretecek.
-- [ ] Akıllı Özet: Uzun belgelerde map-reduce yaklaşımı kullanılacak; önce sayfa/bölüm özetleri, sonra final özet üretilecek.
-- [ ] AI Tarama Asistanı: Kenar tespitinde mevcut hızlı algoritma korunacak; bulanıklık için Laplacian variance, parlama/gölge için histogram ve yerel kontrast ölçümleri eklenecek.
-- [ ] Gizli Bilgi Sansürleme: Önce regex + Presidio ile metin tespiti yapılacak, sonra PDF koordinatları üzerinden gerçek redaction uygulanacak.
-- [ ] PDF Karşılaştırma: Klasik text diff ana kaynak olacak; yerel LLM sadece farkları kullanıcı dilinde açıklamak için kullanılacak.
-- [ ] Tablo/Excel Çıkarma: Dijital PDF'te `pdfplumber`/tablo çizgileri, taranmış PDF'te PaddleOCR tabanlı hücre çıkarımı kullanılacak.
-- [ ] Akıllı Dosya Adlandırma: Belgeden tarih, kişi/kurum, belge türü ve konu çıkarılıp şablon tabanlı isim önerilecek; LLM sadece belirsiz durumlarda kullanılacak.
-- [ ] AI Komut Çubuğu: İlk katman kural tabanlı parser olacak; yerel LLM yalnızca komut belirsizse plan üretmeye yardım edecek.
-- [ ] Öğrenci Modu: Kaynak sayfa zorunlu olacak; soru/flashcard çıktıları belge dışı bilgi eklemeden üretilecek.
-- [ ] PDF'den Sunum: Önce kaynaklı bölüm özeti çıkarılacak, sonra slayt planı üretilecek; `.pptx` üretimi mevcut Office/presentation altyapısıyla yapılacak.
+- [x] AI PDF Sohbeti: PDF metni sayfa sayfa çıkarılacak, embedding ile yerel indeks kurulacak, küçük/orta yerel LLM sadece ilgili sayfa parçalarıyla cevap üretecek.
+- [x] Akıllı Özet: Uzun belgelerde map-reduce yaklaşımı kullanılacak; önce sayfa/bölüm özetleri, sonra final özet üretilecek.
+- [x] AI Tarama Asistanı: Kenar tespitinde mevcut hızlı algoritma korunacak; bulanıklık için Laplacian variance, parlama/gölge için histogram ve yerel kontrast ölçümleri eklenecek.
+- [x] Gizli Bilgi Sansürleme: Önce regex + Presidio ile metin tespiti yapılacak, sonra PDF koordinatları üzerinden gerçek redaction uygulanacak.
+- [x] PDF Karşılaştırma: Klasik text diff ana kaynak olacak; yerel LLM sadece farkları kullanıcı dilinde açıklamak için kullanılacak.
+- [x] Tablo/Excel Çıkarma: Dijital PDF'te `pdfplumber`/tablo çizgileri, taranmış PDF'te PaddleOCR tabanlı hücre çıkarımı kullanılacak.
+- [x] Akıllı Dosya Adlandırma: Belgeden tarih, kişi/kurum, belge türü ve konu çıkarılıp şablon tabanlı isim önerilecek; LLM sadece belirsiz durumlarda kullanılacak.
+- [x] AI Komut Çubuğu: İlk katman kural tabanlı parser olacak; yerel LLM yalnızca komut belirsizse plan üretmeye yardım edecek.
+- [x] Öğrenci Modu: Kaynak sayfa zorunlu olacak; soru/flashcard çıktıları belge dışı bilgi eklemeden üretilecek.
+- [x] PDF'den Sunum: Önce kaynaklı bölüm özeti çıkarılacak, sonra slayt planı üretilecek; `.pptx` üretimi mevcut Office/presentation altyapısıyla yapılacak.
 
 **Maliyet ve ürün kararı:**
-- [ ] Varsayılan AI özellikleri için kullanıcıdan API anahtarı istenmeyecek.
-- [ ] Local modda token maliyeti olmayacak; maliyet kullanıcının disk alanı ve bilgisayar performansı olacak.
-- [ ] Opsiyonel online kalite modu eklenirse açıkça ayrı ayar olarak sunulacak; kullanıcı onayı olmadan API, bulut veya ücretli servis kullanılmayacak.
-- [ ] Ücretli sürüm düşünülürse ana fark gelişmiş local model paketi, otomasyon, batch AI, profesyonel workflow ve isteğe bağlı online kalite paketleri üzerinden kurgulanacak.
-- [ ] İnternet varsayılan belge işleme için gerekmeyecek; model indirme/güncelleme, bulut entegrasyonu ve kullanıcı onaylı online AI özellikleri ayrı şekilde işaretlenecek.
+- [x] Varsayılan AI özellikleri için kullanıcıdan API anahtarı istenmeyecek.
+- [x] Local modda token maliyeti olmayacak; maliyet kullanıcının disk alanı ve bilgisayar performansı olacak.
+- [x] Opsiyonel online kalite modu eklenirse açıkça ayrı ayar olarak sunulacak; kullanıcı onayı olmadan API, bulut veya ücretli servis kullanılmayacak.
+- [x] Ücretli sürüm düşünülürse ana fark gelişmiş local model paketi, otomasyon, batch AI, profesyonel workflow ve isteğe bağlı online kalite paketleri üzerinden kurgulanacak.
+- [x] İnternet varsayılan belge işleme için gerekmeyecek; model indirme/güncelleme, bulut entegrasyonu ve kullanıcı onaylı online AI özellikleri ayrı şekilde işaretlenecek.
 
 **Önerilen geliştirme sırası:**
 1. [x] Local AI Model Yönetimi + model indirme/yol seçme ekranı
 2. [x] Yerel OCR + belge metni çıkarma + sayfa bazlı indeksleme altyapısı
-3. [ ] Yerel RAG sistemi: embedding, vektör indeks, kaynak gösterme, güvenli cevap üretme
-4. [ ] AI PDF Sohbeti + kaynak gösterme
-5. [ ] Akıllı Özet Modları
-6. [ ] Otomatik Gizli Bilgi Sansürleme
-7. [ ] PDF'den Tablo/Excel Çıkarma
-8. [ ] AI Tarama Asistanı kalite kontrolü
-9. [ ] AI Komut Çubuğu
-10. [ ] PDF Karşılaştırma ve Değişiklik Açıklama
-11. [ ] Akıllı Dosya Adlandırma ve Klasörleme
-12. [ ] Öğrenci Modu
-13. [ ] PDF'den Sunum Oluşturma
+3. [x] Yerel RAG sistemi: embedding, vektör indeks, kaynak gösterme, güvenli cevap üretme
+4. [x] AI PDF Sohbeti + kaynak gösterme
+5. [x] Akıllı Özet Modları
+6. [x] Otomatik Gizli Bilgi Sansürleme
+7. [x] PDF'den Tablo/Excel Çıkarma
+8. [x] AI Tarama Asistanı kalite kontrolü
+9. [x] AI Komut Çubuğu
+10. [x] PDF Karşılaştırma ve Değişiklik Açıklama
+11. [x] Akıllı Dosya Adlandırma ve Klasörleme
+12. [x] Öğrenci Modu
+13. [x] PDF'den Sunum Oluşturma
 
 **Net uygulama önceliği ve faz planı:**
 
@@ -425,44 +425,44 @@ AI'nin belgeyi anlayabilmesi için önce PDF içeriği güvenilir şekilde çık
 #### Faz 3 — Kaynak Gösteren Yerel RAG
 Bu faz, AI cevaplarının belgeye bağlı kalmasını sağlar.
 
-1. [ ] Kullanıcı sorusu embedding ile aranacak.
-2. [ ] En alakalı sayfa parçaları bulunacak.
-3. [ ] Yerel LLM sadece bulunan kaynak parçalarıyla cevap verecek.
-4. [ ] Cevabın altında kaynak sayfa ve kısa alıntı gösterilecek.
-5. [ ] Kaynak bulunamazsa cevap üretmek yerine "belgede bulamadım" davranışı olacak.
+1. [x] Kullanıcı sorusu embedding ile aranacak.
+2. [x] En alakalı sayfa parçaları bulunacak.
+3. [x] Yerel LLM sadece bulunan kaynak parçalarıyla cevap verecek.
+4. [x] Cevabın altında kaynak sayfa ve kısa alıntı gösterilecek.
+5. [x] Kaynak bulunamazsa cevap üretmek yerine "belgede bulamadım" davranışı olacak.
 
 **Faz 3 çıktısı:** Komut satırı veya basit test UI üzerinden PDF'e soru sorulabilir ve kaynaklı cevap alınabilir.
 
 #### Faz 4 — AI PDF Sohbeti UI
 İlk kullanıcıya gösterilecek gerçek AI özelliği bu olacak.
 
-1. [ ] PDF önizleme paneline veya ayrı sekmeye **AI Sohbet** paneli eklenecek.
-2. [ ] Kullanıcı soru yazacak, cevap kaynak sayfalarıyla gösterilecek.
-3. [ ] Kaynağa tıklayınca ilgili PDF sayfasına gidilecek.
-4. [ ] İşlem sırasında dönen progress/animasyon gösterilecek.
-5. [ ] Uzun cevaplarda iptal butonu olacak.
+1. [x] PDF önizleme paneline veya ayrı sekmeye **AI Sohbet** paneli eklenecek.
+2. [x] Kullanıcı soru yazacak, cevap kaynak sayfalarıyla gösterilecek.
+3. [x] Kaynağa tıklayınca ilgili PDF sayfasına gidilecek.
+4. [x] İşlem sırasında dönen progress/animasyon gösterilecek.
+5. [x] Uzun cevaplarda iptal butonu olacak.
 
 **Faz 4 çıktısı:** PDFAura içinde çalışan ilk gerçek local AI özelliği: kaynak gösteren PDF sohbeti.
 
 #### Faz 5 — Akıllı Özet Modları
 Sohbet altyapısı hazır olduğu için özet artık daha kolay eklenecek.
 
-1. [ ] Kısa özet.
-2. [ ] Detaylı özet.
-3. [ ] Öğrenci özeti.
-4. [ ] Toplantı/yönetici özeti.
-5. [ ] Hukuki/kontrat özeti.
-6. [ ] Özet çıktısını TXT/PDF olarak kaydetme.
+1. [x] Kısa özet.
+2. [x] Detaylı özet.
+3. [x] Öğrenci özeti.
+4. [x] Toplantı/yönetici özeti.
+5. [x] Hukuki/kontrat özeti.
+6. [x] Özet çıktısını TXT/PDF olarak kaydetme.
 
 **Faz 5 çıktısı:** Kullanıcı PDF'i tek tıkla local AI ile özetleyebilir.
 
 #### Faz 6 — Gizli Bilgi Sansürleme
 Bu özellik ticari olarak güçlü ve PDF Aura'ya net değer katar.
 
-1. [ ] TC kimlik, IBAN, telefon, e-posta, vergi no için regex kuralları.
-2. [ ] Presidio veya benzeri local PII tespit katmanı.
+1. [x] TC kimlik, IBAN, telefon, e-posta, vergi no için regex kuralları.
+2. [x] Presidio veya benzeri local PII tespit katmanı.
 3. [ ] Bulunan alanları PDF üzerinde önizleme.
-4. [ ] Kullanıcı onayıyla gerçek redaction.
+4. [x] Kullanıcı onayıyla gerçek redaction.
 5. [ ] Taranmış belgelerde OCR koordinatı ile görsel karartma.
 
 **Faz 6 çıktısı:** Hassas bilgileri local olarak bulup kalıcı şekilde sansürleyen güvenlik aracı.
@@ -470,41 +470,41 @@ Bu özellik ticari olarak güçlü ve PDF Aura'ya net değer katar.
 #### Faz 7 — Tablo ve Excel Çıkarma
 PDF araç setine pratik bir iş özelliği ekler.
 
-1. [ ] Dijital PDF tablolarını çıkarma.
+1. [x] Dijital PDF tablolarını çıkarma.
 2. [ ] OCR tabanlı tablo algılama.
 3. [ ] Önizleme ve elle düzeltme.
-4. [ ] XLSX/CSV dışa aktarma.
+4. [x] XLSX/CSV dışa aktarma.
 
 **Faz 7 çıktısı:** Fatura, liste, not çizelgesi gibi belgeler Excel'e aktarılabilir.
 
 #### Faz 8 — Scanner AI Kalite Kontrol
 Mevcut belge tarayıcı zaten güçlü olduğu için bu faz onu profesyonelleştirir.
 
-1. [ ] Bulanıklık ölçümü.
-2. [ ] Parlama/gölge ölçümü.
-3. [ ] Eksik kadraj uyarısı.
-4. [ ] Kenar algılama kalite puanı.
-5. [ ] "Tekrar çekilmesi önerilir" uyarısı.
+1. [x] Bulanıklık ölçümü.
+2. [x] Parlama/gölge ölçümü.
+3. [x] Eksik kadraj uyarısı.
+4. [x] Kenar algılama kalite puanı.
+5. [x] "Tekrar çekilmesi önerilir" uyarısı.
 
 **Faz 8 çıktısı:** Tarama ekranı sadece kenar bulmaz, fotoğraf kalitesini de değerlendirir.
 
 #### Faz 9 — AI Komut Çubuğu
 Bu faz mevcut PDF araçlarını doğal dille kontrol etmeyi sağlar.
 
-1. [ ] Kural tabanlı komut parser.
-2. [ ] Yerel LLM fallback.
-3. [ ] Çalıştırmadan önce işlem planı gösterimi.
-4. [ ] Mevcut core modülleriyle işlem zinciri.
+1. [x] Kural tabanlı komut parser.
+2. [x] Yerel LLM fallback.
+3. [x] Çalıştırmadan önce işlem planı gösterimi.
+4. [x] Mevcut core modülleriyle işlem zinciri.
 
 **Faz 9 çıktısı:** Kullanıcı "bu PDF'i sıkıştır, ilk 3 sayfayı ayır" gibi komutlarla işlem yapabilir.
 
 #### Faz 10 — Sonraki Akıllı Özellikler
 Temel AI sistemi oturduktan sonra eklenecek özellikler.
 
-1. [ ] PDF karşılaştırma ve değişiklik açıklama.
-2. [ ] Akıllı dosya adlandırma ve klasörleme.
-3. [ ] Öğrenci modu.
-4. [ ] PDF'den sunum oluşturma.
+1. [x] PDF karşılaştırma ve değişiklik açıklama.
+2. [x] Akıllı dosya adlandırma ve klasörleme.
+3. [x] Öğrenci modu.
+4. [x] PDF'den sunum oluşturma.
 
 **Faz 10 çıktısı:** PDFAura klasik PDF aracından local-first doküman asistanına dönüşür.
 
